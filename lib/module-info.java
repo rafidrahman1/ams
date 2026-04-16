@@ -1,0 +1,2 @@
+module asset.management.system {
+}
