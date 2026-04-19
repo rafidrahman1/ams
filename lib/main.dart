@@ -1,23 +1,27 @@
-import 'package:asset_management_system/views/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/screens/home_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: App()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends ConsumerWidget {
+  const App({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+
     return MaterialApp(
-      title: 'Asset Management System',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: loginScreen(),
+      home: switch (auth) {
+        AuthStatus.loading => const Scaffold(
+            body: Center(child: CircularProgressIndicator())),
+        AuthStatus.authenticated => const HomeScreen(),
+        AuthStatus.unauthenticated => const LoginScreen(),
+      },
     );
   }
 }
-
-
