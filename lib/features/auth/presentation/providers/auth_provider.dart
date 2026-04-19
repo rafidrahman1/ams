@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -15,15 +16,14 @@ final authServiceProvider = Provider((ref) {
 });
 
 final authRepositoryProvider = Provider((ref) {
-  return AuthRepository(
-    ref.read(authServiceProvider),
-    ref.read(tokenStorageProvider),
-  );
+  return AuthRepository(ref.read(authServiceProvider), ref.read(tokenStorageProvider));
 });
 
 enum AuthStatus { loading, authenticated, unauthenticated }
 
 class AuthNotifier extends Notifier<AuthStatus> {
+  static const _minimumStartupSplash = Duration(seconds: 2);
+
   AuthRepository get repo => ref.read(authRepositoryProvider);
 
   @override
@@ -33,7 +33,12 @@ class AuthNotifier extends Notifier<AuthStatus> {
   }
 
   Future<void> checkLogin() async {
-    final loggedIn = await repo.isLoggedIn();
+    final loggedInFuture = repo.isLoggedIn();
+    final delayFuture = Future<void>.delayed(_minimumStartupSplash);
+
+    final loggedIn = await loggedInFuture;
+    await delayFuture;
+
     state = loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated;
   }
 
@@ -62,6 +67,4 @@ class AuthNotifier extends Notifier<AuthStatus> {
   }
 }
 
-final authProvider = NotifierProvider<AuthNotifier, AuthStatus>(
-  AuthNotifier.new,
-);
+final authProvider = NotifierProvider<AuthNotifier, AuthStatus>(AuthNotifier.new);
