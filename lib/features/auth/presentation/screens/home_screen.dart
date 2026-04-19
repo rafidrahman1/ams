@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../screens/asset_checklist_screen.dart';
 import '../widgets/asset_card_builder.dart';
 import '../widgets/square_action_button.dart';
 
@@ -55,7 +56,12 @@ class HomeScreen extends ConsumerWidget {
                 ...assets.map(
                   (asset) => Padding(
                     padding: const EdgeInsets.only(bottom: 3),
-                    child: AssetCardBuilder(asset: asset, onSync: () {}),
+                    child: AssetCardBuilder(
+                      asset: asset,
+                      onSync: () {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
+                      },
+                    ),
                   ),
                 ),
               ],
