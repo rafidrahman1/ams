@@ -9,18 +9,32 @@ class AuthService {
   AuthService(this.client);
 
   Future<LoginResponse> login(String email, String password) async {
+    final cleanedEmail = email.trim();
+    final cleanedPassword = password.trim();
+
+    if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
+      throw Exception("Email and password are required");
+    }
+
     final res = await client.post(
       Endpoints.login,
       body: {
-        "email": email,
-        "password": password,
+        "email": cleanedEmail,
+        "password": cleanedPassword,
       },
     );
 
     final data = jsonDecode(res.body);
 
-    if (res.statusCode == 200) {
-      return LoginResponse.fromJson(data);
+    if (res.statusCode == 200 && data is Map<String, dynamic>) {
+      final loginResponse = LoginResponse.fromJson(data);
+      final hasValidTokens =
+          loginResponse.access.isNotEmpty && loginResponse.refresh.isNotEmpty;
+      final hasSuccessCode = loginResponse.code == 200;
+
+      if (hasSuccessCode && hasValidTokens) {
+        return loginResponse;
+      }
     }
 
     throw Exception("Login failed");

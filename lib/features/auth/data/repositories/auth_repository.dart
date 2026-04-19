@@ -10,12 +10,16 @@ class AuthRepository {
   Future<void> login(String email, String password) async {
     final res = await service.login(email, password);
 
+    if (res.access.isEmpty || res.refresh.isEmpty) {
+      throw Exception('Invalid login response');
+    }
+
     await storage.saveTokens(res.access, res.refresh);
   }
 
   Future<bool> isLoggedIn() async {
     final token = await storage.getAccess();
-    return token != null;
+    return token != null && token.isNotEmpty;
   }
 
   Future<void> logout() async {

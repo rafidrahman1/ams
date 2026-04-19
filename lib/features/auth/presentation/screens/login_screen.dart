@@ -5,6 +5,34 @@ import '../providers/auth_provider.dart';
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
+  Widget _buildField({
+    required TextEditingController controller,
+    required String hintText,
+    bool obscureText = false,
+  }) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.orange.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          hintText: hintText,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final email = TextEditingController();
@@ -18,50 +46,34 @@ class LoginScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  child: TextField(
-                    controller: email,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                    ),
-                  ),
-                ),
+              _buildField(
+                controller: email,
+                hintText: 'Email',
               ),
-              SizedBox(height: 16,),
-              Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  child: TextField(
-                    controller: password,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 16),
+              _buildField(
+                controller: password,
+                hintText: 'Password',
+                obscureText: true,
               ),
-              SizedBox(height: 16,),
+              const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () {
-                  ref.read(authProvider.notifier).login(
-                    email.text,
-                    password.text,
+                onPressed: () async {
+                  final cleanedEmail = email.text.trim();
+                  final cleanedPassword = password.text.trim();
+
+                  if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Email and password are required'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  await ref.read(authProvider.notifier).login(
+                    cleanedEmail,
+                    cleanedPassword,
                   );
                 },
                 child: const Text("Login"),

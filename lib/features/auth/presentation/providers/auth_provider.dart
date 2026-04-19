@@ -38,10 +38,18 @@ class AuthNotifier extends Notifier<AuthStatus> {
   }
 
   Future<void> login(String email, String password) async {
+    final cleanedEmail = email.trim();
+    final cleanedPassword = password.trim();
+
+    if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
+      state = AuthStatus.unauthenticated;
+      return;
+    }
+
     state = AuthStatus.loading;
 
     try {
-      await repo.login(email, password);
+      await repo.login(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticated;
     } catch (_) {
       state = AuthStatus.unauthenticated;
