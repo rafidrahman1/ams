@@ -27,4 +27,3 @@ class AuthRepository {
     await storage.clear();
   }
 }
-

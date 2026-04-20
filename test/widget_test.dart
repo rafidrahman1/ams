@@ -1,9 +1,9 @@
-import 'package:asset_management_system/src/features/auth/presentation/providers/auth_provider.dart';
-import 'package:asset_management_system/src/features/auth/presentation/screens/home_screen.dart';
-import 'package:asset_management_system/src/features/auth/presentation/screens/login_screen.dart';
-import 'package:asset_management_system/src/features/auth/presentation/screens/qr_nfc_screen.dart';
-import 'package:asset_management_system/src/features/auth/presentation/screens/splash_screen.dart';
-import 'package:asset_management_system/src/features/auth/presentation/widgets/square_action_button.dart';
+import 'package:asset_management_system/src/features/presentation/providers/auth_provider.dart';
+import 'package:asset_management_system/src/features/presentation/screens/home_screen.dart';
+import 'package:asset_management_system/src/features/presentation/screens/login_screen.dart';
+import 'package:asset_management_system/src/features/presentation/screens/qr_nfc_screen.dart';
+import 'package:asset_management_system/src/features/presentation/screens/splash_screen.dart';
+import 'package:asset_management_system/src/features/presentation/widgets/square_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
