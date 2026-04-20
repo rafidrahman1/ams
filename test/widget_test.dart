@@ -1,8 +1,9 @@
-import 'package:asset_management_system/features/auth/presentation/providers/auth_provider.dart';
-import 'package:asset_management_system/features/auth/presentation/screens/home_screen.dart';
-import 'package:asset_management_system/features/auth/presentation/screens/login_screen.dart';
-import 'package:asset_management_system/features/auth/presentation/screens/splash_screen.dart';
-import 'package:asset_management_system/features/auth/presentation/widgets/square_action_button.dart';
+import 'package:asset_management_system/src/features/auth/presentation/providers/auth_provider.dart';
+import 'package:asset_management_system/src/features/auth/presentation/screens/home_screen.dart';
+import 'package:asset_management_system/src/features/auth/presentation/screens/login_screen.dart';
+import 'package:asset_management_system/src/features/auth/presentation/screens/qr_nfc_screen.dart';
+import 'package:asset_management_system/src/features/auth/presentation/screens/splash_screen.dart';
+import 'package:asset_management_system/src/features/auth/presentation/widgets/square_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,12 +67,18 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('opening an asset checklist shows the tapped asset', (WidgetTester tester) async {
+  testWidgets('opening an asset checklist goes through QR/NFC first', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
     expect(find.text('Check List'), findsNWidgets(3));
 
     await tester.tap(find.text('Check List').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QrNfcScreen), findsOneWidget);
+    expect(find.text('QR/NFC Scanner'), findsOneWidget);
+
+    await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();
 
     expect(find.text('Checklist for Asset 1'), findsOneWidget);
