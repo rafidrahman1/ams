@@ -20,6 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
   bool _showEmailForm = false;
+  bool _isLoggingIn = false;
 
   @override
   void initState() {
@@ -63,7 +64,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    setState(() {
+      _isLoggingIn = true;
+    });
+
     await ref.read(authProvider.notifier).login(cleanedEmail, cleanedPassword);
+
+    if (!mounted) {
+      return;
+    }
+
+    final authState = ref.read(authProvider);
+
+    setState(() {
+      _isLoggingIn = false;
+    });
+
+    if (authState == AuthStatus.unauthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid email or password')));
+    }
   }
 
   void _loginWithNfc(BuildContext context) {
@@ -80,6 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState == AuthStatus.loading;
+    final isSubmitting = _isLoggingIn;
 
     return SafeArea(
       child: Scaffold(
@@ -95,12 +115,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(color: ThemeColor.primary),
+                              child: Center(
+                                child: Text(
+                                  "Asset Management System",
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: ThemeColor.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: constraints.maxHeight * 0.1),
+                      Row(
                         children: [
                           Expanded(
                             child: SquareActionButton(
-                              label: isLoading ? 'Loading...' : 'Login with\nEmail',
+                              label: isLoading || isSubmitting ? 'Loading...' : 'Login with\nEmail',
                               icon: Icons.mail_outline,
-                              onPressed: isLoading ? null : _showEmailLoginForm,
+                              onPressed: isLoading || isSubmitting ? null : _showEmailLoginForm,
                               backgroundColor: ThemeColor.primary,
                               foregroundColor: ThemeColor.white,
                             ),
@@ -110,7 +149,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: SquareActionButton(
                               label: 'Login with\nNFC',
                               icon: Icons.contactless,
-                              onPressed: isLoading ? null : () => _loginWithNfc(context),
+                              onPressed: isLoading || isSubmitting ? null : () => _loginWithNfc(context),
                               backgroundColor: ThemeColor.primary.withValues(alpha: 0.35),
                               foregroundColor: ThemeColor.black,
                             ),
@@ -125,7 +164,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Gap.y8,
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(onPressed: isLoading ? null : () => _loginWithEmailPassword(context), child: const Text('Login')),
+                          child: ElevatedButton(
+                            onPressed: isLoading || isSubmitting ? null : () => _loginWithEmailPassword(context),
+                            child: Text(isSubmitting ? 'Logging in...' : 'Login'),
+                          ),
                         ),
                       ],
                     ],

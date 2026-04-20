@@ -51,8 +51,6 @@ class AuthNotifier extends Notifier<AuthStatus> {
       return;
     }
 
-    state = AuthStatus.loading;
-
     try {
       await repo.login(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticated;
