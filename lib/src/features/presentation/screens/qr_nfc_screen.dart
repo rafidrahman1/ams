@@ -1,4 +1,5 @@
 import 'package:asset_management_system/src/theme/colors.dart';
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/asset_card_builder.dart';
@@ -12,8 +13,10 @@ class QrNfcScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('QR/NFC Scanner')),
+      appBar: AppBar(title: Text(l10n.qrNfcScannerTitle)),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -21,7 +24,7 @@ class QrNfcScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               SquareActionButton(
-                label: 'QR Code',
+                label: l10n.qrCode,
                 icon: Icons.qr_code,
                 onPressed: () {
                   Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
@@ -30,7 +33,7 @@ class QrNfcScreen extends StatelessWidget {
                 foregroundColor: ThemeColor.backGroundColor,
               ),
               SquareActionButton(
-                label: 'NFC',
+                label: l10n.nfc,
                 icon: Icons.nfc,
                 onPressed: () {
                   Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
@@ -45,4 +48,3 @@ class QrNfcScreen extends StatelessWidget {
     );
   }
 }
-

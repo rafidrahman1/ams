@@ -1,3 +1,4 @@
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/theme/border_radius.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/src/theme/gap.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../widgets/square_action_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -56,11 +58,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _loginWithEmailPassword(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final cleanedEmail = _emailController.text.trim();
     final cleanedPassword = _passwordController.text.trim();
 
     if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email and password are required')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.emailAndPasswordRequired)));
       return;
     }
 
@@ -81,12 +84,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     if (authState == AuthStatus.unauthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid email or password')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
     }
   }
 
   void _loginWithNfc(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('NFC login is not connected yet')));
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.nfcLoginNotConnected)));
   }
 
   void _showEmailLoginForm() {
@@ -97,7 +101,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final authState = ref.watch(authProvider);
+    final locale = ref.watch(localeProvider);
     final isLoading = authState == AuthStatus.loading;
     final isSubmitting = _isLoggingIn;
 
@@ -124,7 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               decoration: const BoxDecoration(color: ThemeColor.primary),
                               child: Center(
                                 child: Text(
-                                  "Asset Management System",
+                                  l10n.appTitle,
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: ThemeColor.white),
                                 ),
                               ),
@@ -137,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           Expanded(
                             child: SquareActionButton(
-                              label: isLoading || isSubmitting ? 'Loading...' : 'Login with\nEmail',
+                              label: isLoading || isSubmitting ? l10n.loading : l10n.loginWithEmail,
                               icon: Icons.mail_outline,
                               onPressed: isLoading || isSubmitting ? null : _showEmailLoginForm,
                               backgroundColor: ThemeColor.primary,
@@ -147,7 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Gap.x4,
                           Expanded(
                             child: SquareActionButton(
-                              label: 'Login with\nNFC',
+                              label: l10n.loginWithNfc,
                               icon: Icons.contactless,
                               onPressed: isLoading || isSubmitting ? null : () => _loginWithNfc(context),
                               backgroundColor: ThemeColor.primary.withValues(alpha: 0.35),
@@ -158,15 +164,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       if (_showEmailForm) ...[
                         Gap.y8,
-                        _buildField(controller: _emailController, hintText: 'Email'),
+                        _buildField(controller: _emailController, hintText: l10n.email),
                         Gap.y8,
-                        _buildField(controller: _passwordController, hintText: 'Password', obscureText: true),
+                        _buildField(controller: _passwordController, hintText: l10n.password, obscureText: true),
                         Gap.y8,
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: isLoading || isSubmitting ? null : () => _loginWithEmailPassword(context),
-                            child: Text(isSubmitting ? 'Logging in...' : 'Login'),
+                            child: Text(isSubmitting ? l10n.loggingIn : l10n.login),
                           ),
                         ),
                       ],
@@ -181,4 +187,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-

@@ -1,4 +1,5 @@
 import 'package:asset_management_system/src/theme/colors.dart';
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -6,6 +7,8 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: ThemeColor.primary,
       body: Row(
@@ -15,7 +18,7 @@ class SplashScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Assets Management System',
+                l10n.splashTitle,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               Container(
@@ -34,4 +37,3 @@ class SplashScreen extends StatelessWidget {
     );
   }
 }
-

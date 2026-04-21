@@ -1,3 +1,4 @@
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/features/presentation/providers/auth_provider.dart';
 import 'package:asset_management_system/src/features/presentation/screens/home_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/login_screen.dart';
@@ -5,8 +6,22 @@ import 'package:asset_management_system/src/features/presentation/screens/qr_nfc
 import 'package:asset_management_system/src/features/presentation/screens/splash_screen.dart';
 import 'package:asset_management_system/src/features/presentation/widgets/square_action_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+Widget _localizedApp(Widget child) {
+  return MaterialApp(
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+    ],
+    supportedLocales: const [Locale('en'), Locale('bn')],
+    home: child,
+  );
+}
 
 class _TestAuthNotifier extends AuthNotifier {
   @override
@@ -28,12 +43,7 @@ class _RejectedLoginAuthNotifier extends AuthNotifier {
 
 void main() {
   testWidgets('email form only appears after pressing email login', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [authProvider.overrideWith(_TestAuthNotifier.new)],
-        child: const MaterialApp(home: LoginScreen()),
-      ),
-    );
+    await tester.pumpWidget(ProviderScope(overrides: [authProvider.overrideWith(_TestAuthNotifier.new)], child: _localizedApp(const LoginScreen())));
 
     expect(find.byIcon(Icons.mail_outline), findsOneWidget);
     expect(find.byIcon(Icons.contactless), findsOneWidget);
@@ -47,12 +57,7 @@ void main() {
   });
 
   testWidgets('failed login stays on login screen and does not show splash', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [authProvider.overrideWith(_RejectedLoginAuthNotifier.new)],
-        child: const MaterialApp(home: LoginScreen()),
-      ),
-    );
+    await tester.pumpWidget(ProviderScope(overrides: [authProvider.overrideWith(_RejectedLoginAuthNotifier.new)], child: _localizedApp(const LoginScreen())));
 
     await tester.tap(find.byType(SquareActionButton).first);
     await tester.pump();
@@ -68,7 +73,7 @@ void main() {
   });
 
   testWidgets('opening an asset checklist goes through QR/NFC first', (WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pumpWidget(ProviderScope(child: _localizedApp(const HomeScreen())));
 
     expect(find.text('Check List'), findsNWidgets(3));
 
