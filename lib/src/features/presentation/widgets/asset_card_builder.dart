@@ -4,10 +4,15 @@ import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 
 class AssetCardData {
-  const AssetCardData({required this.title, required this.description});
+  const AssetCardData({
+    required this.title,
+    required this.description,
+    required this.astId,
+  });
 
   final String title;
   final String description;
+  final String astId;
 }
 
 class AssetCardBuilder extends StatelessWidget {
@@ -25,8 +30,18 @@ class AssetCardBuilder extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: ThemeBorderRadius.r4),
       child: ListTile(
         title: Text(asset.title),
-        subtitle: Text(asset.description),
-        trailing: ElevatedButton(onPressed: onSync, child: Text(l10n.checkList)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(asset.astId),
+            if (asset.description.isNotEmpty) Text(asset.description),
+          ],
+        ),
+        trailing: ElevatedButton(
+          onPressed: onSync,
+          child: Text(l10n.checkList),
+        ),
       ),
     );
   }

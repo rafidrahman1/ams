@@ -10,21 +10,34 @@ class ApiClient {
 
   ApiClient(this.storage);
 
+  Future<http.Response> get(String path, {bool auth = false}) async {
+    final headers = await _buildHeaders(auth: auth);
+
+    final res = await http.get(
+      Uri.parse(Endpoints.baseUrl + path),
+      headers: headers,
+    );
+
+    if (res.statusCode == 401 && auth) {
+      final refreshed = await _refreshToken();
+      if (refreshed) {
+        final retriedHeaders = await _buildHeaders(auth: auth);
+        return http.get(
+          Uri.parse(Endpoints.baseUrl + path),
+          headers: retriedHeaders,
+        );
+      }
+    }
+
+    return res;
+  }
+
   Future<http.Response> post(
     String path, {
     Map<String, dynamic>? body,
     bool auth = false,
   }) async {
-    final headers = {
-      "Content-Type": "application/json",
-    };
-
-    if (auth) {
-      final token = await storage.getAccess();
-      if (token != null) {
-        headers["Authorization"] = "Bearer $token";
-      }
-    }
+    final headers = await _buildHeaders(auth: auth);
 
     final res = await http.post(
       Uri.parse(Endpoints.baseUrl + path),
@@ -37,18 +50,30 @@ class ApiClient {
       final refreshed = await _refreshToken();
 
       if (refreshed) {
-        final newToken = await storage.getAccess();
-        headers["Authorization"] = "Bearer $newToken";
+        final retriedHeaders = await _buildHeaders(auth: auth);
 
         return await http.post(
           Uri.parse(Endpoints.baseUrl + path),
-          headers: headers,
+          headers: retriedHeaders,
           body: jsonEncode(body),
         );
       }
     }
 
     return res;
+  }
+
+  Future<Map<String, String>> _buildHeaders({required bool auth}) async {
+    final headers = <String, String>{"Content-Type": "application/json"};
+
+    if (auth) {
+      final token = await storage.getAccess();
+      if (token != null && token.isNotEmpty) {
+        headers["Authorization"] = "Bearer $token";
+      }
+    }
+
+    return headers;
   }
 
   Future<bool> _refreshToken() async {
@@ -64,10 +89,7 @@ class ApiClient {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
 
-      await storage.saveTokens(
-        data["access_token"],
-        refresh,
-      );
+      await storage.saveTokens(data["access_token"], refresh);
 
       return true;
     }
@@ -76,4 +98,3 @@ class ApiClient {
     return false;
   }
 }
-
