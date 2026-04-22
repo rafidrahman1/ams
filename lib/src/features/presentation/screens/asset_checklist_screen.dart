@@ -63,7 +63,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   final toggledResponseIds = <int>[];
                   for (var index = 0; index < items.length; index++) {
                     if (items[index].response != completed[index]) {
-                      toggledResponseIds.add(items[index].responseId);
+                      toggledResponseIds.add(items[index].featureId);
                     }
                   }
 

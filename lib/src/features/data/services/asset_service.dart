@@ -38,12 +38,12 @@ class AssetService {
     return responses.whereType<Map<String, dynamic>>().map(AssetChecklistItem.fromJson).toList();
   }
 
-  Future<void> toggleChecklistResponse(int responseId) async {
-    final res = await client.get('${Endpoints.assetChecklistToggleBase}/$responseId', auth: true);
+  Future<void> toggleChecklistResponse(int featureId) async {
+    final res = await client.get('${Endpoints.assetChecklistToggleBase}/$featureId', auth: true);
     final body = jsonDecode(res.body);
 
     if (res.statusCode != 200 || body is! Map<String, dynamic> || body['code'] != 200) {
-      throw Exception('Failed to toggle checklist response: $responseId');
+      throw Exception('Failed to toggle checklist response: $featureId');
     }
   }
 }

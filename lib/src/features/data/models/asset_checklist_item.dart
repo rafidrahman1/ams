@@ -1,20 +1,20 @@
 class AssetChecklistItem {
-  final int responseId;
+  final int featureId;
   final String title;
   final bool response;
 
-  const AssetChecklistItem({required this.responseId, required this.title, required this.response});
+  const AssetChecklistItem({required this.featureId, required this.title, required this.response});
 
   factory AssetChecklistItem.fromJson(Map<String, dynamic> json) {
-    return AssetChecklistItem(responseId: _asInt(json['response_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
+    return AssetChecklistItem(featureId: _asInt(json['feature_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
   }
 
   factory AssetChecklistItem.fromCacheJson(Map<String, dynamic> json) {
-    return AssetChecklistItem(responseId: _asInt(json['responseId'] ?? json['response_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
+    return AssetChecklistItem(featureId: _asInt(json['featureId'] ?? json['feature_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
   }
 
   Map<String, dynamic> toJson() {
-    return {'responseId': responseId, 'title': title, 'response': response};
+    return {'featureId': featureId, 'title': title, 'response': response};
   }
 
   static int _asInt(Object? value) {

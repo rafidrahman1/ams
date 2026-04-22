@@ -91,8 +91,8 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueResponseToggles(Iterable<int> responseIds) {
-    return toggleQueue.enqueueAll(responseIds);
+  Future<int> queueResponseToggles(Iterable<int> featureIds) {
+    return toggleQueue.enqueueAll(featureIds);
   }
 
   Future<ToggleSyncResult> syncQueuedResponses() async {
@@ -106,7 +106,7 @@ class AssetRepository {
 
     for (final item in pending) {
       try {
-        await service.toggleChecklistResponse(item.responseId);
+        await service.toggleChecklistResponse(item.featureId);
         syncedQueueIds.add(item.queueId);
       } catch (_) {
         failedCount += 1;

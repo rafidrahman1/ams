@@ -9,6 +9,7 @@ import 'package:asset_management_system/src/features/data/repositories/asset_rep
 import 'package:asset_management_system/src/features/data/services/asset_service.dart';
 import 'package:asset_management_system/src/features/presentation/providers/asset_provider.dart';
 import 'package:asset_management_system/src/features/presentation/providers/auth_provider.dart';
+import 'package:asset_management_system/src/features/presentation/providers/nfc_scanner_provider.dart';
 import 'package:asset_management_system/src/features/presentation/providers/qr_scanner_provider.dart';
 import 'package:asset_management_system/src/features/presentation/screens/asset_checklist_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/home_screen.dart';
@@ -88,7 +89,7 @@ class _FakeAssetService extends AssetService {
 
 class _NoopToggleQueueStore extends ToggleResponseQueueStore {
   @override
-  Future<int> enqueueAll(Iterable<int> responseIds) async => 0;
+  Future<int> enqueueAll(Iterable<int> featureIds) async => 0;
 
   @override
   Future<List<ToggleResponseQueueItem>> loadPending() async =>
@@ -174,12 +175,12 @@ void main() {
           assetChecklistProvider.overrideWith(
             (ref, astId) async => const [
               AssetChecklistItem(
-                responseId: 6,
+                featureId: 6,
                 title: 'Battery Condition',
                 response: false,
               ),
               AssetChecklistItem(
-                responseId: 7,
+                featureId: 7,
                 title: 'Rafid er Condition',
                 response: false,
               ),
@@ -259,7 +260,7 @@ void main() {
           assetChecklistProvider.overrideWith(
             (ref, astId) async => const [
               AssetChecklistItem(
-                responseId: 6,
+                featureId: 6,
                 title: 'Battery Condition',
                 response: false,
               ),
@@ -272,6 +273,60 @@ void main() {
 
     await tester.pumpAndSettle();
     await tester.tap(find.text('Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('QR Code'), findsOneWidget);
+    expect(find.text('NFC'), findsOneWidget);
+
+    await tester.tap(find.text('QR Code'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AssetChecklistScreen), findsOneWidget);
+    expect(find.text('Checklist for Asset 2'), findsOneWidget);
+    expect(find.text('Battery Condition'), findsOneWidget);
+  });
+
+  testWidgets('home scan opens checklist for matching nfc ast id', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          nfcScannerLauncherProvider.overrideWithValue(
+            (context) async => '{"astId":"AST-000002"}',
+          ),
+          myAssetsProvider.overrideWith(
+            (ref) async => const [
+              VolunteerAsset(
+                name: 'Asset 1',
+                details: 'Description of Asset 1',
+                astId: 'AST-000001',
+              ),
+              VolunteerAsset(
+                name: 'Asset 2',
+                details: 'Description of Asset 2',
+                astId: 'AST-000002',
+              ),
+            ],
+          ),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                featureId: 6,
+                title: 'Battery Condition',
+                response: false,
+              ),
+            ],
+          ),
+        ],
+        child: _localizedApp(const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('NFC'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AssetChecklistScreen), findsOneWidget);
@@ -307,6 +362,9 @@ void main() {
 
       await tester.pumpAndSettle();
       await tester.tap(find.text('Scan'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('QR Code'));
       await tester.pump();
 
       expect(find.byType(HomeScreen), findsOneWidget);
@@ -334,7 +392,7 @@ void main() {
           assetChecklistProvider.overrideWith(
             (ref, astId) async => const [
               AssetChecklistItem(
-                responseId: 1,
+                featureId: 1,
                 title: 'Battery Condition',
                 response: false,
               ),
@@ -374,7 +432,7 @@ void main() {
           assetChecklistProvider.overrideWith(
             (ref, astId) async => const [
               AssetChecklistItem(
-                responseId: 1,
+                featureId: 1,
                 title: 'Battery Condition',
                 response: false,
               ),
@@ -434,14 +492,23 @@ void main() {
     expect(find.byType(SplashScreen), findsNothing);
   });
 
-  testWidgets('nfc does not bypass qr matching for checklist access', (
+  testWidgets('matching nfc scan opens checklist from qr nfc screen', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          qrScannerLauncherProvider.overrideWithValue(
+          nfcScannerLauncherProvider.overrideWithValue(
             (context) async => 'AST-000001',
+          ),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                featureId: 1,
+                title: 'Battery Condition',
+                response: false,
+              ),
+            ],
           ),
         ],
         child: _localizedApp(
@@ -458,13 +525,41 @@ void main() {
 
     await tester.pumpAndSettle();
     await tester.tap(find.text('NFC'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.byType(AssetChecklistScreen), findsNothing);
-    expect(
-      find.text('Please use QR code matching to open the checklist'),
-      findsOneWidget,
+    expect(find.byType(AssetChecklistScreen), findsOneWidget);
+    expect(find.text('Checklist for Asset 1'), findsOneWidget);
+  });
+
+  testWidgets('mismatched nfc scan keeps user on qr nfc screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          nfcScannerLauncherProvider.overrideWithValue(
+            (context) async => 'WRONG-000999',
+          ),
+        ],
+        child: _localizedApp(
+          const QrNfcScreen(
+            asset: AssetCardData(
+              title: 'Asset 1',
+              description: 'Description of Asset 1',
+              astId: 'AST-000001',
+            ),
+          ),
+        ),
+      ),
     );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('NFC'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QrNfcScreen), findsOneWidget);
+    expect(find.byType(AssetChecklistScreen), findsNothing);
+    expect(find.textContaining('does not match'), findsOneWidget);
   });
 
   test(
@@ -484,7 +579,7 @@ void main() {
         checklists: const {
           'AST-000001': [
             AssetChecklistItem(
-              responseId: 1,
+              featureId: 1,
               title: 'Battery Condition',
               response: true,
             ),

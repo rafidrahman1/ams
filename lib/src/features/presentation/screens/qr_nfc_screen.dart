@@ -3,7 +3,9 @@ import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/nfc_scanner_provider.dart';
 import '../providers/qr_scanner_provider.dart';
+import '../utils/ast_id_parser.dart';
 import '../widgets/asset_card_builder.dart';
 import '../widgets/square_action_button.dart';
 import 'asset_checklist_screen.dart';
@@ -17,20 +19,26 @@ class QrNfcScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
-    Future<void> openChecklistAfterQrScan() async {
-      final scanLauncher = ref.read(qrScannerLauncherProvider);
+    Future<void> openChecklistAfterScan({
+      required Future<String?> Function(BuildContext context) scanLauncher,
+      required String mismatchMessage,
+    }) async {
       final scannedValue = await scanLauncher(context);
-      final scannedAstId = _normalizeAstId(scannedValue);
-      final expectedAstId = _normalizeAstId(asset.astId);
+      final scannedAstId = normalizeAstId(scannedValue);
+      final expectedAstId = normalizeAstId(asset.astId);
 
       if (!context.mounted || scannedAstId == null) return;
 
       if (scannedAstId == expectedAstId) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)),
+        );
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.qrScanMismatch)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(mismatchMessage)));
     }
 
     return Scaffold(
@@ -44,16 +52,20 @@ class QrNfcScreen extends ConsumerWidget {
               SquareActionButton(
                 label: l10n.qrCode,
                 icon: Icons.qr_code,
-                onPressed: openChecklistAfterQrScan,
+                onPressed: () => openChecklistAfterScan(
+                  scanLauncher: ref.read(qrScannerLauncherProvider),
+                  mismatchMessage: l10n.qrScanMismatch,
+                ),
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),
               SquareActionButton(
                 label: l10n.nfc,
                 icon: Icons.nfc,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please use QR code matching to open the checklist')));
-                },
+                onPressed: () => openChecklistAfterScan(
+                  scanLauncher: ref.read(nfcScannerLauncherProvider),
+                  mismatchMessage: l10n.nfcTagMismatch,
+                ),
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),
@@ -62,19 +74,5 @@ class QrNfcScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String? _normalizeAstId(String? value) {
-    if (value == null) return null;
-
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-
-    final jsonMatch = RegExp(r'"ast_ID"\s*:\s*"([^"]+)"').firstMatch(trimmed);
-    if (jsonMatch != null) {
-      return jsonMatch.group(1)?.trim();
-    }
-
-    return trimmed;
   }
 }
