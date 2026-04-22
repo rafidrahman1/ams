@@ -2,30 +2,33 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 import 'endpoints.dart';
 
 class ApiClient {
   final TokenStorage storage;
+  final http.Client _http;
+  final Duration timeout;
 
-  ApiClient(this.storage);
+  ApiClient(
+    this.storage, {
+    http.Client? httpClient,
+    this.timeout = const Duration(seconds: 20),
+  }) : _http = httpClient ?? http.Client();
+
+  Uri _uri(String path) => AppConfig.apiBaseUri.resolve(path);
 
   Future<http.Response> get(String path, {bool auth = false}) async {
     final headers = await _buildHeaders(auth: auth);
 
-    final res = await http.get(
-      Uri.parse(Endpoints.baseUrl + path),
-      headers: headers,
-    );
+    final res = await _http.get(_uri(path), headers: headers).timeout(timeout);
 
     if (res.statusCode == 401 && auth) {
       final refreshed = await _refreshToken();
       if (refreshed) {
         final retriedHeaders = await _buildHeaders(auth: auth);
-        return http.get(
-          Uri.parse(Endpoints.baseUrl + path),
-          headers: retriedHeaders,
-        );
+        return _http.get(_uri(path), headers: retriedHeaders).timeout(timeout);
       }
     }
 
@@ -39,11 +42,8 @@ class ApiClient {
   }) async {
     final headers = await _buildHeaders(auth: auth);
 
-    final res = await http.post(
-      Uri.parse(Endpoints.baseUrl + path),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    final encodedBody = body == null ? null : jsonEncode(body);
+    final res = await _http.post(_uri(path), headers: headers, body: encodedBody).timeout(timeout);
 
     // 🔁 auto refresh if expired
     if (res.statusCode == 401 && auth) {
@@ -52,11 +52,7 @@ class ApiClient {
       if (refreshed) {
         final retriedHeaders = await _buildHeaders(auth: auth);
 
-        return await http.post(
-          Uri.parse(Endpoints.baseUrl + path),
-          headers: retriedHeaders,
-          body: jsonEncode(body),
-        );
+        return _http.post(_uri(path), headers: retriedHeaders, body: encodedBody).timeout(timeout);
       }
     }
 
@@ -64,7 +60,10 @@ class ApiClient {
   }
 
   Future<Map<String, String>> _buildHeaders({required bool auth}) async {
-    final headers = <String, String>{"Content-Type": "application/json"};
+    final headers = <String, String>{
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
 
     if (auth) {
       final token = await storage.getAccess();
@@ -80,21 +79,39 @@ class ApiClient {
     final refresh = await storage.getRefresh();
     if (refresh == null) return false;
 
-    final res = await http.post(
-      Uri.parse(Endpoints.baseUrl + Endpoints.refresh),
+    final res = await _http.post(
+      _uri(Endpoints.refresh),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"refresh": refresh}),
-    );
+    ).timeout(timeout);
 
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
+      final data = _tryDecodeJson(res.body);
+      if (data is! Map<String, dynamic>) {
+        await storage.clear();
+        return false;
+      }
 
-      await storage.saveTokens(data["access_token"], refresh);
+      final access = data["access_token"];
+      if (access is! String || access.isEmpty) {
+        await storage.clear();
+        return false;
+      }
+
+      await storage.saveTokens(access, refresh);
 
       return true;
     }
 
     await storage.clear();
     return false;
+  }
+
+  Object? _tryDecodeJson(String source) {
+    try {
+      return jsonDecode(source);
+    } catch (_) {
+      return null;
+    }
   }
 }

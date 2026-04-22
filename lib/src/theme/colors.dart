@@ -27,18 +27,18 @@ class ThemeGradient {
   static LinearGradient orange = LinearGradient(colors: [HexColor("#ED8A6B"), HexColor("#D15353")], begin: Alignment.topLeft, end: Alignment.bottomRight, stops: const [0.25, 0.75]);
   static LinearGradient advancedSearch = LinearGradient(colors: [HexColor("#dd6161"), HexColor("#ea8686")], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.5, 1]);
   static LinearGradient gold = LinearGradient(colors: [HexColor("#FFFFFF"), HexColor("#e0dbc0"), HexColor("#C7BE8E")], begin: Alignment.topCenter, end: Alignment.bottomCenter);
-  static LinearGradient semiTransparentBlack = LinearGradient(colors: [Colors.transparent, HexColor("#181717").withOpacity(.7)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
+  static LinearGradient semiTransparentBlack = LinearGradient(colors: [Colors.transparent, HexColor("#181717").withValues(alpha: 0.7)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
   static LinearGradient semiTransparentWhite =
-      LinearGradient(colors: [HexColor("#ffffff").withOpacity(0), HexColor("#ffffff").withOpacity(1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.2, .8]);
+      LinearGradient(colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.2, .8]);
   static LinearGradient qtrTransparentWhite =
-      LinearGradient(colors: [HexColor("#ffffff").withOpacity(0), HexColor("#ffffff").withOpacity(1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.6, 1]);
+      LinearGradient(colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.6, 1]);
 }
 
 class HexColor extends Color {
   static int _getColorFromHex(String hexColor) {
     hexColor = hexColor.toUpperCase().replaceAll("#", "");
     if (hexColor.length == 6) {
-      hexColor = "FF" + hexColor;
+      hexColor = 'FF$hexColor';
     }
 
     final hexNum = int.parse(hexColor, radix: 16);
@@ -56,10 +56,7 @@ class HexColor extends Color {
 class ColorToHex extends Color {
   ///convert material colors to hexcolor
   static int _convertColorTHex(Color color) {
-    var hex = '${color.value}';
-    return int.parse(
-      hex,
-    );
+    return color.toARGB32();
   }
 
   ColorToHex(final Color color) : super(_convertColorTHex(color));

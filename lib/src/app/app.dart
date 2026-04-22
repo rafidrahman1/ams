@@ -9,7 +9,7 @@ import '../features/presentation/screens/home_screen.dart';
 import '../features/presentation/screens/login_screen.dart';
 import '../features/presentation/screens/splash_screen.dart';
 import '../theme/colors.dart';
-import '../theme/textStyles.dart';
+import '../theme/text_styles.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});

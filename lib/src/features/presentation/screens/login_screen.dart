@@ -3,12 +3,11 @@ import 'package:asset_management_system/src/theme/border_radius.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/src/theme/gap.dart';
 import 'package:asset_management_system/src/theme/padding.dart';
-import 'package:asset_management_system/src/theme/textStyles.dart';
+import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
-import '../providers/locale_provider.dart';
 import '../widgets/square_action_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -59,11 +58,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _loginWithEmailPassword(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
     final cleanedEmail = _emailController.text.trim();
     final cleanedPassword = _passwordController.text.trim();
 
     if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.emailAndPasswordRequired)));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.emailAndPasswordRequired)));
       return;
     }
 
@@ -84,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     if (authState == AuthStatus.unauthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
     }
   }
 
@@ -103,7 +103,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final authState = ref.watch(authProvider);
-    final locale = ref.watch(localeProvider);
     final isLoading = authState == AuthStatus.loading;
     final isSubmitting = _isLoggingIn;
 

@@ -20,6 +20,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isSyncing = false;
+  bool _showAllTrueAssets = false;
 
   Future<void> _syncChecklistToggles(BuildContext context) async {
     if (_isSyncing) return;
@@ -111,6 +112,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         l10n.assets,
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
+                      Row(
+                        children: [
+                          const Text('All Checked', style: TextStyle(color: Colors.white)),
+                          Switch(
+                            value: _showAllTrueAssets,
+                            onChanged: (value) {
+                              setState(() {
+                                _showAllTrueAssets = value;
+                              });
+                            },
+                            activeColor: ThemeColor.backGroundColor,
+                            activeTrackColor: Colors.white54,
+                            inactiveThumbColor: ThemeColor.backGroundColor,
+                            inactiveTrackColor: Colors.white30,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -126,9 +144,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         return Center(child: Text(l10n.assets));
                       }
 
+                      final filteredAssets = assets.where((apiAsset) {
+                        final isAllTrueAsync = ref.watch(assetChecklistAllTrueProvider(apiAsset.astId));
+                        return isAllTrueAsync.maybeWhen(data: (isAllTrue) => _showAllTrueAssets ? isAllTrue : !isAllTrue, orElse: () => false);
+                      }).toList();
+
+                      final hasLoadingStatuses = assets.any((apiAsset) => ref.watch(assetChecklistAllTrueProvider(apiAsset.astId)).isLoading);
+
+                      if (filteredAssets.isEmpty && hasLoadingStatuses) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (filteredAssets.isEmpty) {
+                        return Center(child: Text(_showAllTrueAssets ? 'No fully checked assets found' : 'No partially checked assets found'));
+                      }
+
                       return ListView(
                         children: [
-                          ...assets.map((apiAsset) {
+                          ...filteredAssets.map((apiAsset) {
                             final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
 
                             return Padding(
@@ -152,10 +185,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
-        if (_isSyncing) ...[
-          const ModalBarrier(dismissible: false, color: Colors.black54),
-          const Center(child: CircularProgressIndicator()),
-        ],
+        if (_isSyncing) ...[const ModalBarrier(dismissible: false, color: Colors.black54), const Center(child: CircularProgressIndicator())],
       ],
     );
   }

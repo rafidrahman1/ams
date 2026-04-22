@@ -1,10 +1,21 @@
 # asset_management_system
 
-A new Flutter project.
+Asset Management System (Flutter).
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+- **Run (dev)**:
+
+```bash
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://192.168.68.119:8000
+```
+
+- **Build (release)**:
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+```
 
 A few resources to get you started if this is your first Flutter project:
 
