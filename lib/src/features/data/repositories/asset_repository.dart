@@ -1,3 +1,4 @@
+import '../models/asset_checklist_item.dart';
 import '../models/volunteer_asset.dart';
 import '../services/asset_service.dart';
 
@@ -8,5 +9,9 @@ class AssetRepository {
 
   Future<List<VolunteerAsset>> fetchMyAssets() {
     return service.fetchMyAssets();
+  }
+
+  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) {
+    return service.fetchChecklistByAssetId(astId);
   }
 }
