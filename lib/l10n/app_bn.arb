@@ -40,5 +40,7 @@
   "loggingIn": "লগইন হচ্ছে...",
   "login": "লগইন",
   "languageToggleToBangla": "বাংলা",
-  "languageToggleToEnglish": "EN"
+  "languageToggleToEnglish": "EN",
+  "qrScanMismatch": "QR কোড অ্যাসেট লেবেলের সাথে মেলে না",
+  "nfcTagMismatch": "NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না"
 }

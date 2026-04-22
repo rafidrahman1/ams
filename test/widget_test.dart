@@ -1,18 +1,27 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
+import 'package:asset_management_system/src/core/network/api_client.dart';
+import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
+import 'package:asset_management_system/src/core/storage/token_storage.dart';
+import 'package:asset_management_system/src/core/storage/toggle_response_queue_store.dart';
 import 'package:asset_management_system/src/features/data/models/asset_checklist_item.dart';
 import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
+import 'package:asset_management_system/src/features/data/repositories/asset_repository.dart';
+import 'package:asset_management_system/src/features/data/services/asset_service.dart';
 import 'package:asset_management_system/src/features/presentation/providers/asset_provider.dart';
 import 'package:asset_management_system/src/features/presentation/providers/auth_provider.dart';
 import 'package:asset_management_system/src/features/presentation/providers/qr_scanner_provider.dart';
+import 'package:asset_management_system/src/features/presentation/screens/asset_checklist_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/home_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/login_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/qr_nfc_screen.dart';
 import 'package:asset_management_system/src/features/presentation/screens/splash_screen.dart';
+import 'package:asset_management_system/src/features/presentation/widgets/asset_card_builder.dart';
 import 'package:asset_management_system/src/features/presentation/widgets/square_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _localizedApp(Widget child) {
   return MaterialApp(
@@ -43,6 +52,44 @@ class _RejectedLoginAuthNotifier extends AuthNotifier {
 
   @override
   Future<void> login(String email, String password) async {}
+}
+
+class _FakeAssetService extends AssetService {
+  _FakeAssetService({required this.assets, required this.checklists, this.failAssets = false, this.failChecklistIds = const <String>{}}) : super(ApiClient(TokenStorage()));
+
+  final List<VolunteerAsset> assets;
+  final Map<String, List<AssetChecklistItem>> checklists;
+  final bool failAssets;
+  final Set<String> failChecklistIds;
+
+  @override
+  Future<List<VolunteerAsset>> fetchMyAssets() async {
+    if (failAssets) {
+      throw Exception('offline');
+    }
+
+    return assets;
+  }
+
+  @override
+  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+    if (failChecklistIds.contains(astId)) {
+      throw Exception('offline');
+    }
+
+    return checklists[astId] ?? const <AssetChecklistItem>[];
+  }
+}
+
+class _NoopToggleQueueStore extends ToggleResponseQueueStore {
+  @override
+  Future<int> enqueueAll(Iterable<int> responseIds) async => 0;
+
+  @override
+  Future<List<ToggleResponseQueueItem>> loadPending() async => const <ToggleResponseQueueItem>[];
+
+  @override
+  Future<void> removeQueuedIds(Iterable<int> queueIds) async {}
 }
 
 void main() {
@@ -139,5 +186,56 @@ void main() {
     expect(find.byType(QrNfcScreen), findsOneWidget);
     expect(find.textContaining('does not match'), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
+  });
+
+  testWidgets('nfc does not bypass qr matching for checklist access', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [qrScannerLauncherProvider.overrideWithValue((context) async => 'AST-000001')],
+        child: _localizedApp(
+          const QrNfcScreen(
+            asset: AssetCardData(title: 'Asset 1', description: 'Description of Asset 1', astId: 'AST-000001'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('NFC'));
+    await tester.pump();
+
+    expect(find.byType(AssetChecklistScreen), findsNothing);
+    expect(find.text('Please use QR code matching to open the checklist'), findsOneWidget);
+  });
+
+  test('asset repository falls back to cached assets and checklist data', () async {
+    const userKey = 'user@example.com';
+    SharedPreferences.setMockInitialValues({});
+    final cache = AssetCacheStore();
+    final onlineService = _FakeAssetService(
+      assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
+      checklists: const {
+        'AST-000001': [AssetChecklistItem(responseId: 1, title: 'Battery Condition', response: true)],
+      },
+    );
+
+    final onlineRepository = AssetRepository(onlineService, () async => userKey, cache, _NoopToggleQueueStore());
+    await onlineRepository.prefetchOfflineData(userKey);
+
+    final offlineRepository = AssetRepository(
+      _FakeAssetService(assets: const [], checklists: const {}, failAssets: true, failChecklistIds: const {'AST-000001'}),
+      () async => userKey,
+      cache,
+      _NoopToggleQueueStore(),
+    );
+
+    final cachedAssets = await offlineRepository.fetchMyAssets();
+    final cachedChecklist = await offlineRepository.fetchChecklistByAssetId('AST-000001');
+
+    expect(cachedAssets, hasLength(1));
+    expect(cachedAssets.first.astId, 'AST-000001');
+    expect(cachedChecklist, hasLength(1));
+    expect(cachedChecklist.first.title, 'Battery Condition');
+    expect(cachedChecklist.first.response, isTrue);
   });
 }

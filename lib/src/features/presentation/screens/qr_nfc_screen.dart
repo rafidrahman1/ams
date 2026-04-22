@@ -26,15 +26,11 @@ class QrNfcScreen extends ConsumerWidget {
       if (!context.mounted || scannedAstId == null) return;
 
       if (scannedAstId == expectedAstId) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('QR code does not match ${asset.astId}')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.qrScanMismatch)));
     }
 
     return Scaffold(
@@ -56,11 +52,7 @@ class QrNfcScreen extends ConsumerWidget {
                 label: l10n.nfc,
                 icon: Icons.nfc,
                 onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => AssetChecklistScreen(asset: asset),
-                    ),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please use QR code matching to open the checklist')));
                 },
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,

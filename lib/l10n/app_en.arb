@@ -40,5 +40,7 @@
   "loggingIn": "Logging in...",
   "login": "Login",
   "languageToggleToBangla": "বাংলা",
-  "languageToggleToEnglish": "EN"
+  "languageToggleToEnglish": "EN",
+  "qrScanMismatch": "QR code does not match the asset label",
+  "nfcTagMismatch": "NFC tag does not match the asset label"
 }

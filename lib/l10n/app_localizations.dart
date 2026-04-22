@@ -313,6 +313,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'EN'**
   String get languageToggleToEnglish;
+
+  /// No description provided for @qrScanMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code does not match the asset label'**
+  String get qrScanMismatch;
+
+  /// No description provided for @nfcTagMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC tag does not match the asset label'**
+  String get nfcTagMismatch;
 }
 
 class _AppLocalizationsDelegate

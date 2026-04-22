@@ -1,22 +1,16 @@
-import 'package:asset_management_system/src/core/network/api_client.dart';
-import 'package:asset_management_system/src/core/storage/token_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/services/auth_service.dart';
-
-final tokenStorageProvider = Provider<TokenStorage>((ref) => TokenStorage());
-
-final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(ref.read(tokenStorageProvider));
-});
+import 'asset_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.read(apiClientProvider));
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.read(authServiceProvider), ref.read(tokenStorageProvider));
+  return AuthRepository(ref.read(authServiceProvider), ref.read(tokenStorageProvider), ref.read(assetRepositoryProvider));
 });
 
 enum AuthStatus { loading, authenticated, unauthenticated }
@@ -67,4 +61,3 @@ class AuthNotifier extends Notifier<AuthStatus> {
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthStatus>(AuthNotifier.new);
-

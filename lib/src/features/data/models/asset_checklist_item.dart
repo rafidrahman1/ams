@@ -9,6 +9,14 @@ class AssetChecklistItem {
     return AssetChecklistItem(responseId: _asInt(json['response_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
   }
 
+  factory AssetChecklistItem.fromCacheJson(Map<String, dynamic> json) {
+    return AssetChecklistItem(responseId: _asInt(json['responseId'] ?? json['response_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'responseId': responseId, 'title': title, 'response': response};
+  }
+
   static int _asInt(Object? value) {
     if (value is int) return value;
     return int.tryParse(value?.toString() ?? '') ?? 0;

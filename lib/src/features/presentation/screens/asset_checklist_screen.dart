@@ -1,6 +1,5 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,7 +27,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   }
 
   void _syncCompletedState(String astId, List<bool> nextCompleted) {
-    if (_loadedAstId == astId && listEquals(_completed, nextCompleted)) {
+    if (_loadedAstId == astId) {
       return;
     }
 
@@ -53,9 +52,35 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).pop(List<bool>.from(_completed));
-        },
+        onPressed: checklistAsync.hasValue
+            ? () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final items = await ref.read(assetChecklistProvider(widget.asset.astId).future);
+                  final completed = _completed.length == items.length ? List<bool>.from(_completed) : items.map((item) => item.response).toList();
+
+                  final toggledResponseIds = <int>[];
+                  for (var index = 0; index < items.length; index++) {
+                    if (items[index].response != completed[index]) {
+                      toggledResponseIds.add(items[index].responseId);
+                    }
+                  }
+
+                  if (toggledResponseIds.isNotEmpty) {
+                    await ref.read(assetRepositoryProvider).queueResponseToggles(toggledResponseIds);
+                  }
+
+                  ref.invalidate(assetChecklistProvider(widget.asset.astId));
+
+                  if (!mounted) return;
+                  navigator.pop(completed);
+                } catch (error) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(SnackBar(content: Text(error.toString())));
+                }
+              }
+            : null,
         backgroundColor: ThemeColor.primary,
         foregroundColor: ThemeColor.backGroundColor,
         icon: const Icon(Icons.save),

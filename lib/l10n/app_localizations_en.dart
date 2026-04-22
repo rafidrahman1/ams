@@ -117,4 +117,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get languageToggleToEnglish => 'EN';
+
+  @override
+  String get qrScanMismatch => 'QR code does not match the asset label';
+
+  @override
+  String get nfcTagMismatch => 'NFC tag does not match the asset label';
 }

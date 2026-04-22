@@ -117,4 +117,10 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get languageToggleToEnglish => 'EN';
+
+  @override
+  String get qrScanMismatch => 'QR কোড অ্যাসেট লেবেলের সাথে মেলে না';
+
+  @override
+  String get nfcTagMismatch => 'NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না';
 }
