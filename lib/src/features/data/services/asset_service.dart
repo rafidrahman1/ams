@@ -34,4 +34,26 @@ class AssetService {
     final responses = data is Map<String, dynamic> ? data['responses'] as List<dynamic>? ?? const <dynamic>[] : const <dynamic>[];
     return responses.whereType<Map<String, dynamic>>().map(AssetChecklistItem.fromJson).toList();
   }
+
+  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+    final res = await client.get(
+      '${Endpoints.assetChecklistByAssetBase}/$astId',
+      auth: true,
+    );
+    final body = jsonDecode(res.body);
+
+    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
+      throw Exception('Failed to load asset checklist');
+    }
+
+    final data = body['data'];
+    final responses = data is Map<String, dynamic>
+        ? data['responses'] as List<dynamic>? ?? const <dynamic>[]
+        : const <dynamic>[];
+
+    return responses
+        .whereType<Map<String, dynamic>>()
+        .map(AssetChecklistItem.fromJson)
+        .toList();
+  }
 }

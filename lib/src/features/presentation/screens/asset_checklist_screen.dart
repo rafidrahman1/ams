@@ -49,7 +49,10 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.checklistForAsset(widget.asset.title), style: const TextStyle(color: Colors.white)),
+        title: Text(
+          l10n.checklistForAsset(widget.asset.title),
+          style: const TextStyle(color: Colors.white),
+        ),
         backgroundColor: ThemeColor.primary,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

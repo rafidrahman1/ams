@@ -30,11 +30,31 @@ android {
         versionName = flutter.versionName
     }
 
+    splits {
+        abi {
+            // Enable ABI splits only for release builds.
+            // Debug builds can fail if NDK abiFilters are also configured (directly or by plugins).
+            val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+            isEnable = isReleaseBuild
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Shrink the release APK by removing unused code/resources.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
