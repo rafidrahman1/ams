@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/asset_checklist_item.dart';
 import '../../data/models/volunteer_asset.dart';
 import '../../data/repositories/asset_repository.dart';
 import '../../data/services/asset_service.dart';
@@ -16,3 +17,8 @@ final assetRepositoryProvider = Provider<AssetRepository>((ref) {
 final myAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
   return ref.read(assetRepositoryProvider).fetchMyAssets();
 });
+
+final assetChecklistProvider =
+    FutureProvider.family<List<AssetChecklistItem>, String>((ref, astId) {
+      return ref.read(assetRepositoryProvider).fetchChecklistByAssetId(astId);
+    });

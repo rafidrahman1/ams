@@ -1,28 +1,26 @@
-import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
+import 'package:asset_management_system/src/theme/colors.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/asset_provider.dart';
 import '../widgets/asset_card_builder.dart';
 
-class AssetChecklistScreen extends StatefulWidget {
+class AssetChecklistScreen extends ConsumerStatefulWidget {
   const AssetChecklistScreen({super.key, required this.asset});
 
   final AssetCardData asset;
 
   @override
-  State<AssetChecklistScreen> createState() => _AssetChecklistScreenState();
+  ConsumerState<AssetChecklistScreen> createState() =>
+      _AssetChecklistScreenState();
 }
 
-class _AssetChecklistScreenState extends State<AssetChecklistScreen> {
-  late final List<bool> _completed;
+class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
+  List<bool> _completed = const [];
+  String? _loadedAstId;
   final TextEditingController _remarksController = TextEditingController();
-  static const int _checkItemCount = 12;
-
-  @override
-  void initState() {
-    super.initState();
-    _completed = List<bool>.filled(_checkItemCount, false);
-  }
 
   @override
   void dispose() {
@@ -30,15 +28,33 @@ class _AssetChecklistScreenState extends State<AssetChecklistScreen> {
     super.dispose();
   }
 
+  void _syncCompletedState(String astId, List<bool> nextCompleted) {
+    if (_loadedAstId == astId && listEquals(_completed, nextCompleted)) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _loadedAstId = astId;
+        _completed = nextCompleted;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final baseItems = [l10n.verifyAssetLabel, l10n.inspectPhysicalCondition, l10n.confirmAssetLocation, l10n.markChecklistComplete];
-    final checkItems = List<String>.generate(_checkItemCount, (index) => baseItems[index % baseItems.length]);
+    final checklistAsync = ref.watch(
+      assetChecklistProvider(widget.asset.astId),
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.checklistForAsset(widget.asset.title), style: const TextStyle(color: Colors.white)),
+        title: Text(
+          l10n.checklistForAsset(widget.asset.title),
+          style: const TextStyle(color: Colors.white),
+        ),
         backgroundColor: ThemeColor.primary,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -53,39 +69,73 @@ class _AssetChecklistScreenState extends State<AssetChecklistScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.asset.title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(widget.asset.description),
-            const SizedBox(height: 24),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 96),
-                children: [
-                  ...List.generate(checkItems.length, (index) {
-                    return CheckboxListTile(
-                      value: _completed[index],
-                      onChanged: (value) {
-                        setState(() {
-                          _completed[index] = value ?? false;
-                        });
-                      },
-                      title: Text(checkItems[index]),
-                    );
-                  }),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _remarksController,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: InputDecoration(labelText: l10n.remarks, hintText: l10n.remarksHint, border: const OutlineInputBorder()),
+        child: checklistAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text(error.toString())),
+          data: (items) {
+            _syncCompletedState(
+              widget.asset.astId,
+              items.map((item) => item.response).toList(),
+            );
+
+            if (items.isEmpty) {
+              return const Center(child: Text('No checklist items found'));
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.asset.title,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(widget.asset.description),
+                const SizedBox(height: 8),
+                Text(
+                  widget.asset.astId,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 96),
+                    children: [
+                      ...List.generate(items.length, (index) {
+                        return CheckboxListTile(
+                          value: index < _completed.length
+                              ? _completed[index]
+                              : items[index].response,
+                          onChanged: (value) {
+                            setState(() {
+                              if (_completed.length != items.length) {
+                                _completed = items
+                                    .map((item) => item.response)
+                                    .toList();
+                              }
+                              _completed[index] = value ?? false;
+                            });
+                          },
+                          title: Text(items[index].title),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _remarksController,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          labelText: l10n.remarks,
+                          hintText: l10n.remarksHint,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

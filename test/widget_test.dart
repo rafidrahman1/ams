@@ -1,4 +1,5 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
+import 'package:asset_management_system/src/features/data/models/asset_checklist_item.dart';
 import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/src/features/presentation/providers/asset_provider.dart';
 import 'package:asset_management_system/src/features/presentation/providers/auth_provider.dart';
@@ -117,6 +118,20 @@ void main() {
               ),
             ],
           ),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                responseId: 6,
+                title: 'Battery Condition',
+                response: false,
+              ),
+              AssetChecklistItem(
+                responseId: 7,
+                title: 'Rafid er Condition',
+                response: false,
+              ),
+            ],
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -136,7 +151,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Checklist for Asset 1'), findsOneWidget);
-    expect(find.text('Description of Asset 1'), findsOneWidget);
+    expect(find.text('Battery Condition'), findsOneWidget);
+    expect(find.text('Rafid er Condition'), findsOneWidget);
     expect(find.text('Save'), findsOneWidget);
   });
 
