@@ -1,8 +1,8 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/core/network/api_client.dart';
 import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
-import 'package:asset_management_system/src/core/storage/token_storage.dart';
 import 'package:asset_management_system/src/core/storage/toggle_response_queue_store.dart';
+import 'package:asset_management_system/src/core/storage/token_storage.dart';
 import 'package:asset_management_system/src/features/data/models/asset_checklist_item.dart';
 import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/src/features/data/repositories/asset_repository.dart';
@@ -55,7 +55,12 @@ class _RejectedLoginAuthNotifier extends AuthNotifier {
 }
 
 class _FakeAssetService extends AssetService {
-  _FakeAssetService({required this.assets, required this.checklists, this.failAssets = false, this.failChecklistIds = const <String>{}}) : super(ApiClient(TokenStorage()));
+  _FakeAssetService({
+    required this.assets,
+    required this.checklists,
+    this.failAssets = false,
+    this.failChecklistIds = const <String>{},
+  }) : super(ApiClient(TokenStorage()));
 
   final List<VolunteerAsset> assets;
   final Map<String, List<AssetChecklistItem>> checklists;
@@ -86,15 +91,23 @@ class _NoopToggleQueueStore extends ToggleResponseQueueStore {
   Future<int> enqueueAll(Iterable<int> responseIds) async => 0;
 
   @override
-  Future<List<ToggleResponseQueueItem>> loadPending() async => const <ToggleResponseQueueItem>[];
+  Future<List<ToggleResponseQueueItem>> loadPending() async =>
+      const <ToggleResponseQueueItem>[];
 
   @override
   Future<void> removeQueuedIds(Iterable<int> queueIds) async {}
 }
 
 void main() {
-  testWidgets('email form only appears after pressing email login', (WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(overrides: [authProvider.overrideWith(_TestAuthNotifier.new)], child: _localizedApp(const LoginScreen())));
+  testWidgets('email form only appears after pressing email login', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authProvider.overrideWith(_TestAuthNotifier.new)],
+        child: _localizedApp(const LoginScreen()),
+      ),
+    );
 
     expect(find.byIcon(Icons.mail_outline), findsOneWidget);
     expect(find.byIcon(Icons.contactless), findsOneWidget);
@@ -107,8 +120,15 @@ void main() {
     expect(find.text('Login'), findsOneWidget);
   });
 
-  testWidgets('failed login stays on login screen and does not show splash', (WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(overrides: [authProvider.overrideWith(_RejectedLoginAuthNotifier.new)], child: _localizedApp(const LoginScreen())));
+  testWidgets('failed login stays on login screen and does not show splash', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authProvider.overrideWith(_RejectedLoginAuthNotifier.new)],
+        child: _localizedApp(const LoginScreen()),
+      ),
+    );
 
     await tester.tap(find.byType(SquareActionButton).first);
     await tester.pump();
@@ -123,22 +143,46 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('opening an asset checklist goes through QR/NFC first', (WidgetTester tester) async {
+  testWidgets('opening an asset checklist goes through QR/NFC first', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          qrScannerLauncherProvider.overrideWithValue((context) async => 'AST-000001'),
+          qrScannerLauncherProvider.overrideWithValue(
+            (context) async => 'AST-000001',
+          ),
           myAssetsProvider.overrideWith(
             (ref) async => const [
-              VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001'),
-              VolunteerAsset(name: 'Asset 2', details: 'Description of Asset 2', astId: 'AST-000002'),
-              VolunteerAsset(name: 'Asset 3', details: 'Description of Asset 3', astId: 'AST-000003'),
+              VolunteerAsset(
+                name: 'Asset 1',
+                details: 'Description of Asset 1',
+                astId: 'AST-000001',
+              ),
+              VolunteerAsset(
+                name: 'Asset 2',
+                details: 'Description of Asset 2',
+                astId: 'AST-000002',
+              ),
+              VolunteerAsset(
+                name: 'Asset 3',
+                details: 'Description of Asset 3',
+                astId: 'AST-000003',
+              ),
             ],
           ),
           assetChecklistProvider.overrideWith(
             (ref, astId) async => const [
-              AssetChecklistItem(responseId: 6, title: 'Battery Condition', response: false),
-              AssetChecklistItem(responseId: 7, title: 'Rafid er Condition', response: false),
+              AssetChecklistItem(
+                responseId: 6,
+                title: 'Battery Condition',
+                response: false,
+              ),
+              AssetChecklistItem(
+                responseId: 7,
+                title: 'Rafid er Condition',
+                response: false,
+              ),
             ],
           ),
         ],
@@ -165,12 +209,109 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
   });
 
-  testWidgets('mismatched qr code keeps the user on the qr screen', (WidgetTester tester) async {
+  testWidgets('home scan opens checklist for matching ast id', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          qrScannerLauncherProvider.overrideWithValue((context) async => 'WRONG-000999'),
-          myAssetsProvider.overrideWith((ref) async => const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')]),
+          qrScannerLauncherProvider.overrideWithValue(
+            (context) async => '{"ast_ID":"AST-000002"}',
+          ),
+          myAssetsProvider.overrideWith(
+            (ref) async => const [
+              VolunteerAsset(
+                name: 'Asset 1',
+                details: 'Description of Asset 1',
+                astId: 'AST-000001',
+              ),
+              VolunteerAsset(
+                name: 'Asset 2',
+                details: 'Description of Asset 2',
+                astId: 'AST-000002',
+              ),
+            ],
+          ),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                responseId: 6,
+                title: 'Battery Condition',
+                response: false,
+              ),
+            ],
+          ),
+        ],
+        child: _localizedApp(const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AssetChecklistScreen), findsOneWidget);
+    expect(find.text('Checklist for Asset 2'), findsOneWidget);
+    expect(find.text('Battery Condition'), findsOneWidget);
+  });
+
+  testWidgets(
+    'home scan with unmatched ast id stays on home and shows mismatch',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            qrScannerLauncherProvider.overrideWithValue(
+              (context) async => 'AST-000999',
+            ),
+            myAssetsProvider.overrideWith(
+              (ref) async => const [
+                VolunteerAsset(
+                  name: 'Asset 1',
+                  details: 'Description of Asset 1',
+                  astId: 'AST-000001',
+                ),
+              ],
+            ),
+            assetChecklistProvider.overrideWith(
+              (ref, astId) async => const <AssetChecklistItem>[],
+            ),
+          ],
+          child: _localizedApp(const HomeScreen()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan'));
+      await tester.pump();
+
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.textContaining('does not match'), findsOneWidget);
+      expect(find.byType(AssetChecklistScreen), findsNothing);
+    },
+  );
+
+  testWidgets('mismatched qr code keeps the user on the qr screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          qrScannerLauncherProvider.overrideWithValue(
+            (context) async => 'WRONG-000999',
+          ),
+          myAssetsProvider.overrideWith(
+            (ref) async => const [
+              VolunteerAsset(
+                name: 'Asset 1',
+                details: 'Description of Asset 1',
+                astId: 'AST-000001',
+              ),
+            ],
+          ),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const <AssetChecklistItem>[],
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -188,13 +329,23 @@ void main() {
     expect(find.byType(SplashScreen), findsNothing);
   });
 
-  testWidgets('nfc does not bypass qr matching for checklist access', (WidgetTester tester) async {
+  testWidgets('nfc does not bypass qr matching for checklist access', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [qrScannerLauncherProvider.overrideWithValue((context) async => 'AST-000001')],
+        overrides: [
+          qrScannerLauncherProvider.overrideWithValue(
+            (context) async => 'AST-000001',
+          ),
+        ],
         child: _localizedApp(
           const QrNfcScreen(
-            asset: AssetCardData(title: 'Asset 1', description: 'Description of Asset 1', astId: 'AST-000001'),
+            asset: AssetCardData(
+              title: 'Asset 1',
+              description: 'Description of Asset 1',
+              astId: 'AST-000001',
+            ),
           ),
         ),
       ),
@@ -205,37 +356,67 @@ void main() {
     await tester.pump();
 
     expect(find.byType(AssetChecklistScreen), findsNothing);
-    expect(find.text('Please use QR code matching to open the checklist'), findsOneWidget);
+    expect(
+      find.text('Please use QR code matching to open the checklist'),
+      findsOneWidget,
+    );
   });
 
-  test('asset repository falls back to cached assets and checklist data', () async {
-    const userKey = 'user@example.com';
-    SharedPreferences.setMockInitialValues({});
-    final cache = AssetCacheStore();
-    final onlineService = _FakeAssetService(
-      assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
-      checklists: const {
-        'AST-000001': [AssetChecklistItem(responseId: 1, title: 'Battery Condition', response: true)],
-      },
-    );
+  test(
+    'asset repository falls back to cached assets and checklist data',
+    () async {
+      const userKey = 'user@example.com';
+      SharedPreferences.setMockInitialValues({});
+      final cache = AssetCacheStore();
+      final onlineService = _FakeAssetService(
+        assets: const [
+          VolunteerAsset(
+            name: 'Asset 1',
+            details: 'Description of Asset 1',
+            astId: 'AST-000001',
+          ),
+        ],
+        checklists: const {
+          'AST-000001': [
+            AssetChecklistItem(
+              responseId: 1,
+              title: 'Battery Condition',
+              response: true,
+            ),
+          ],
+        },
+      );
 
-    final onlineRepository = AssetRepository(onlineService, () async => userKey, cache, _NoopToggleQueueStore());
-    await onlineRepository.prefetchOfflineData(userKey);
+      final onlineRepository = AssetRepository(
+        onlineService,
+        () async => userKey,
+        cache,
+        _NoopToggleQueueStore(),
+      );
+      await onlineRepository.prefetchOfflineData(userKey);
 
-    final offlineRepository = AssetRepository(
-      _FakeAssetService(assets: const [], checklists: const {}, failAssets: true, failChecklistIds: const {'AST-000001'}),
-      () async => userKey,
-      cache,
-      _NoopToggleQueueStore(),
-    );
+      final offlineRepository = AssetRepository(
+        _FakeAssetService(
+          assets: const [],
+          checklists: const {},
+          failAssets: true,
+          failChecklistIds: const {'AST-000001'},
+        ),
+        () async => userKey,
+        cache,
+        _NoopToggleQueueStore(),
+      );
 
-    final cachedAssets = await offlineRepository.fetchMyAssets();
-    final cachedChecklist = await offlineRepository.fetchChecklistByAssetId('AST-000001');
+      final cachedAssets = await offlineRepository.fetchMyAssets();
+      final cachedChecklist = await offlineRepository.fetchChecklistByAssetId(
+        'AST-000001',
+      );
 
-    expect(cachedAssets, hasLength(1));
-    expect(cachedAssets.first.astId, 'AST-000001');
-    expect(cachedChecklist, hasLength(1));
-    expect(cachedChecklist.first.title, 'Battery Condition');
-    expect(cachedChecklist.first.response, isTrue);
-  });
+      expect(cachedAssets, hasLength(1));
+      expect(cachedAssets.first.astId, 'AST-000001');
+      expect(cachedChecklist, hasLength(1));
+      expect(cachedChecklist.first.title, 'Battery Condition');
+      expect(cachedChecklist.first.response, isTrue);
+    },
+  );
 }
