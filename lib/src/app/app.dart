@@ -40,19 +40,6 @@ class App extends ConsumerWidget {
           },
         ),
       ),
-      builder: (context, child) {
-        if (child == null) return const SizedBox.shrink();
-        // Avoid AnimatedSwitcher here: it would keep both old+new Navigators
-        // during the transition, which triggers duplicate GlobalKey errors.
-        return TweenAnimationBuilder<double>(
-          key: ValueKey<String>(locale.languageCode),
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          tween: Tween<double>(begin: 0.0, end: 1.0),
-          child: child,
-          builder: (context, value, child) => Opacity(opacity: value, child: child),
-        );
-      },
       home: switch (auth) {
         AuthStatus.loading => const SplashScreen(),
         AuthStatus.authenticated => const HomeScreen(),
