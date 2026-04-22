@@ -21,6 +21,19 @@ class AssetCardBuilder extends StatelessWidget {
   final AssetCardData asset;
   final VoidCallback? onSync;
 
+  String _truncateDescription(String value, {int maxWords = 8}) {
+    final words = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList(growable: false);
+    if (words.length <= maxWords) {
+      return value.trim();
+    }
+
+    return '${words.take(maxWords).join(' ')}...';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -34,8 +47,8 @@ class AssetCardBuilder extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(asset.astId),
-            if (asset.description.isNotEmpty) Text(asset.description),
+            if (asset.description.isNotEmpty)
+              Text(_truncateDescription(asset.description)),
           ],
         ),
         trailing: ElevatedButton(

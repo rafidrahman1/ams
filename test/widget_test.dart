@@ -209,6 +209,30 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
   });
 
+  testWidgets('asset card hides ast id and truncates long description', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _localizedApp(
+        const AssetCardBuilder(
+          asset: AssetCardData(
+            title: 'Asset A',
+            description: 'one two three four five six seven eight nine ten',
+            astId: 'AST-000001',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('AST-000001'), findsNothing);
+    expect(
+      find.text('one two three four five six seven eight...'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('home scan opens checklist for matching ast id', (
     WidgetTester tester,
   ) async {
@@ -290,6 +314,87 @@ void main() {
       expect(find.byType(AssetChecklistScreen), findsNothing);
     },
   );
+
+  testWidgets('home asset list loads more items when scrolling down', (
+    WidgetTester tester,
+  ) async {
+    final assets = List<VolunteerAsset>.generate(
+      15,
+      (index) => VolunteerAsset(
+        name: 'Asset ${index + 1}',
+        details: 'Description ${index + 1}',
+        astId: 'AST-${(index + 1).toString().padLeft(6, '0')}',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myAssetsProvider.overrideWith((ref) async => assets),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                responseId: 1,
+                title: 'Battery Condition',
+                response: false,
+              ),
+            ],
+          ),
+        ],
+        child: _localizedApp(const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Asset 11'), findsOneWidget);
+  });
+
+  testWidgets('home asset list pull down refresh reloads assets', (
+    WidgetTester tester,
+  ) async {
+    var fetchCount = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myAssetsProvider.overrideWith((ref) async {
+            fetchCount += 1;
+            return const [
+              VolunteerAsset(
+                name: 'Asset 1',
+                details: 'Description of Asset 1',
+                astId: 'AST-000001',
+              ),
+            ];
+          }),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const [
+              AssetChecklistItem(
+                responseId: 1,
+                title: 'Battery Condition',
+                response: false,
+              ),
+            ],
+          ),
+        ],
+        child: _localizedApp(const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(fetchCount, 1);
+
+    await tester.fling(find.byType(ListView).first, const Offset(0, 300), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(fetchCount, greaterThanOrEqualTo(2));
+  });
 
   testWidgets('mismatched qr code keeps the user on the qr screen', (
     WidgetTester tester,
