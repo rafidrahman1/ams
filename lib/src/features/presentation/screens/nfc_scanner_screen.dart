@@ -47,15 +47,14 @@ class _NfcScannerScreenState extends State<NfcScannerScreen> {
     final isAvailable = await NfcManager.instance.isAvailable();
     if (!isAvailable) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('NFC is not available on this device')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('NFC is not available on this device')));
       _finishWithResult(null);
       return;
     }
 
     _sessionActive = true;
     await NfcManager.instance.startSession(
+      pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
       onDiscovered: (tag) async {
         final scannedValue = await _extractTagValue(tag);
 
@@ -104,22 +103,25 @@ class _NfcScannerScreenState extends State<NfcScannerScreen> {
       return null;
     }
 
-    if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown &&
-        utf8.decode(record.type, allowMalformed: true) == 'T') {
+    final type = utf8.decode(record.type, allowMalformed: true);
+
+    // 1. Handle Custom MIME Type (Recommended for preventing system pop-ups)
+    if (record.typeNameFormat == NdefTypeNameFormat.media && type == 'application/vnd.com.example.assets') {
+      return utf8.decode(record.payload, allowMalformed: true).trim();
+    }
+
+    // 2. Handle Standard NFC Text Record (Type 'T')
+    if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown && type == 'T') {
       final statusByte = record.payload.first;
       final languageCodeLength = statusByte & 0x3F;
       if (record.payload.length <= languageCodeLength + 1) {
         return null;
       }
-      return utf8
-          .decode(
-            record.payload.sublist(languageCodeLength + 1),
-            allowMalformed: true,
-          )
-          .trim();
+      return utf8.decode(record.payload.sublist(languageCodeLength + 1), allowMalformed: true).trim();
     }
 
-    return utf8.decode(record.payload, allowMalformed: true).trim();
+    // Ignore other record types (like Android Application Records or URIs)
+    return null;
   }
 
   Future<void> _stopSession() async {
@@ -138,7 +140,11 @@ class _NfcScannerScreenState extends State<NfcScannerScreen> {
   Future<void> _finishWithResult(String? value) async {
     if (_completed || !mounted) return;
     _completed = true;
-    await _stopSession();
+
+    // We don't call _stopSession() here immediately because on Android,
+    // if the tag is still near the device, the system will re-detect it
+    // and open the native NFC service. We let dispose() handle it.
+
     if (!mounted) return;
     Navigator.of(context).pop(value);
   }
@@ -157,10 +163,7 @@ class _NfcScannerScreenState extends State<NfcScannerScreen> {
               const SizedBox(height: 16),
               Text(_status, textAlign: TextAlign.center),
               const SizedBox(height: 24),
-              OutlinedButton(
-                onPressed: () => _finishWithResult(null),
-                child: const Text('Cancel'),
-              ),
+              OutlinedButton(onPressed: () => _finishWithResult(null), child: const Text('Cancel')),
             ],
           ),
         ),
