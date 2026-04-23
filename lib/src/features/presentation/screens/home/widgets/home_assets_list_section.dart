@@ -10,7 +10,10 @@ class HomeAssetsListSection extends ConsumerWidget {
   const HomeAssetsListSection({
     super.key,
     required this.assetsLabel,
+    required this.noFullyCheckedAssetsFoundLabel,
+    required this.noPartiallyCheckedAssetsFoundLabel,
     required this.assetsAsync,
+    required this.forceLoading,
     required this.showAllTrueAssets,
     required this.visibleAssetCount,
     required this.skeletonItemCount,
@@ -22,7 +25,10 @@ class HomeAssetsListSection extends ConsumerWidget {
   });
 
   final String assetsLabel;
+  final String noFullyCheckedAssetsFoundLabel;
+  final String noPartiallyCheckedAssetsFoundLabel;
   final AsyncValue<List<dynamic>> assetsAsync;
+  final bool forceLoading;
   final bool showAllTrueAssets;
   final int visibleAssetCount;
   final int skeletonItemCount;
@@ -34,6 +40,13 @@ class HomeAssetsListSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (forceLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: AssetListSkeleton(itemCount: skeletonItemCount),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(12),
       child: assetsAsync.when(
@@ -76,7 +89,7 @@ class HomeAssetsListSection extends ConsumerWidget {
               child: ListView(
                 controller: scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: [SizedBox(height: 240, child: Center(child: Text(showAllTrueAssets ? 'No fully checked assets found' : 'No partially checked assets found')))],
+                children: [SizedBox(height: 240, child: Center(child: Text(showAllTrueAssets ? noFullyCheckedAssetsFoundLabel : noPartiallyCheckedAssetsFoundLabel)))],
               ),
             );
           }

@@ -123,4 +123,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nfcTagMismatch => 'NFC tag does not match the asset label';
+
+  @override
+  String get allChecked => 'All Checked';
+
+  @override
+  String get noFullyCheckedAssetsFound => 'No fully checked assets found';
+
+  @override
+  String get noPartiallyCheckedAssetsFound =>
+      'No partially checked assets found';
+
+  @override
+  String get noPendingChecklistUpdates => 'No pending checklist updates';
+
+  @override
+  String get sync => 'Sync';
+
+  @override
+  String syncedChecklistUpdates(Object synced, Object totalPending) {
+    return 'Synced $synced/$totalPending checklist updates';
+  }
+
+  @override
+  String syncFailedSuffix(Object failed) {
+    return '($failed failed)';
+  }
 }

@@ -42,5 +42,23 @@
   "languageToggleToBangla": "বাংলা",
   "languageToggleToEnglish": "EN",
   "qrScanMismatch": "QR কোড অ্যাসেট লেবেলের সাথে মেলে না",
-  "nfcTagMismatch": "NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না"
+  "nfcTagMismatch": "NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না",
+  "allChecked": "সবগুলো সম্পন্ন",
+  "noFullyCheckedAssetsFound": "সম্পূর্ণভাবে সম্পন্ন কোনো অ্যাসেট পাওয়া যায়নি",
+  "noPartiallyCheckedAssetsFound": "আংশিকভাবে সম্পন্ন কোনো অ্যাসেট পাওয়া যায়নি",
+  "noPendingChecklistUpdates": "চেকলিস্টে কোনো অপেক্ষমাণ আপডেট নেই",
+  "sync": "সিঙ্ক",
+  "syncedChecklistUpdates": "চেকলিস্ট আপডেট সিঙ্ক হয়েছে {synced}/{totalPending}",
+  "@syncedChecklistUpdates": {
+    "placeholders": {
+      "synced": {},
+      "totalPending": {}
+    }
+  },
+  "syncFailedSuffix": "({failed} টি ব্যর্থ)",
+  "@syncFailedSuffix": {
+    "placeholders": {
+      "failed": {}
+    }
+  }
 }

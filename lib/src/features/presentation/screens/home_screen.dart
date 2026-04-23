@@ -86,9 +86,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.invalidate(myAssetsProvider);
     ref.invalidate(assetChecklistProvider);
+    ref.invalidate(homeBootstrapProvider);
 
-    // Await fresh assets so RefreshIndicator completes after data refetch.
-    await ref.read(myAssetsProvider.future);
+    // Keep refresh indicator active until assets and checklist statuses are ready.
+    await ref.read(homeBootstrapProvider.future);
   }
 
   Future<void> _syncChecklistToggles(BuildContext context) async {
@@ -101,12 +102,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final result = await ref.read(assetRepositoryProvider).syncQueuedResponses();
       ref.invalidate(assetChecklistProvider);
+      ref.invalidate(homeBootstrapProvider);
+      await ref.read(homeBootstrapProvider.future);
 
       if (!context.mounted) return;
 
-      final message = result.totalPending == 0
-          ? 'No pending checklist updates'
-          : 'Synced ${result.synced}/${result.totalPending} checklist updates${result.failed > 0 ? ' (${result.failed} failed)' : ''}';
+      final l10n = AppLocalizations.of(context)!;
+      final baseMessage = result.totalPending == 0 ? l10n.noPendingChecklistUpdates : l10n.syncedChecklistUpdates(result.synced, result.totalPending);
+      final message = result.totalPending > 0 && result.failed > 0 ? '$baseMessage ${l10n.syncFailedSuffix(result.failed)}' : baseMessage;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!context.mounted) return;
@@ -125,73 +128,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     ref.watch(localeProvider);
     final assetsAsync = ref.watch(myAssetsProvider);
+    final bootstrapAsync = ref.watch(homeBootstrapProvider);
+    final isBusy = _isSyncing || bootstrapAsync.isLoading;
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Text(l10n.homeTitle),
-            actions: [
-              const LanguageToggle(),
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: IconButton(
-                  tooltip: l10n.logout,
-                  onPressed: _isSyncing
-                      ? null
-                      : () async {
-                          await ref.read(authProvider.notifier).logout();
-                        },
-                  icon: const Icon(Icons.logout),
-                ),
-              ),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.homeTitle),
+        actions: [
+          const LanguageToggle(),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: IconButton(
+              tooltip: l10n.logout,
+              onPressed: isBusy
+                  ? null
+                  : () async {
+                      await ref.read(authProvider.notifier).logout();
+                    },
+              icon: const Icon(Icons.logout),
+            ),
           ),
-          body: Column(
-            children: [
-              HomeActionButtonsRow(
-                scanLabel: l10n.scan,
-                assetsLabel: l10n.assets,
-                isSyncing: _isSyncing,
-                onScanPressed: () => HomeScreenActions.showScanOptions(context: context, ref: ref, isMounted: () => mounted),
-                onSyncPressed: () => _syncChecklistToggles(context),
-              ),
-              const SizedBox(height: 16),
-              HomeAssetsFilterCard(
-                assetsLabel: l10n.assets,
-                allCheckedLabel: 'All Checked',
-                showAllTrueAssets: _showAllTrueAssets,
-                onChanged: (value) {
-                  setState(() {
-                    _showAllTrueAssets = value;
-                    _visibleAssetCount = _pageSize;
-                  });
-                  if (_assetListScrollController.hasClients) {
-                    _assetListScrollController.jumpTo(0);
-                  }
-                },
-              ),
-              Expanded(
-                child: HomeAssetsListSection(
-                  assetsLabel: l10n.assets,
-                  assetsAsync: assetsAsync,
-                  showAllTrueAssets: _showAllTrueAssets,
-                  visibleAssetCount: _visibleAssetCount,
-                  skeletonItemCount: _skeletonItemCount,
-                  isSyncing: _isSyncing,
-                  scrollController: _assetListScrollController,
-                  onRefresh: _refreshAssets,
-                  onFilteredCountChanged: (count) {
-                    _lastFilteredAssetCount = count;
+        ],
+      ),
+      body: Column(
+        children: [
+          HomeActionButtonsRow(
+            scanLabel: l10n.scan,
+            assetsLabel: l10n.sync,
+            isSyncing: isBusy,
+            onScanPressed: () => HomeScreenActions.showScanOptions(context: context, ref: ref, isMounted: () => mounted),
+            onSyncPressed: () => _syncChecklistToggles(context),
+          ),
+          const SizedBox(height: 16),
+          HomeAssetsFilterCard(
+            assetsLabel: l10n.assets,
+            allCheckedLabel: l10n.allChecked,
+            showAllTrueAssets: _showAllTrueAssets,
+            onChanged: isBusy
+                ? null
+                : (value) {
+                    setState(() {
+                      _showAllTrueAssets = value;
+                      _visibleAssetCount = _pageSize;
+                    });
+                    if (_assetListScrollController.hasClients) {
+                      _assetListScrollController.jumpTo(0);
+                    }
                   },
-                  ensureScrollablePage: _ensureScrollablePage,
-                ),
-              ),
-            ],
           ),
-        ),
-        if (_isSyncing) ...[const ModalBarrier(dismissible: false, color: Colors.black54), const Center(child: CircularProgressIndicator())],
-      ],
+          Expanded(
+            child: HomeAssetsListSection(
+              assetsLabel: l10n.assets,
+              noFullyCheckedAssetsFoundLabel: l10n.noFullyCheckedAssetsFound,
+              noPartiallyCheckedAssetsFoundLabel: l10n.noPartiallyCheckedAssetsFound,
+              assetsAsync: assetsAsync,
+              forceLoading: bootstrapAsync.isLoading,
+              showAllTrueAssets: _showAllTrueAssets,
+              visibleAssetCount: _visibleAssetCount,
+              skeletonItemCount: _skeletonItemCount,
+              isSyncing: isBusy,
+              scrollController: _assetListScrollController,
+              onRefresh: _refreshAssets,
+              onFilteredCountChanged: (count) {
+                _lastFilteredAssetCount = count;
+              },
+              ensureScrollablePage: _ensureScrollablePage,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

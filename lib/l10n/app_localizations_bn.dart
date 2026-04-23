@@ -123,4 +123,31 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get nfcTagMismatch => 'NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না';
+
+  @override
+  String get allChecked => 'সবগুলো সম্পন্ন';
+
+  @override
+  String get noFullyCheckedAssetsFound =>
+      'সম্পূর্ণভাবে সম্পন্ন কোনো অ্যাসেট পাওয়া যায়নি';
+
+  @override
+  String get noPartiallyCheckedAssetsFound =>
+      'আংশিকভাবে সম্পন্ন কোনো অ্যাসেট পাওয়া যায়নি';
+
+  @override
+  String get noPendingChecklistUpdates => 'চেকলিস্টে কোনো অপেক্ষমাণ আপডেট নেই';
+
+  @override
+  String get sync => 'সিঙ্ক';
+
+  @override
+  String syncedChecklistUpdates(Object synced, Object totalPending) {
+    return 'চেকলিস্ট আপডেট সিঙ্ক হয়েছে $synced/$totalPending';
+  }
+
+  @override
+  String syncFailedSuffix(Object failed) {
+    return '($failed টি ব্যর্থ)';
+  }
 }

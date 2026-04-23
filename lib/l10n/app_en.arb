@@ -42,5 +42,23 @@
   "languageToggleToBangla": "বাংলা",
   "languageToggleToEnglish": "EN",
   "qrScanMismatch": "QR code does not match the asset label",
-  "nfcTagMismatch": "NFC tag does not match the asset label"
+  "nfcTagMismatch": "NFC tag does not match the asset label",
+  "allChecked": "All Checked",
+  "noFullyCheckedAssetsFound": "No fully checked assets found",
+  "noPartiallyCheckedAssetsFound": "No partially checked assets found",
+  "noPendingChecklistUpdates": "No pending checklist updates",
+  "sync": "Sync",
+  "syncedChecklistUpdates": "Synced {synced}/{totalPending} checklist updates",
+  "@syncedChecklistUpdates": {
+    "placeholders": {
+      "synced": {},
+      "totalPending": {}
+    }
+  },
+  "syncFailedSuffix": "({failed} failed)",
+  "@syncFailedSuffix": {
+    "placeholders": {
+      "failed": {}
+    }
+  }
 }

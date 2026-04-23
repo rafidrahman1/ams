@@ -325,6 +325,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'NFC tag does not match the asset label'**
   String get nfcTagMismatch;
+
+  /// No description provided for @allChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'All Checked'**
+  String get allChecked;
+
+  /// No description provided for @noFullyCheckedAssetsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No fully checked assets found'**
+  String get noFullyCheckedAssetsFound;
+
+  /// No description provided for @noPartiallyCheckedAssetsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No partially checked assets found'**
+  String get noPartiallyCheckedAssetsFound;
+
+  /// No description provided for @noPendingChecklistUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending checklist updates'**
+  String get noPendingChecklistUpdates;
+
+  /// No description provided for @sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get sync;
+
+  /// No description provided for @syncedChecklistUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {synced}/{totalPending} checklist updates'**
+  String syncedChecklistUpdates(Object synced, Object totalPending);
+
+  /// No description provided for @syncFailedSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'({failed} failed)'**
+  String syncFailedSuffix(Object failed);
 }
 
 class _AppLocalizationsDelegate

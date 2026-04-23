@@ -7,7 +7,7 @@ class HomeAssetsFilterCard extends StatelessWidget {
   final String assetsLabel;
   final String allCheckedLabel;
   final bool showAllTrueAssets;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

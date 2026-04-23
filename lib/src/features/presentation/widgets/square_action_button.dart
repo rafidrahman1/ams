@@ -5,7 +5,8 @@ class SquareActionButton extends StatelessWidget {
   const SquareActionButton({
     super.key,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.onPressed,
     required this.backgroundColor,
     required this.foregroundColor,
@@ -13,7 +14,8 @@ class SquareActionButton extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final VoidCallback? onPressed;
   final Color backgroundColor;
   final Color foregroundColor;
@@ -35,7 +37,7 @@ class SquareActionButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36),
+            iconWidget ?? Icon(icon, size: 36),
             const SizedBox(height: 12),
             Text(label, textAlign: TextAlign.center),
           ],
@@ -44,4 +46,3 @@ class SquareActionButton extends StatelessWidget {
     );
   }
 }
-
