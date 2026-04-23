@@ -5,7 +5,7 @@
         android:name="android.hardware.nfc"
         android:required="false" />
     <application
-        android:label="asset_management_system"
+        android:label="AMS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

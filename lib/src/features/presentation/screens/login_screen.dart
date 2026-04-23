@@ -22,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   late final TextEditingController _passwordController;
   bool _showEmailForm = false;
   bool _isLoggingIn = false;
+  bool _isPasswordObscured = true;
 
   @override
   void initState() {
@@ -37,7 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Widget _buildField({required TextEditingController controller, required String hintText, bool obscureText = false}) {
+  Widget _buildField({required TextEditingController controller, required String hintText, bool obscureText = false, VoidCallback? onToggleObscureText}) {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: ThemeColor.primary.withValues(alpha: 0.35), borderRadius: ThemeBorderRadius.r3),
@@ -51,6 +52,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
           contentPadding: ThemePadding.p3,
+          suffixIcon: onToggleObscureText == null ? null : IconButton(onPressed: onToggleObscureText, icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility)),
         ),
       ),
     );
@@ -165,7 +167,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Gap.y8,
                         _buildField(controller: _emailController, hintText: l10n.email),
                         Gap.y8,
-                        _buildField(controller: _passwordController, hintText: l10n.password, obscureText: true),
+                        _buildField(
+                          controller: _passwordController,
+                          hintText: l10n.password,
+                          obscureText: _isPasswordObscured,
+                          onToggleObscureText: () {
+                            setState(() {
+                              _isPasswordObscured = !_isPasswordObscured;
+                            });
+                          },
+                        ),
                         Gap.y8,
                         SizedBox(
                           width: double.infinity,
