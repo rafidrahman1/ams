@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AssetListSkeleton extends StatelessWidget {
-  const AssetListSkeleton({required this.itemCount});
+  const AssetListSkeleton({super.key, required this.itemCount});
 
   final int itemCount;
 
