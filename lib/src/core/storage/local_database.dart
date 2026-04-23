@@ -157,6 +157,15 @@ class LocalDatabase {
     await db.delete(_togglesTable, where: 'id IN ($placeholders)', whereArgs: ids);
   }
 
+  Future<void> clearUserData(String userKey) async {
+    final db = await _getDatabase();
+    await db.transaction((txn) async {
+      // Clear cache but keep pending toggles so they can sync on next login
+      await txn.delete(_assetsTable, where: 'user_key = ?', whereArgs: [userKey]);
+      await txn.delete(_checklistTable, where: 'user_key = ?', whereArgs: [userKey]);
+    });
+  }
+
   Future<void> clearAll() async {
     final db = await _getDatabase();
     await db.delete(_assetsTable);

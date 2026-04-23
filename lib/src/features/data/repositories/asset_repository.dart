@@ -27,16 +27,14 @@ class AssetRepository {
       latestTargetStates[item.featureId] = item.targetState;
     }
 
-    return checklist.map((item) {
-      if (latestTargetStates.containsKey(item.featureId)) {
-        return AssetChecklistItem(
-          featureId: item.featureId,
-          title: item.title,
-          response: latestTargetStates[item.featureId]!,
-        );
-      }
-      return item;
-    }).toList(growable: false);
+    return checklist
+        .map((item) {
+          if (latestTargetStates.containsKey(item.featureId)) {
+            return AssetChecklistItem(featureId: item.featureId, title: item.title, response: latestTargetStates[item.featureId]!);
+          }
+          return item;
+        })
+        .toList(growable: false);
   }
 
   Future<List<VolunteerAsset>> fetchMyAssets() async {
