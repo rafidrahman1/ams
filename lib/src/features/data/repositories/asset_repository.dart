@@ -1,5 +1,4 @@
-import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
-import 'package:asset_management_system/src/core/storage/toggle_response_queue_store.dart';
+import 'package:asset_management_system/src/core/storage/local_database.dart';
 
 import '../models/asset_checklist_item.dart';
 import '../models/volunteer_asset.dart';
@@ -8,18 +7,17 @@ import '../services/asset_service.dart';
 class AssetRepository {
   final AssetService service;
   final Future<String?> Function() getUserKey;
-  final AssetCacheStore cache;
-  final ToggleResponseQueueStore toggleQueue;
+  final LocalDatabase db;
 
-  AssetRepository(this.service, this.getUserKey, this.cache, this.toggleQueue);
+  AssetRepository(this.service, this.getUserKey, this.db);
 
   Future<String?> _resolvedUserKey() async {
     final key = (await getUserKey())?.trim();
     return key == null || key.isEmpty ? null : key;
   }
 
-  Future<List<AssetChecklistItem>> _applyPendingToggles(List<AssetChecklistItem> checklist) async {
-    final pending = await toggleQueue.loadPending();
+  Future<List<AssetChecklistItem>> _applyPendingToggles(String userKey, List<AssetChecklistItem> checklist) async {
+    final pending = await db.loadPendingToggles(userKey);
     if (pending.isEmpty || checklist.isEmpty) {
       return checklist;
     }
@@ -47,12 +45,12 @@ class AssetRepository {
     try {
       final assets = await service.fetchMyAssets();
       if (userKey != null) {
-        await cache.saveAssets(userKey, assets);
+        await db.saveAssets(userKey, assets);
       }
       return assets;
     } catch (_) {
       if (userKey != null) {
-        final cachedAssets = await cache.loadAssets(userKey);
+        final cachedAssets = await db.loadAssets(userKey);
         if (cachedAssets.isNotEmpty) {
           return cachedAssets;
         }
@@ -68,14 +66,15 @@ class AssetRepository {
     try {
       final checklist = await service.fetchChecklistByAssetId(astId);
       if (userKey != null) {
-        await cache.saveChecklist(userKey, astId, checklist);
+        await db.saveChecklist(userKey, astId, checklist);
       }
-      return _applyPendingToggles(checklist);
+
+      return userKey != null ? await _applyPendingToggles(userKey, checklist) : checklist;
     } catch (_) {
       if (userKey != null) {
-        final cachedChecklist = await cache.loadChecklist(userKey, astId);
+        final cachedChecklist = await db.loadChecklist(userKey, astId);
         if (cachedChecklist.isNotEmpty) {
-          return _applyPendingToggles(cachedChecklist);
+          return _applyPendingToggles(userKey, cachedChecklist);
         }
       }
 
@@ -91,7 +90,7 @@ class AssetRepository {
 
     try {
       final assets = await service.fetchMyAssets();
-      await cache.saveAssets(trimmedUserKey, assets);
+      await db.saveAssets(trimmedUserKey, assets);
 
       for (final asset in assets) {
         final astId = asset.astId.trim();
@@ -101,11 +100,11 @@ class AssetRepository {
 
         try {
           final checklist = await service.fetchChecklistByAssetId(astId);
-          await cache.saveChecklist(trimmedUserKey, astId, checklist);
+          await db.saveChecklist(trimmedUserKey, astId, checklist);
         } catch (_) {
-          final cachedChecklist = await cache.loadChecklist(trimmedUserKey, astId);
+          final cachedChecklist = await db.loadChecklist(trimmedUserKey, astId);
           if (cachedChecklist.isNotEmpty) {
-            await cache.saveChecklist(trimmedUserKey, astId, cachedChecklist);
+            await db.saveChecklist(trimmedUserKey, astId, cachedChecklist);
           }
         }
       }
@@ -114,12 +113,20 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueResponseToggles(Iterable<int> featureIds) {
-    return toggleQueue.enqueueAll(featureIds);
+  Future<int> queueResponseToggles(Iterable<int> featureIds) async {
+    final userKey = await _resolvedUserKey();
+    if (userKey == null) return 0;
+
+    return db.enqueueToggles(userKey, featureIds);
   }
 
   Future<ToggleSyncResult> syncQueuedResponses() async {
-    final pending = await toggleQueue.loadPending();
+    final userKey = await _resolvedUserKey();
+    if (userKey == null) {
+      return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
+    }
+
+    final pending = await db.loadPendingToggles(userKey);
     if (pending.isEmpty) {
       return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
     }
@@ -162,14 +169,13 @@ class AssetRepository {
       }
     }
 
-    await toggleQueue.removeQueuedIds(removableQueueIds);
+    await db.removeQueuedToggles(removableQueueIds);
 
     return ToggleSyncResult(totalPending: oddParityFeatureIds.length, synced: syncedCount, failed: failedCount);
   }
 
   Future<void> clearCache() async {
-    await cache.clear();
-    await toggleQueue.clear();
+    await db.clearAll();
   }
 }
 

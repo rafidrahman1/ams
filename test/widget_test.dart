@@ -1,7 +1,6 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/core/network/api_client.dart';
-import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
-import 'package:asset_management_system/src/core/storage/toggle_response_queue_store.dart';
+import 'package:asset_management_system/src/core/storage/local_database.dart';
 import 'package:asset_management_system/src/core/storage/token_storage.dart';
 import 'package:asset_management_system/src/features/data/models/asset_checklist_item.dart';
 import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
@@ -22,7 +21,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _localizedApp(Widget child) {
   return MaterialApp(
@@ -82,30 +80,60 @@ class _FakeAssetService extends AssetService {
   }
 }
 
-class _NoopToggleQueueStore extends ToggleResponseQueueStore {
-  @override
-  Future<int> enqueueAll(Iterable<int> featureIds) async => 0;
+class _MemoryLocalDatabase extends LocalDatabase {
+  final Map<String, List<VolunteerAsset>> _assets = {};
+  final Map<String, List<AssetChecklistItem>> _checklists = {};
+  final List<Map<String, dynamic>> _toggles = [];
+  int _nextQueueId = 1;
 
   @override
-  Future<List<ToggleResponseQueueItem>> loadPending() async => const <ToggleResponseQueueItem>[];
+  Future<void> saveAssets(String userKey, List<VolunteerAsset> assets) async {
+    _assets[userKey] = assets;
+  }
 
   @override
-  Future<void> removeQueuedIds(Iterable<int> queueIds) async {}
-}
-
-class _StaticToggleQueueStore extends ToggleResponseQueueStore {
-  _StaticToggleQueueStore(this.pending);
-
-  final List<ToggleResponseQueueItem> pending;
+  Future<List<VolunteerAsset>> loadAssets(String userKey) async {
+    return _assets[userKey] ?? [];
+  }
 
   @override
-  Future<int> enqueueAll(Iterable<int> featureIds) async => pending.length;
+  Future<void> saveChecklist(String userKey, String astId, List<AssetChecklistItem> items) async {
+    _checklists['$userKey-$astId'] = items;
+  }
 
   @override
-  Future<List<ToggleResponseQueueItem>> loadPending() async => pending;
+  Future<List<AssetChecklistItem>> loadChecklist(String userKey, String astId) async {
+    return _checklists['$userKey-$astId'] ?? [];
+  }
 
   @override
-  Future<void> removeQueuedIds(Iterable<int> queueIds) async {}
+  Future<int> enqueueToggles(String userKey, Iterable<int> featureIds) async {
+    for (final id in featureIds) {
+      _toggles.add({'id': _nextQueueId++, 'user_key': userKey, 'feature_id': id});
+    }
+    return featureIds.length;
+  }
+
+  @override
+  Future<List<ToggleResponseQueueItem>> loadPendingToggles(String userKey) async {
+    return _toggles
+        .where((t) => t['user_key'] == userKey)
+        .map((t) => ToggleResponseQueueItem(queueId: t['id'] as int, featureId: t['feature_id'] as int))
+        .toList();
+  }
+
+  @override
+  Future<void> removeQueuedToggles(Iterable<int> queueIds) async {
+    final idSet = queueIds.toSet();
+    _toggles.removeWhere((t) => idSet.contains(t['id']));
+  }
+
+  @override
+  Future<void> clearAll() async {
+    _assets.clear();
+    _checklists.clear();
+    _toggles.clear();
+  }
 }
 
 class _SingleChecklistThenOfflineService extends AssetService {
@@ -147,38 +175,6 @@ class _RecordingAssetService extends AssetService {
     if (failingFeatureIds.contains(featureId)) {
       throw Exception('sync failed for feature: $featureId');
     }
-  }
-}
-
-class _MemoryToggleQueueStore extends ToggleResponseQueueStore {
-  _MemoryToggleQueueStore(List<ToggleResponseQueueItem> initialItems) : _items = List<ToggleResponseQueueItem>.from(initialItems);
-
-  final List<ToggleResponseQueueItem> _items;
-
-  @override
-  Future<int> enqueueAll(Iterable<int> featureIds) async {
-    final cleaned = featureIds.where((id) => id > 0).toList(growable: false);
-    if (cleaned.isEmpty) {
-      return 0;
-    }
-
-    var nextQueueId = _items.isEmpty ? 1 : _items.map((item) => item.queueId).reduce((left, right) => left > right ? left : right) + 1;
-
-    for (final featureId in cleaned) {
-      _items.add(ToggleResponseQueueItem(queueId: nextQueueId, featureId: featureId));
-      nextQueueId += 1;
-    }
-
-    return cleaned.length;
-  }
-
-  @override
-  Future<List<ToggleResponseQueueItem>> loadPending() async => List<ToggleResponseQueueItem>.from(_items);
-
-  @override
-  Future<void> removeQueuedIds(Iterable<int> queueIds) async {
-    final idSet = queueIds.toSet();
-    _items.removeWhere((item) => idSet.contains(item.queueId));
   }
 }
 
@@ -475,8 +471,7 @@ void main() {
 
   test('asset repository falls back to cached assets and checklist data', () async {
     const userKey = 'user@example.com';
-    SharedPreferences.setMockInitialValues({});
-    final cache = AssetCacheStore();
+    final db = _MemoryLocalDatabase();
     final onlineService = _FakeAssetService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
       checklists: const {
@@ -484,14 +479,13 @@ void main() {
       },
     );
 
-    final onlineRepository = AssetRepository(onlineService, () async => userKey, cache, _NoopToggleQueueStore());
+    final onlineRepository = AssetRepository(onlineService, () async => userKey, db);
     await onlineRepository.prefetchOfflineData(userKey);
 
     final offlineRepository = AssetRepository(
       _FakeAssetService(assets: const [], checklists: const {}, failAssets: true, failChecklistIds: const {'AST-000001'}),
       () async => userKey,
-      cache,
-      _NoopToggleQueueStore(),
+      db,
     );
 
     final cachedAssets = await offlineRepository.fetchMyAssets();
@@ -506,8 +500,9 @@ void main() {
 
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
     const userKey = 'user@example.com';
-    SharedPreferences.setMockInitialValues({});
-    final cache = AssetCacheStore();
+    final db = _MemoryLocalDatabase();
+    await db.enqueueToggles(userKey, [1]);
+
     final service = _SingleChecklistThenOfflineService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
       checklists: const {
@@ -515,7 +510,7 @@ void main() {
       },
     );
 
-    final repository = AssetRepository(service, () async => userKey, cache, _StaticToggleQueueStore(const [ToggleResponseQueueItem(queueId: 1, featureId: 1)]));
+    final repository = AssetRepository(service, () async => userKey, db);
 
     final firstChecklist = await repository.fetchChecklistByAssetId('AST-000001');
     final secondChecklist = await repository.fetchChecklistByAssetId('AST-000001');
@@ -528,12 +523,11 @@ void main() {
 
   test('sync compacts repeated toggles for the same feature into one call', () async {
     final service = _RecordingAssetService();
-    final queue = _MemoryToggleQueueStore(const [
-      ToggleResponseQueueItem(queueId: 1, featureId: 42),
-      ToggleResponseQueueItem(queueId: 2, featureId: 42),
-      ToggleResponseQueueItem(queueId: 3, featureId: 42),
-    ]);
-    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    await db.enqueueToggles(userKey, [42, 42, 42]);
+
+    final repository = AssetRepository(service, () async => userKey, db);
 
     final result = await repository.syncQueuedResponses();
 
@@ -541,18 +535,16 @@ void main() {
     expect(result.totalPending, 1);
     expect(result.synced, 1);
     expect(result.failed, 0);
-    expect(await queue.loadPending(), isEmpty);
+    expect(await db.loadPendingToggles(userKey), isEmpty);
   });
 
   test('sync drops even toggle counts without calling the API', () async {
     final service = _RecordingAssetService();
-    final queue = _MemoryToggleQueueStore(const [
-      ToggleResponseQueueItem(queueId: 1, featureId: 7),
-      ToggleResponseQueueItem(queueId: 2, featureId: 7),
-      ToggleResponseQueueItem(queueId: 3, featureId: 7),
-      ToggleResponseQueueItem(queueId: 4, featureId: 7),
-    ]);
-    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    await db.enqueueToggles(userKey, [7, 7, 7, 7]);
+
+    final repository = AssetRepository(service, () async => userKey, db);
 
     final result = await repository.syncQueuedResponses();
 
@@ -560,20 +552,19 @@ void main() {
     expect(result.totalPending, 0);
     expect(result.synced, 0);
     expect(result.failed, 0);
-    expect(await queue.loadPending(), isEmpty);
+    expect(await db.loadPendingToggles(userKey), isEmpty);
   });
 
   test('sync keeps latest odd toggle queued when API call fails', () async {
     final service = _RecordingAssetService(failingFeatureIds: const {9});
-    final queue = _MemoryToggleQueueStore(const [
-      ToggleResponseQueueItem(queueId: 1, featureId: 9),
-      ToggleResponseQueueItem(queueId: 2, featureId: 9),
-      ToggleResponseQueueItem(queueId: 3, featureId: 9),
-    ]);
-    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    await db.enqueueToggles(userKey, [9, 9, 9]);
+
+    final repository = AssetRepository(service, () async => userKey, db);
 
     final result = await repository.syncQueuedResponses();
-    final remaining = await queue.loadPending();
+    final remaining = await db.loadPendingToggles(userKey);
 
     expect(service.toggledFeatureIds, [9]);
     expect(result.totalPending, 1);
@@ -581,6 +572,7 @@ void main() {
     expect(result.failed, 1);
     expect(remaining, hasLength(1));
     expect(remaining.single.featureId, 9);
+    // Queue ID 3 is the latest one.
     expect(remaining.single.queueId, 3);
   });
 }

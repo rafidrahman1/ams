@@ -11,12 +11,7 @@ final assetServiceProvider = Provider<AssetService>((ref) {
 });
 
 final assetRepositoryProvider = Provider<AssetRepository>((ref) {
-  return AssetRepository(
-    ref.read(assetServiceProvider),
-    () => ref.read(tokenStorageProvider).getSessionKey(),
-    ref.read(assetCacheStoreProvider),
-    ref.read(toggleResponseQueueStoreProvider),
-  );
+  return AssetRepository(ref.read(assetServiceProvider), () => ref.read(tokenStorageProvider).getSessionKey(), ref.read(localDatabaseProvider));
 });
 
 final myAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
