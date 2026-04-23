@@ -18,6 +18,29 @@ class AssetRepository {
     return key == null || key.isEmpty ? null : key;
   }
 
+  Future<List<AssetChecklistItem>> _applyPendingToggles(List<AssetChecklistItem> checklist) async {
+    final pending = await toggleQueue.loadPending();
+    if (pending.isEmpty || checklist.isEmpty) {
+      return checklist;
+    }
+
+    final toggleCounts = <int, int>{};
+    for (final item in pending) {
+      toggleCounts.update(item.featureId, (count) => count + 1, ifAbsent: () => 1);
+    }
+
+    return checklist
+        .map((item) {
+          final pendingToggleCount = toggleCounts[item.featureId] ?? 0;
+          if (pendingToggleCount.isOdd) {
+            return AssetChecklistItem(featureId: item.featureId, title: item.title, response: !item.response);
+          }
+
+          return item;
+        })
+        .toList(growable: false);
+  }
+
   Future<List<VolunteerAsset>> fetchMyAssets() async {
     final userKey = await _resolvedUserKey();
 
@@ -47,12 +70,12 @@ class AssetRepository {
       if (userKey != null) {
         await cache.saveChecklist(userKey, astId, checklist);
       }
-      return checklist;
+      return _applyPendingToggles(checklist);
     } catch (_) {
       if (userKey != null) {
         final cachedChecklist = await cache.loadChecklist(userKey, astId);
         if (cachedChecklist.isNotEmpty) {
-          return cachedChecklist;
+          return _applyPendingToggles(cachedChecklist);
         }
       }
 
