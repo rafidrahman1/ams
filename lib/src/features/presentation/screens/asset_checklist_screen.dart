@@ -60,15 +60,15 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   final items = await ref.read(assetChecklistProvider(widget.asset.astId).future);
                   final completed = _completed.length == items.length ? List<bool>.from(_completed) : items.map((item) => item.response).toList();
 
-                  final toggledResponseIds = <int>[];
+                  final togglePayload = <({int featureId, bool targetState})>[];
                   for (var index = 0; index < items.length; index++) {
                     if (items[index].response != completed[index]) {
-                      toggledResponseIds.add(items[index].featureId);
+                      togglePayload.add((featureId: items[index].featureId, targetState: completed[index]));
                     }
                   }
 
-                  if (toggledResponseIds.isNotEmpty) {
-                    await ref.read(assetRepositoryProvider).queueResponseToggles(toggledResponseIds);
+                  if (togglePayload.isNotEmpty) {
+                    await ref.read(assetRepositoryProvider).queueResponseToggles(widget.asset.astId, togglePayload);
                   }
 
                   ref.invalidate(assetChecklistProvider(widget.asset.astId));

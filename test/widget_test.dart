@@ -107,18 +107,21 @@ class _MemoryLocalDatabase extends LocalDatabase {
   }
 
   @override
-  Future<int> enqueueToggles(String userKey, Iterable<int> featureIds) async {
-    for (final id in featureIds) {
-      _toggles.add({'id': _nextQueueId++, 'user_key': userKey, 'feature_id': id});
+  Future<int> enqueueToggles(String userKey, String astId, List<({int featureId, bool targetState})> toggles) async {
+    for (final t in toggles) {
+      _toggles.add({'id': _nextQueueId++, 'user_key': userKey, 'ast_id': astId, 'feature_id': t.featureId, 'target_state': t.targetState ? 1 : 0});
     }
-    return featureIds.length;
+    return toggles.length;
   }
 
   @override
   Future<List<ToggleResponseQueueItem>> loadPendingToggles(String userKey) async {
     return _toggles
         .where((t) => t['user_key'] == userKey)
-        .map((t) => ToggleResponseQueueItem(queueId: t['id'] as int, featureId: t['feature_id'] as int))
+        .map(
+          (t) =>
+              ToggleResponseQueueItem(queueId: t['id'] as int, astId: t['ast_id'] as String, featureId: t['feature_id'] as int, targetState: (t['target_state'] as int) == 1),
+        )
         .toList();
   }
 
@@ -298,7 +301,7 @@ void main() {
     expect(find.text('Battery Condition'), findsOneWidget);
   });
 
-  testWidgets('home scan opens checklist for matching nfc ast id', (WidgetTester tester) async {
+  testWidgets('home scan opens checklist for matching nfc_ast_id', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -425,7 +428,7 @@ void main() {
     expect(find.byType(SplashScreen), findsNothing);
   });
 
-  testWidgets('matching nfc scan opens checklist from qr nfc screen', (WidgetTester tester) async {
+  testWidgets('matching nfc scan opens checklist from qr_nfc_screen', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -448,7 +451,7 @@ void main() {
     expect(find.text('Checklist for Asset 1'), findsOneWidget);
   });
 
-  testWidgets('mismatched nfc scan keeps user on qr nfc screen', (WidgetTester tester) async {
+  testWidgets('mismatched nfc scan keeps user on qr_nfc_screen', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [nfcScannerLauncherProvider.overrideWithValue((context) async => 'WRONG-000999')],
@@ -501,7 +504,7 @@ void main() {
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
     const userKey = 'user@example.com';
     final db = _MemoryLocalDatabase();
-    await db.enqueueToggles(userKey, [1]);
+    await db.enqueueToggles(userKey, 'AST-000001', [(featureId: 1, targetState: true)]);
 
     final service = _SingleChecklistThenOfflineService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
@@ -521,58 +524,21 @@ void main() {
     expect(secondChecklist.first.response, isTrue);
   });
 
-  test('sync compacts repeated toggles for the same feature into one call', () async {
+  test('sync verification toggles again if server state doesn\'t match target', () async {
     final service = _RecordingAssetService();
     final db = _MemoryLocalDatabase();
     const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [42, 42, 42]);
+    const astId = 'AST-000001';
+
+    // Target is true, but recording service always returns false items
+    await db.enqueueToggles(userKey, astId, [(featureId: 42, targetState: true)]);
 
     final repository = AssetRepository(service, () async => userKey, db);
 
-    final result = await repository.syncQueuedResponses();
+    // This should call toggle once, verify (fail), then toggle again
+    await repository.syncQueuedResponses();
 
-    expect(service.toggledFeatureIds, [42]);
-    expect(result.totalPending, 1);
-    expect(result.synced, 1);
-    expect(result.failed, 0);
-    expect(await db.loadPendingToggles(userKey), isEmpty);
-  });
-
-  test('sync drops even toggle counts without calling the API', () async {
-    final service = _RecordingAssetService();
-    final db = _MemoryLocalDatabase();
-    const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [7, 7, 7, 7]);
-
-    final repository = AssetRepository(service, () async => userKey, db);
-
-    final result = await repository.syncQueuedResponses();
-
-    expect(service.toggledFeatureIds, isEmpty);
-    expect(result.totalPending, 0);
-    expect(result.synced, 0);
-    expect(result.failed, 0);
-    expect(await db.loadPendingToggles(userKey), isEmpty);
-  });
-
-  test('sync keeps latest odd toggle queued when API call fails', () async {
-    final service = _RecordingAssetService(failingFeatureIds: const {9});
-    final db = _MemoryLocalDatabase();
-    const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [9, 9, 9]);
-
-    final repository = AssetRepository(service, () async => userKey, db);
-
-    final result = await repository.syncQueuedResponses();
-    final remaining = await db.loadPendingToggles(userKey);
-
-    expect(service.toggledFeatureIds, [9]);
-    expect(result.totalPending, 1);
-    expect(result.synced, 0);
-    expect(result.failed, 1);
-    expect(remaining, hasLength(1));
-    expect(remaining.single.featureId, 9);
-    // Queue ID 3 is the latest one.
-    expect(remaining.single.queueId, 3);
+    // Since verification step sees it's still false, it calls toggle twice
+    expect(service.toggledFeatureIds, [42, 42]);
   });
 }

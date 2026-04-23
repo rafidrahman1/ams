@@ -5,9 +5,11 @@ import 'package:sqflite/sqflite.dart';
 
 class ToggleResponseQueueItem {
   final int queueId;
+  final String astId;
   final int featureId;
+  final bool targetState;
 
-  const ToggleResponseQueueItem({required this.queueId, required this.featureId});
+  const ToggleResponseQueueItem({required this.queueId, required this.astId, required this.featureId, required this.targetState});
 }
 
 class LocalDatabase {
@@ -27,15 +29,18 @@ class LocalDatabase {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, _databaseName),
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // Migration: Drop old table if it exists and recreate everything with user_key
           await db.execute('DROP TABLE IF EXISTS $_togglesTable');
           await _createTables(db);
+        } else if (oldVersion < 3) {
+          // Add ast_id and target_state to toggles table
+          await db.execute('ALTER TABLE $_togglesTable ADD COLUMN ast_id TEXT NOT NULL DEFAULT ""');
+          await db.execute('ALTER TABLE $_togglesTable ADD COLUMN target_state INTEGER NOT NULL DEFAULT 0');
         }
       },
     );
@@ -46,7 +51,9 @@ class LocalDatabase {
       CREATE TABLE $_togglesTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_key TEXT NOT NULL,
+        ast_id TEXT NOT NULL,
         feature_id INTEGER NOT NULL,
+        target_state INTEGER NOT NULL,
         created_at INTEGER NOT NULL
       )
     ''');
@@ -110,27 +117,35 @@ class LocalDatabase {
   }
 
   // Pending Toggles
-  Future<int> enqueueToggles(String userKey, Iterable<int> featureIds) async {
-    final cleaned = featureIds.where((id) => id > 0).toList(growable: false);
-    if (cleaned.isEmpty) return 0;
+  Future<int> enqueueToggles(String userKey, String astId, List<({int featureId, bool targetState})> toggles) async {
+    if (toggles.isEmpty) return 0;
 
     final db = await _getDatabase();
     final batch = db.batch();
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    for (final featureId in cleaned) {
-      batch.insert(_togglesTable, {'user_key': userKey, 'feature_id': featureId, 'created_at': now});
+    for (final toggle in toggles) {
+      batch.insert(_togglesTable, {'user_key': userKey, 'ast_id': astId, 'feature_id': toggle.featureId, 'target_state': toggle.targetState ? 1 : 0, 'created_at': now});
     }
 
     await batch.commit(noResult: true);
-    return cleaned.length;
+    return toggles.length;
   }
 
   Future<List<ToggleResponseQueueItem>> loadPendingToggles(String userKey) async {
     final db = await _getDatabase();
-    final rows = await db.query(_togglesTable, columns: ['id', 'feature_id'], where: 'user_key = ?', whereArgs: [userKey], orderBy: 'id ASC');
+    final rows = await db.query(_togglesTable, where: 'user_key = ?', whereArgs: [userKey], orderBy: 'id ASC');
 
-    return rows.map((row) => ToggleResponseQueueItem(queueId: row['id'] as int, featureId: row['feature_id'] as int)).toList(growable: false);
+    return rows
+        .map(
+          (row) => ToggleResponseQueueItem(
+            queueId: row['id'] as int,
+            astId: row['ast_id'] as String,
+            featureId: row['feature_id'] as int,
+            targetState: (row['target_state'] as int) == 1,
+          ),
+        )
+        .toList(growable: false);
   }
 
   Future<void> removeQueuedToggles(Iterable<int> queueIds) async {

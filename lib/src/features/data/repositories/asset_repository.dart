@@ -22,21 +22,21 @@ class AssetRepository {
       return checklist;
     }
 
-    final toggleCounts = <int, int>{};
+    final latestTargetStates = <int, bool>{};
     for (final item in pending) {
-      toggleCounts.update(item.featureId, (count) => count + 1, ifAbsent: () => 1);
+      latestTargetStates[item.featureId] = item.targetState;
     }
 
-    return checklist
-        .map((item) {
-          final pendingToggleCount = toggleCounts[item.featureId] ?? 0;
-          if (pendingToggleCount.isOdd) {
-            return AssetChecklistItem(featureId: item.featureId, title: item.title, response: !item.response);
-          }
-
-          return item;
-        })
-        .toList(growable: false);
+    return checklist.map((item) {
+      if (latestTargetStates.containsKey(item.featureId)) {
+        return AssetChecklistItem(
+          featureId: item.featureId,
+          title: item.title,
+          response: latestTargetStates[item.featureId]!,
+        );
+      }
+      return item;
+    }).toList(growable: false);
   }
 
   Future<List<VolunteerAsset>> fetchMyAssets() async {
@@ -113,11 +113,11 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueResponseToggles(Iterable<int> featureIds) async {
+  Future<int> queueResponseToggles(String astId, List<({int featureId, bool targetState})> toggles) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
-    return db.enqueueToggles(userKey, featureIds);
+    return db.enqueueToggles(userKey, astId, toggles);
   }
 
   Future<ToggleSyncResult> syncQueuedResponses() async {
@@ -131,47 +131,76 @@ class AssetRepository {
       return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
     }
 
-    final featureQueueIds = <int, List<int>>{};
+    final groups = <String, List<ToggleResponseQueueItem>>{};
     for (final item in pending) {
-      featureQueueIds.putIfAbsent(item.featureId, () => <int>[]).add(item.queueId);
+      groups.putIfAbsent(item.astId, () => []).add(item);
     }
-
-    final removableQueueIds = <int>[];
-    final oddParityFeatureIds = <int>[];
-
-    featureQueueIds.forEach((featureId, queueIds) {
-      if (queueIds.length.isEven) {
-        // Even toggle counts cancel out and do not need a network sync.
-        removableQueueIds.addAll(queueIds);
-        return;
-      }
-
-      // Keep only the latest pending toggle for this feature as the sync action.
-      if (queueIds.length > 1) {
-        removableQueueIds.addAll(queueIds.sublist(0, queueIds.length - 1));
-      }
-      oddParityFeatureIds.add(featureId);
-    });
 
     var syncedCount = 0;
     var failedCount = 0;
+    final removableQueueIds = <int>[];
 
-    for (final featureId in oddParityFeatureIds) {
-      final queueIds = featureQueueIds[featureId]!;
-      final latestQueueId = queueIds.last;
+    for (final entry in groups.entries) {
+      final astId = entry.key;
+      final toggles = entry.value;
 
       try {
-        await service.toggleChecklistResponse(featureId);
-        removableQueueIds.add(latestQueueId);
-        syncedCount += 1;
+        final serverChecklist = await service.fetchChecklistByAssetId(astId);
+        final serverStateMap = {for (var item in serverChecklist) item.featureId: item.response};
+
+        final uniqueFeatures = <int, ToggleResponseQueueItem>{};
+        for (final t in toggles) {
+          uniqueFeatures[t.featureId] = t;
+        }
+
+        bool groupSuccess = true;
+        for (final featureId in uniqueFeatures.keys) {
+          final target = uniqueFeatures[featureId]!;
+          final currentOnServer = serverStateMap[featureId] ?? false;
+
+          if (currentOnServer != target.targetState) {
+            try {
+              await service.toggleChecklistResponse(featureId);
+              syncedCount++;
+            } catch (_) {
+              failedCount++;
+              groupSuccess = false;
+            }
+          } else {
+            syncedCount++;
+          }
+        }
+
+        if (groupSuccess) {
+          final verifiedChecklist = await service.fetchChecklistByAssetId(astId);
+          final verifiedStateMap = {for (var item in verifiedChecklist) item.featureId: item.response};
+
+          bool allVerified = true;
+          for (final featureId in uniqueFeatures.keys) {
+            final target = uniqueFeatures[featureId]!;
+            if (verifiedStateMap[featureId] != target.targetState) {
+              try {
+                await service.toggleChecklistResponse(featureId);
+              } catch (_) {
+                allVerified = false;
+              }
+            }
+          }
+
+          if (allVerified) {
+            removableQueueIds.addAll(toggles.map((t) => t.queueId));
+          }
+        }
       } catch (_) {
-        failedCount += 1;
+        failedCount += toggles.length;
       }
     }
 
-    await db.removeQueuedToggles(removableQueueIds);
+    if (removableQueueIds.isNotEmpty) {
+      await db.removeQueuedToggles(removableQueueIds);
+    }
 
-    return ToggleSyncResult(totalPending: oddParityFeatureIds.length, synced: syncedCount, failed: failedCount);
+    return ToggleSyncResult(totalPending: pending.length, synced: syncedCount, failed: failedCount);
   }
 
   Future<void> clearCache() async {
