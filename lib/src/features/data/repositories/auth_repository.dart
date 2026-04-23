@@ -34,6 +34,7 @@ class AuthRepository {
 
   Future<void> logout() async {
     await storage.clear();
+    await assetRepository.clearCache();
   }
 
   String _resolveCacheKey(LoginResponse response, String fallbackEmail) {

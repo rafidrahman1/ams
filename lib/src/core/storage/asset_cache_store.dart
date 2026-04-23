@@ -55,4 +55,9 @@ class AssetCacheStore {
 
     return rawItems.whereType<Map<String, dynamic>>().map(AssetChecklistItem.fromCacheJson).toList(growable: false);
   }
+
+  Future<void> clear() async {
+    final prefs = await _prefs();
+    await prefs.clear();
+  }
 }

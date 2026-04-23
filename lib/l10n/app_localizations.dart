@@ -122,6 +122,24 @@ abstract class AppLocalizations {
   /// **'Logout'**
   String get logout;
 
+  /// No description provided for @logoutConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout Confirmation'**
+  String get logoutConfirmationTitle;
+
+  /// No description provided for @logoutConfirmationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logoutConfirmationMessage;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
   /// No description provided for @scan.
   ///
   /// In en, this message translates to:

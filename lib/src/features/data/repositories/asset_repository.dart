@@ -166,6 +166,11 @@ class AssetRepository {
 
     return ToggleSyncResult(totalPending: oddParityFeatureIds.length, synced: syncedCount, failed: failedCount);
   }
+
+  Future<void> clearCache() async {
+    await cache.clear();
+    await toggleQueue.clear();
+  }
 }
 
 class ToggleSyncResult {

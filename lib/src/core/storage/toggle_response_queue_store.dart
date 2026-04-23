@@ -71,4 +71,9 @@ class ToggleResponseQueueStore {
     final placeholders = List.filled(ids.length, '?').join(', ');
     await db.delete(_tableName, where: 'id IN ($placeholders)', whereArgs: ids);
   }
+
+  Future<void> clear() async {
+    final db = await _database();
+    await db.delete(_tableName);
+  }
 }

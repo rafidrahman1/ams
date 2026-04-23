@@ -57,13 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final scannedValue = await NfcParser.extractTagValue(tag);
         if (scannedValue != null && mounted) {
           final l10n = AppLocalizations.of(context)!;
-          HomeScreenActions.openAssetChecklist(
-            context: context,
-            ref: ref,
-            scannedValue: scannedValue,
-            isMounted: () => mounted,
-            mismatchMessage: l10n.nfcTagMismatch,
-          );
+          HomeScreenActions.openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, isMounted: () => mounted, mismatchMessage: l10n.nfcTagMismatch);
         }
       },
     );
@@ -150,6 +144,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _showLogoutConfirmation() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.logoutConfirmationTitle),
+        content: Text(l10n.logoutConfirmationMessage),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l10n.logout)),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(authProvider.notifier).logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -165,15 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const LanguageToggle(),
           Padding(
             padding: const EdgeInsets.only(right: 10),
-            child: IconButton(
-              tooltip: l10n.logout,
-              onPressed: isBusy
-                  ? null
-                  : () async {
-                      await ref.read(authProvider.notifier).logout();
-                    },
-              icon: const Icon(Icons.logout),
-            ),
+            child: IconButton(tooltip: l10n.logout, onPressed: isBusy ? null : _showLogoutConfirmation, icon: const Icon(Icons.logout)),
           ),
         ],
       ),

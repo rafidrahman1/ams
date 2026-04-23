@@ -21,6 +21,16 @@ class AppLocalizationsBn extends AppLocalizations {
   String get logout => 'লগ আউট';
 
   @override
+  String get logoutConfirmationTitle => 'লগ আউট নিশ্চিতকরণ';
+
+  @override
+  String get logoutConfirmationMessage =>
+      'আপনি কি নিশ্চিতভাবে লগ আউট করতে চান?';
+
+  @override
+  String get cancel => 'বাতিল';
+
+  @override
   String get scan => 'স্ক্যান';
 
   @override
