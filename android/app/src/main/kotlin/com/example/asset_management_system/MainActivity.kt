@@ -1,4 +1,4 @@
-package com.example.asset_management_system
+package com.catchbangladesh.ams
 
 import io.flutter.embedding.android.FlutterActivity
 

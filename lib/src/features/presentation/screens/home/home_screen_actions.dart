@@ -41,19 +41,13 @@ class HomeScreenActions {
     await _openChecklistFromScan(context: context, ref: ref, isMounted: isMounted, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch);
   }
 
-  static Future<void> _openChecklistFromScan({
+  static Future<void> openAssetChecklist({
     required BuildContext context,
     required WidgetRef ref,
+    required String scannedValue,
     required bool Function() isMounted,
-    required Future<String?> Function(BuildContext context) scanLauncher,
     required String mismatchMessage,
   }) async {
-    final scannedValue = await scanLauncher(context);
-
-    if (!isMounted()) {
-      return;
-    }
-
     final scannedAstId = normalizeAstId(scannedValue);
     if (scannedAstId == null) {
       return;
@@ -82,5 +76,27 @@ class HomeScreenActions {
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+
+  static Future<void> _openChecklistFromScan({
+    required BuildContext context,
+    required WidgetRef ref,
+    required bool Function() isMounted,
+    required Future<String?> Function(BuildContext context) scanLauncher,
+    required String mismatchMessage,
+  }) async {
+    final scannedValue = await scanLauncher(context);
+
+    if (!isMounted() || scannedValue == null) {
+      return;
+    }
+
+    await openAssetChecklist(
+      context: context,
+      ref: ref,
+      scannedValue: scannedValue,
+      isMounted: isMounted,
+      mismatchMessage: mismatchMessage,
+    );
   }
 }
