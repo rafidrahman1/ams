@@ -124,21 +124,47 @@ class AssetRepository {
       return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
     }
 
-    final syncedQueueIds = <int>[];
+    final featureQueueIds = <int, List<int>>{};
+    for (final item in pending) {
+      featureQueueIds.putIfAbsent(item.featureId, () => <int>[]).add(item.queueId);
+    }
+
+    final removableQueueIds = <int>[];
+    final oddParityFeatureIds = <int>[];
+
+    featureQueueIds.forEach((featureId, queueIds) {
+      if (queueIds.length.isEven) {
+        // Even toggle counts cancel out and do not need a network sync.
+        removableQueueIds.addAll(queueIds);
+        return;
+      }
+
+      // Keep only the latest pending toggle for this feature as the sync action.
+      if (queueIds.length > 1) {
+        removableQueueIds.addAll(queueIds.sublist(0, queueIds.length - 1));
+      }
+      oddParityFeatureIds.add(featureId);
+    });
+
+    var syncedCount = 0;
     var failedCount = 0;
 
-    for (final item in pending) {
+    for (final featureId in oddParityFeatureIds) {
+      final queueIds = featureQueueIds[featureId]!;
+      final latestQueueId = queueIds.last;
+
       try {
-        await service.toggleChecklistResponse(item.featureId);
-        syncedQueueIds.add(item.queueId);
+        await service.toggleChecklistResponse(featureId);
+        removableQueueIds.add(latestQueueId);
+        syncedCount += 1;
       } catch (_) {
         failedCount += 1;
       }
     }
 
-    await toggleQueue.removeQueuedIds(syncedQueueIds);
+    await toggleQueue.removeQueuedIds(removableQueueIds);
 
-    return ToggleSyncResult(totalPending: pending.length, synced: syncedQueueIds.length, failed: failedCount);
+    return ToggleSyncResult(totalPending: oddParityFeatureIds.length, synced: syncedCount, failed: failedCount);
   }
 }
 

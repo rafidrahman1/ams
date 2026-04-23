@@ -129,6 +129,59 @@ class _SingleChecklistThenOfflineService extends AssetService {
   }
 }
 
+class _RecordingAssetService extends AssetService {
+  _RecordingAssetService({this.failingFeatureIds = const <int>{}}) : super(ApiClient(TokenStorage()));
+
+  final Set<int> failingFeatureIds;
+  final List<int> toggledFeatureIds = <int>[];
+
+  @override
+  Future<List<VolunteerAsset>> fetchMyAssets() async => const <VolunteerAsset>[];
+
+  @override
+  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async => const <AssetChecklistItem>[];
+
+  @override
+  Future<void> toggleChecklistResponse(int featureId) async {
+    toggledFeatureIds.add(featureId);
+    if (failingFeatureIds.contains(featureId)) {
+      throw Exception('sync failed for feature: $featureId');
+    }
+  }
+}
+
+class _MemoryToggleQueueStore extends ToggleResponseQueueStore {
+  _MemoryToggleQueueStore(List<ToggleResponseQueueItem> initialItems) : _items = List<ToggleResponseQueueItem>.from(initialItems);
+
+  final List<ToggleResponseQueueItem> _items;
+
+  @override
+  Future<int> enqueueAll(Iterable<int> featureIds) async {
+    final cleaned = featureIds.where((id) => id > 0).toList(growable: false);
+    if (cleaned.isEmpty) {
+      return 0;
+    }
+
+    var nextQueueId = _items.isEmpty ? 1 : _items.map((item) => item.queueId).reduce((left, right) => left > right ? left : right) + 1;
+
+    for (final featureId in cleaned) {
+      _items.add(ToggleResponseQueueItem(queueId: nextQueueId, featureId: featureId));
+      nextQueueId += 1;
+    }
+
+    return cleaned.length;
+  }
+
+  @override
+  Future<List<ToggleResponseQueueItem>> loadPending() async => List<ToggleResponseQueueItem>.from(_items);
+
+  @override
+  Future<void> removeQueuedIds(Iterable<int> queueIds) async {
+    final idSet = queueIds.toSet();
+    _items.removeWhere((item) => idSet.contains(item.queueId));
+  }
+}
+
 void main() {
   testWidgets('email form only appears after pressing email login', (WidgetTester tester) async {
     await tester.pumpWidget(ProviderScope(overrides: [authProvider.overrideWith(_TestAuthNotifier.new)], child: _localizedApp(const LoginScreen())));
@@ -471,5 +524,63 @@ void main() {
     expect(firstChecklist.first.response, isTrue);
     expect(secondChecklist, hasLength(1));
     expect(secondChecklist.first.response, isTrue);
+  });
+
+  test('sync compacts repeated toggles for the same feature into one call', () async {
+    final service = _RecordingAssetService();
+    final queue = _MemoryToggleQueueStore(const [
+      ToggleResponseQueueItem(queueId: 1, featureId: 42),
+      ToggleResponseQueueItem(queueId: 2, featureId: 42),
+      ToggleResponseQueueItem(queueId: 3, featureId: 42),
+    ]);
+    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+
+    final result = await repository.syncQueuedResponses();
+
+    expect(service.toggledFeatureIds, [42]);
+    expect(result.totalPending, 1);
+    expect(result.synced, 1);
+    expect(result.failed, 0);
+    expect(await queue.loadPending(), isEmpty);
+  });
+
+  test('sync drops even toggle counts without calling the API', () async {
+    final service = _RecordingAssetService();
+    final queue = _MemoryToggleQueueStore(const [
+      ToggleResponseQueueItem(queueId: 1, featureId: 7),
+      ToggleResponseQueueItem(queueId: 2, featureId: 7),
+      ToggleResponseQueueItem(queueId: 3, featureId: 7),
+      ToggleResponseQueueItem(queueId: 4, featureId: 7),
+    ]);
+    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+
+    final result = await repository.syncQueuedResponses();
+
+    expect(service.toggledFeatureIds, isEmpty);
+    expect(result.totalPending, 0);
+    expect(result.synced, 0);
+    expect(result.failed, 0);
+    expect(await queue.loadPending(), isEmpty);
+  });
+
+  test('sync keeps latest odd toggle queued when API call fails', () async {
+    final service = _RecordingAssetService(failingFeatureIds: const {9});
+    final queue = _MemoryToggleQueueStore(const [
+      ToggleResponseQueueItem(queueId: 1, featureId: 9),
+      ToggleResponseQueueItem(queueId: 2, featureId: 9),
+      ToggleResponseQueueItem(queueId: 3, featureId: 9),
+    ]);
+    final repository = AssetRepository(service, () async => 'user@example.com', AssetCacheStore(), queue);
+
+    final result = await repository.syncQueuedResponses();
+    final remaining = await queue.loadPending();
+
+    expect(service.toggledFeatureIds, [9]);
+    expect(result.totalPending, 1);
+    expect(result.synced, 0);
+    expect(result.failed, 1);
+    expect(remaining, hasLength(1));
+    expect(remaining.single.featureId, 9);
+    expect(remaining.single.queueId, 3);
   });
 }
