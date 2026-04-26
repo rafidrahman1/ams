@@ -37,3 +37,15 @@ class AssetChecklistItem {
     return normalized == 'true' || normalized == '1' || normalized == 'yes';
   }
 }
+
+class AssetChecklist {
+  final List<AssetChecklistItem> items;
+  final String status;
+  final String remark;
+
+  const AssetChecklist({
+    required this.items,
+    this.status = 'ACTIVE',
+    this.remark = '',
+  });
+}

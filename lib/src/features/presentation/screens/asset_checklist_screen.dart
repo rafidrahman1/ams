@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/asset_provider.dart';
 import '../widgets/asset_card_builder.dart';
+import '../../data/models/asset_checklist_item.dart';
 
 class AssetChecklistScreen extends ConsumerStatefulWidget {
   const AssetChecklistScreen({super.key, required this.asset});
@@ -27,7 +28,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
     super.dispose();
   }
 
-  void _syncCompletedState(String astId, List<bool> nextCompleted) {
+  void _syncState(String astId, AssetChecklist data) {
     if (_loadedAstId == astId) {
       return;
     }
@@ -36,7 +37,9 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       if (!mounted) return;
       setState(() {
         _loadedAstId = astId;
-        _completed = nextCompleted;
+        _completed = data.items.map((item) => item.response).toList();
+        _status = data.status;
+        _remarksController.text = data.remark;
       });
     });
   }
@@ -58,7 +61,8 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                 final navigator = Navigator.of(context);
                 final messenger = ScaffoldMessenger.of(context);
                 try {
-                  final items = await ref.read(assetChecklistProvider(widget.asset.astId).future);
+                  final data = await ref.read(assetChecklistProvider(widget.asset.astId).future);
+                  final items = data.items;
                   final completed = _completed.length == items.length ? List<bool>.from(_completed) : items.map((item) => item.response).toList();
 
                   final submitItems = <({int featureId, bool response})>[];
@@ -68,12 +72,9 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
 
                   // Always queue the submission so Home -> Sync can submit later.
                   // This keeps behavior predictable for users who save while offline.
-                  await ref.read(assetRepositoryProvider).queueChecklistSubmission(
-                        astId: widget.asset.astId,
-                        status: _status,
-                        remark: _remarksController.text.trim(),
-                        items: submitItems,
-                      );
+                  await ref
+                      .read(assetRepositoryProvider)
+                      .queueChecklistSubmission(astId: widget.asset.astId, status: _status, remark: _remarksController.text.trim(), items: submitItems);
 
                   ref.invalidate(assetChecklistProvider(widget.asset.astId));
 
@@ -95,8 +96,9 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         child: checklistAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(child: Text(error.toString())),
-          data: (items) {
-            _syncCompletedState(widget.asset.astId, items.map((item) => item.response).toList());
+          data: (data) {
+            _syncState(widget.asset.astId, data);
+            final items = data.items;
 
             if (items.isEmpty) {
               return const Center(child: Text('No checklist items found'));

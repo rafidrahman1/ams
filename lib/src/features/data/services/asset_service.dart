@@ -24,7 +24,7 @@ class AssetService {
     return items.whereType<Map<String, dynamic>>().map(VolunteerAsset.fromAssignmentJson).toList();
   }
 
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     final res = await client.get('${Endpoints.assetChecklistByAssetBase}/$astId', auth: true);
     final body = jsonDecode(res.body);
 
@@ -35,10 +35,19 @@ class AssetService {
     final data = body['data'];
     final responses = data is Map<String, dynamic> ? data['items'] as List<dynamic>? ?? const <dynamic>[] : const <dynamic>[];
 
-    return responses.whereType<Map<String, dynamic>>().map(AssetChecklistItem.fromJson).toList();
+    final items = responses.whereType<Map<String, dynamic>>().map(AssetChecklistItem.fromJson).toList();
+
+    String status = 'ACTIVE';
+    String remark = '';
+    if (data is Map<String, dynamic>) {
+      status = (data['status'] ?? 'ACTIVE').toString();
+      remark = (data['remark'] ?? '').toString();
+    }
+
+    return AssetChecklist(items: items, status: status, remark: remark);
   }
 
-  Future<void> submitChecklist({
+  Future<Map<String, dynamic>> submitChecklist({
     required String astId,
     required String status,
     required String remark,
@@ -59,5 +68,7 @@ class AssetService {
     if (res.statusCode != 200 || body is! Map<String, dynamic> || body['code'] != 200) {
       throw Exception('Failed to submit checklist');
     }
+
+    return body;
   }
 }

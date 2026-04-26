@@ -1,5 +1,6 @@
-import 'package:asset_management_system/src/core/storage/local_database.dart';
 import 'dart:convert';
+
+import 'package:asset_management_system/src/core/storage/local_database.dart';
 
 import '../models/asset_checklist_item.dart';
 import '../models/volunteer_asset.dart';
@@ -38,20 +39,21 @@ class AssetRepository {
     }
   }
 
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     final userKey = await _resolvedUserKey();
 
     try {
       final checklist = await service.fetchChecklistByAssetId(astId);
       if (userKey != null) {
-        await db.saveChecklist(userKey, astId, checklist);
+        await db.saveChecklist(userKey, astId, checklist.items);
       }
 
       return userKey != null ? await _applyPendingSubmission(userKey, astId, checklist) : checklist;
     } catch (_) {
       if (userKey != null) {
-        final cachedChecklist = await db.loadChecklist(userKey, astId);
-        if (cachedChecklist.isNotEmpty) {
+        final cachedItems = await db.loadChecklist(userKey, astId);
+        if (cachedItems.isNotEmpty) {
+          final cachedChecklist = AssetChecklist(items: cachedItems);
           return _applyPendingSubmission(userKey, astId, cachedChecklist);
         }
       }
@@ -60,15 +62,19 @@ class AssetRepository {
     }
   }
 
-  Future<List<AssetChecklistItem>> _applyPendingSubmission(String userKey, String astId, List<AssetChecklistItem> checklist) async {
+  Future<AssetChecklist> _applyPendingSubmission(String userKey, String astId, AssetChecklist checklist) async {
     final payloadJson = await db.loadLatestChecklistSubmissionPayload(userKey, astId);
-    if (payloadJson == null || payloadJson.trim().isEmpty || checklist.isEmpty) {
+    if (payloadJson == null || payloadJson.trim().isEmpty || checklist.items.isEmpty) {
       return checklist;
     }
 
     try {
       final payload = jsonDecode(payloadJson);
       if (payload is! Map<String, dynamic>) return checklist;
+
+      final status = (payload['status'] ?? checklist.status).toString();
+      final remark = (payload['remark'] ?? checklist.remark).toString();
+
       final items = payload['items'] as List<dynamic>? ?? const <dynamic>[];
 
       final latestStates = <int, bool>{};
@@ -79,11 +85,17 @@ class AssetRepository {
         }
       }
 
-      if (latestStates.isEmpty) return checklist;
+      final updatedItems = latestStates.isEmpty
+          ? checklist.items
+          : checklist.items
+                .map(
+                  (item) => latestStates.containsKey(item.featureId)
+                      ? AssetChecklistItem(featureId: item.featureId, title: item.title, response: latestStates[item.featureId]!)
+                      : item,
+                )
+                .toList(growable: false);
 
-      return checklist
-          .map((item) => latestStates.containsKey(item.featureId) ? AssetChecklistItem(featureId: item.featureId, title: item.title, response: latestStates[item.featureId]!) : item)
-          .toList(growable: false);
+      return AssetChecklist(items: updatedItems, status: status, remark: remark);
     } catch (_) {
       return checklist;
     }
@@ -107,7 +119,7 @@ class AssetRepository {
 
         try {
           final checklist = await service.fetchChecklistByAssetId(astId);
-          await db.saveChecklist(trimmedUserKey, astId, checklist);
+          await db.saveChecklist(trimmedUserKey, astId, checklist.items);
         } catch (_) {
           final cachedChecklist = await db.loadChecklist(trimmedUserKey, astId);
           if (cachedChecklist.isNotEmpty) {
@@ -120,12 +132,7 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueChecklistSubmission({
-    required String astId,
-    required String status,
-    required String remark,
-    required List<({int featureId, bool response})> items,
-  }) async {
+  Future<int> queueChecklistSubmission({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
@@ -138,22 +145,28 @@ class AssetRepository {
     return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
   }
 
-  Future<void> submitChecklist({
-    required String astId,
-    required String status,
-    required String remark,
-    required List<({int featureId, bool response})> items,
-  }) async {
+  Future<void> submitChecklist({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) {
       throw Exception('Missing session');
     }
 
+    final payload = {
+      'ast_ID': astId,
+      'status': status,
+      'remark': remark,
+      'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+    };
+
     try {
-      await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+      final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+
+      if (!_isSyncVerified(submission: payload, response: responseBody)) {
+        throw Exception('Sync verification failed');
+      }
+
       // Keep the local cache aligned with what the user just submitted.
-      final updatedChecklist =
-          items.map((i) => AssetChecklistItem(featureId: i.featureId, title: '', response: i.response)).toList(growable: false);
+      final updatedChecklist = items.map((i) => AssetChecklistItem(featureId: i.featureId, title: '', response: i.response)).toList(growable: false);
       // We don't have titles here; preserve cached titles by merging with last cached checklist if possible.
       final cached = await db.loadChecklist(userKey, astId);
       if (cached.isNotEmpty) {
@@ -213,9 +226,13 @@ class AssetRepository {
           items.add((featureId: featureId, response: _asBool(it['response'])));
         }
 
-        await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
-        syncedCount += 1;
-        removableQueueIds.add(queueItem.queueId);
+        final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+        if (_isSyncVerified(submission: payload, response: responseBody)) {
+          syncedCount += 1;
+          removableQueueIds.add(queueItem.queueId);
+        } else {
+          failedCount += 1;
+        }
       } catch (_) {
         failedCount += 1;
       }
@@ -226,6 +243,37 @@ class AssetRepository {
     }
 
     return ToggleSyncResult(totalPending: pending.length, synced: syncedCount, failed: failedCount);
+  }
+
+  bool _isSyncVerified({required Map<String, dynamic> submission, required Map<String, dynamic> response}) {
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) return false;
+
+    // Check status
+    final submittedStatus = submission['status']?.toString();
+    final receivedStatus = data['asset_status']?.toString();
+    if (submittedStatus != receivedStatus) return false;
+
+    // Check remark - API uses 'remakk' based on user sample
+    final submittedRemark = submission['remark']?.toString();
+    final receivedRemark = (data['remakk'] ?? data['remark'])?.toString();
+    if (submittedRemark != receivedRemark) return false;
+
+    // Check items
+    final submittedItems = submission['items'] as List<dynamic>? ?? [];
+    final receivedFeatures = data['features'] as List<dynamic>? ?? [];
+
+    if (submittedItems.length != receivedFeatures.length) return false;
+
+    final submittedMap = {for (final item in submittedItems.whereType<Map<String, dynamic>>()) _asInt(item['feature_id']): _asBool(item['response'])};
+
+    for (final feature in receivedFeatures.whereType<Map<String, dynamic>>()) {
+      final fid = _asInt(feature['feature_id']);
+      final res = _asBool(feature['response']);
+      if (submittedMap[fid] != res) return false;
+    }
+
+    return true;
   }
 
   Future<void> clearCache() async {

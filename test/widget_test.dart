@@ -71,12 +71,29 @@ class _FakeAssetService extends AssetService {
   }
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     if (failChecklistIds.contains(astId)) {
       throw Exception('offline');
     }
 
-    return checklists[astId] ?? const <AssetChecklistItem>[];
+    return AssetChecklist(items: checklists[astId] ?? const <AssetChecklistItem>[]);
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
@@ -159,13 +176,30 @@ class _SingleChecklistThenOfflineService extends AssetService {
   Future<List<VolunteerAsset>> fetchMyAssets() async => assets;
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     _checklistFetchCount += 1;
     if (_checklistFetchCount > 1) {
       throw Exception('offline');
     }
 
-    return checklists[astId] ?? const <AssetChecklistItem>[];
+    return AssetChecklist(items: checklists[astId] ?? const <AssetChecklistItem>[]);
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
@@ -179,14 +213,27 @@ class _RecordingAssetService extends AssetService {
   Future<List<VolunteerAsset>> fetchMyAssets() async => const <VolunteerAsset>[];
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async => const <AssetChecklistItem>[];
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async => const AssetChecklist(items: <AssetChecklistItem>[]);
 
   @override
-  Future<void> submitChecklist({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
     submittedAstIds.add(astId);
     if (failSubmit) {
       throw Exception('sync failed');
     }
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
@@ -513,11 +560,7 @@ void main() {
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
     const userKey = 'user@example.com';
     final db = _MemoryLocalDatabase();
-    await db.enqueueChecklistSubmission(
-      userKey,
-      'AST-000001',
-      '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":1,"response":true}]}',
-    );
+    await db.enqueueChecklistSubmission(userKey, 'AST-000001', '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":1,"response":true}]}');
 
     final service = _SingleChecklistThenOfflineService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
