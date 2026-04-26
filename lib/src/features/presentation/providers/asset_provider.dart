@@ -18,17 +18,17 @@ final myAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
   return ref.read(assetRepositoryProvider).fetchMyAssets();
 });
 
-final assetChecklistProvider = FutureProvider.family<List<AssetChecklistItem>, String>((ref, astId) {
+final assetChecklistProvider = FutureProvider.family<AssetChecklist, String>((ref, astId) {
   return ref.read(assetRepositoryProvider).fetchChecklistByAssetId(astId);
 });
 
 final assetChecklistAllTrueProvider = FutureProvider.family<bool, String>((ref, astId) async {
   final checklist = await ref.watch(assetChecklistProvider(astId).future);
-  if (checklist.isEmpty) {
+  if (checklist.items.isEmpty) {
     return false;
   }
 
-  return checklist.every((item) => item.response);
+  return checklist.items.every((item) => item.response);
 });
 
 final homeBootstrapProvider = FutureProvider<void>((ref) async {

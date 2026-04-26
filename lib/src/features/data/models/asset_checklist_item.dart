@@ -6,11 +6,19 @@ class AssetChecklistItem {
   const AssetChecklistItem({required this.featureId, required this.title, required this.response});
 
   factory AssetChecklistItem.fromJson(Map<String, dynamic> json) {
-    return AssetChecklistItem(featureId: _asInt(json['feature_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
+    return AssetChecklistItem(
+      featureId: _asInt(json['feature_id'] ?? json['featureId']),
+      title: (json['feature'] ?? json['title'] ?? '').toString(),
+      response: _asBool(json['response']),
+    );
   }
 
   factory AssetChecklistItem.fromCacheJson(Map<String, dynamic> json) {
-    return AssetChecklistItem(featureId: _asInt(json['featureId'] ?? json['feature_id']), title: (json['title'] ?? '').toString(), response: _asBool(json['response']));
+    return AssetChecklistItem(
+      featureId: _asInt(json['featureId'] ?? json['feature_id']),
+      title: (json['title'] ?? json['feature'] ?? '').toString(),
+      response: _asBool(json['response']),
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -28,4 +36,16 @@ class AssetChecklistItem {
     final normalized = value?.toString().trim().toLowerCase();
     return normalized == 'true' || normalized == '1' || normalized == 'yes';
   }
+}
+
+class AssetChecklist {
+  final List<AssetChecklistItem> items;
+  final String status;
+  final String remark;
+
+  const AssetChecklist({
+    required this.items,
+    this.status = 'ACTIVE',
+    this.remark = '',
+  });
 }

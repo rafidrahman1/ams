@@ -71,19 +71,36 @@ class _FakeAssetService extends AssetService {
   }
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     if (failChecklistIds.contains(astId)) {
       throw Exception('offline');
     }
 
-    return checklists[astId] ?? const <AssetChecklistItem>[];
+    return AssetChecklist(items: checklists[astId] ?? const <AssetChecklistItem>[]);
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
 class _MemoryLocalDatabase extends LocalDatabase {
   final Map<String, List<VolunteerAsset>> _assets = {};
   final Map<String, List<AssetChecklistItem>> _checklists = {};
-  final List<Map<String, dynamic>> _toggles = [];
+  final List<Map<String, dynamic>> _submissions = [];
   int _nextQueueId = 1;
 
   @override
@@ -107,32 +124,44 @@ class _MemoryLocalDatabase extends LocalDatabase {
   }
 
   @override
-  Future<int> enqueueToggles(String userKey, Iterable<int> featureIds) async {
-    for (final id in featureIds) {
-      _toggles.add({'id': _nextQueueId++, 'user_key': userKey, 'feature_id': id});
-    }
-    return featureIds.length;
+  Future<int> enqueueChecklistSubmission(String userKey, String astId, String payloadJson) async {
+    _submissions.add({'id': _nextQueueId++, 'user_key': userKey, 'ast_id': astId, 'payload_json': payloadJson, 'synced_at': null});
+    return 1;
   }
 
   @override
-  Future<List<ToggleResponseQueueItem>> loadPendingToggles(String userKey) async {
-    return _toggles
-        .where((t) => t['user_key'] == userKey)
-        .map((t) => ToggleResponseQueueItem(queueId: t['id'] as int, featureId: t['feature_id'] as int))
+  Future<List<ChecklistSubmissionQueueItem>> loadPendingChecklistSubmissions(String userKey) async {
+    return _submissions
+        .where((s) => s['user_key'] == userKey && s['synced_at'] == null)
+        .map((s) => ChecklistSubmissionQueueItem(queueId: s['id'] as int, astId: s['ast_id'] as String, payloadJson: s['payload_json'] as String))
         .toList();
   }
 
   @override
-  Future<void> removeQueuedToggles(Iterable<int> queueIds) async {
+  Future<void> markQueuedChecklistSubmissionsSynced(Iterable<int> queueIds) async {
     final idSet = queueIds.toSet();
-    _toggles.removeWhere((t) => idSet.contains(t['id']));
+    for (final s in _submissions) {
+      if (idSet.contains(s['id'])) {
+        s['synced_at'] = 1;
+      }
+    }
+  }
+
+  @override
+  Future<String?> loadLatestChecklistSubmissionPayload(String userKey, String astId) async {
+    for (final s in _submissions.reversed) {
+      if (s['user_key'] == userKey && s['ast_id'] == astId) {
+        return s['payload_json'] as String;
+      }
+    }
+    return null;
   }
 
   @override
   Future<void> clearAll() async {
     _assets.clear();
     _checklists.clear();
-    _toggles.clear();
+    _submissions.clear();
   }
 }
 
@@ -147,34 +176,64 @@ class _SingleChecklistThenOfflineService extends AssetService {
   Future<List<VolunteerAsset>> fetchMyAssets() async => assets;
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async {
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     _checklistFetchCount += 1;
     if (_checklistFetchCount > 1) {
       throw Exception('offline');
     }
 
-    return checklists[astId] ?? const <AssetChecklistItem>[];
+    return AssetChecklist(items: checklists[astId] ?? const <AssetChecklistItem>[]);
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
 class _RecordingAssetService extends AssetService {
-  _RecordingAssetService({this.failingFeatureIds = const <int>{}}) : super(ApiClient(TokenStorage()));
+  _RecordingAssetService({this.failSubmit = false}) : super(ApiClient(TokenStorage()));
 
-  final Set<int> failingFeatureIds;
-  final List<int> toggledFeatureIds = <int>[];
+  final bool failSubmit;
+  final List<String> submittedAstIds = <String>[];
 
   @override
   Future<List<VolunteerAsset>> fetchMyAssets() async => const <VolunteerAsset>[];
 
   @override
-  Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async => const <AssetChecklistItem>[];
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async => const AssetChecklist(items: <AssetChecklistItem>[]);
 
   @override
-  Future<void> toggleChecklistResponse(int featureId) async {
-    toggledFeatureIds.add(featureId);
-    if (failingFeatureIds.contains(featureId)) {
-      throw Exception('sync failed for feature: $featureId');
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    submittedAstIds.add(astId);
+    if (failSubmit) {
+      throw Exception('sync failed');
     }
+    return {
+      'code': 200,
+      'data': {
+        'asset_status': status,
+        'remakk': remark,
+        'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
   }
 }
 
@@ -298,7 +357,7 @@ void main() {
     expect(find.text('Battery Condition'), findsOneWidget);
   });
 
-  testWidgets('home scan opens checklist for matching nfc ast id', (WidgetTester tester) async {
+  testWidgets('home scan opens checklist for matching nfc_ast_id', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -425,7 +484,7 @@ void main() {
     expect(find.byType(SplashScreen), findsNothing);
   });
 
-  testWidgets('matching nfc scan opens checklist from qr nfc screen', (WidgetTester tester) async {
+  testWidgets('matching nfc scan opens checklist from qr_nfc_screen', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -448,7 +507,7 @@ void main() {
     expect(find.text('Checklist for Asset 1'), findsOneWidget);
   });
 
-  testWidgets('mismatched nfc scan keeps user on qr nfc screen', (WidgetTester tester) async {
+  testWidgets('mismatched nfc scan keeps user on qr_nfc_screen', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [nfcScannerLauncherProvider.overrideWithValue((context) async => 'WRONG-000999')],
@@ -501,7 +560,7 @@ void main() {
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
     const userKey = 'user@example.com';
     final db = _MemoryLocalDatabase();
-    await db.enqueueToggles(userKey, [1]);
+    await db.enqueueChecklistSubmission(userKey, 'AST-000001', '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":1,"response":true}]}');
 
     final service = _SingleChecklistThenOfflineService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
@@ -521,58 +580,18 @@ void main() {
     expect(secondChecklist.first.response, isTrue);
   });
 
-  test('sync compacts repeated toggles for the same feature into one call', () async {
+  test('sync submits the latest queued payload per asset', () async {
     final service = _RecordingAssetService();
     final db = _MemoryLocalDatabase();
     const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [42, 42, 42]);
+    const astId = 'AST-000001';
+
+    await db.enqueueChecklistSubmission(userKey, astId, '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":42,"response":true}]}');
 
     final repository = AssetRepository(service, () async => userKey, db);
 
-    final result = await repository.syncQueuedResponses();
+    await repository.syncQueuedResponses();
 
-    expect(service.toggledFeatureIds, [42]);
-    expect(result.totalPending, 1);
-    expect(result.synced, 1);
-    expect(result.failed, 0);
-    expect(await db.loadPendingToggles(userKey), isEmpty);
-  });
-
-  test('sync drops even toggle counts without calling the API', () async {
-    final service = _RecordingAssetService();
-    final db = _MemoryLocalDatabase();
-    const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [7, 7, 7, 7]);
-
-    final repository = AssetRepository(service, () async => userKey, db);
-
-    final result = await repository.syncQueuedResponses();
-
-    expect(service.toggledFeatureIds, isEmpty);
-    expect(result.totalPending, 0);
-    expect(result.synced, 0);
-    expect(result.failed, 0);
-    expect(await db.loadPendingToggles(userKey), isEmpty);
-  });
-
-  test('sync keeps latest odd toggle queued when API call fails', () async {
-    final service = _RecordingAssetService(failingFeatureIds: const {9});
-    final db = _MemoryLocalDatabase();
-    const userKey = 'user@example.com';
-    await db.enqueueToggles(userKey, [9, 9, 9]);
-
-    final repository = AssetRepository(service, () async => userKey, db);
-
-    final result = await repository.syncQueuedResponses();
-    final remaining = await db.loadPendingToggles(userKey);
-
-    expect(service.toggledFeatureIds, [9]);
-    expect(result.totalPending, 1);
-    expect(result.synced, 0);
-    expect(result.failed, 1);
-    expect(remaining, hasLength(1));
-    expect(remaining.single.featureId, 9);
-    // Queue ID 3 is the latest one.
-    expect(remaining.single.queueId, 3);
+    expect(service.submittedAstIds, [astId]);
   });
 }
