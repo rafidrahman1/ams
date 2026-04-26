@@ -1,4 +1,5 @@
 import 'package:asset_management_system/src/core/storage/local_database.dart';
+import 'dart:convert';
 
 import '../models/asset_checklist_item.dart';
 import '../models/volunteer_asset.dart';
@@ -14,27 +15,6 @@ class AssetRepository {
   Future<String?> _resolvedUserKey() async {
     final key = (await getUserKey())?.trim();
     return key == null || key.isEmpty ? null : key;
-  }
-
-  Future<List<AssetChecklistItem>> _applyPendingToggles(String userKey, List<AssetChecklistItem> checklist) async {
-    final pending = await db.loadPendingToggles(userKey);
-    if (pending.isEmpty || checklist.isEmpty) {
-      return checklist;
-    }
-
-    final latestTargetStates = <int, bool>{};
-    for (final item in pending) {
-      latestTargetStates[item.featureId] = item.targetState;
-    }
-
-    return checklist
-        .map((item) {
-          if (latestTargetStates.containsKey(item.featureId)) {
-            return AssetChecklistItem(featureId: item.featureId, title: item.title, response: latestTargetStates[item.featureId]!);
-          }
-          return item;
-        })
-        .toList(growable: false);
   }
 
   Future<List<VolunteerAsset>> fetchMyAssets() async {
@@ -67,16 +47,45 @@ class AssetRepository {
         await db.saveChecklist(userKey, astId, checklist);
       }
 
-      return userKey != null ? await _applyPendingToggles(userKey, checklist) : checklist;
+      return userKey != null ? await _applyPendingSubmission(userKey, astId, checklist) : checklist;
     } catch (_) {
       if (userKey != null) {
         final cachedChecklist = await db.loadChecklist(userKey, astId);
         if (cachedChecklist.isNotEmpty) {
-          return _applyPendingToggles(userKey, cachedChecklist);
+          return _applyPendingSubmission(userKey, astId, cachedChecklist);
         }
       }
 
       rethrow;
+    }
+  }
+
+  Future<List<AssetChecklistItem>> _applyPendingSubmission(String userKey, String astId, List<AssetChecklistItem> checklist) async {
+    final payloadJson = await db.loadLatestChecklistSubmissionPayload(userKey, astId);
+    if (payloadJson == null || payloadJson.trim().isEmpty || checklist.isEmpty) {
+      return checklist;
+    }
+
+    try {
+      final payload = jsonDecode(payloadJson);
+      if (payload is! Map<String, dynamic>) return checklist;
+      final items = payload['items'] as List<dynamic>? ?? const <dynamic>[];
+
+      final latestStates = <int, bool>{};
+      for (final it in items.whereType<Map<String, dynamic>>()) {
+        final featureId = _asInt(it['feature_id'] ?? it['featureId']);
+        if (featureId != 0) {
+          latestStates[featureId] = _asBool(it['response']);
+        }
+      }
+
+      if (latestStates.isEmpty) return checklist;
+
+      return checklist
+          .map((item) => latestStates.containsKey(item.featureId) ? AssetChecklistItem(featureId: item.featureId, title: item.title, response: latestStates[item.featureId]!) : item)
+          .toList(growable: false);
+    } catch (_) {
+      return checklist;
     }
   }
 
@@ -111,11 +120,56 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueResponseToggles(String astId, List<({int featureId, bool targetState})> toggles) async {
+  Future<int> queueChecklistSubmission({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
-    return db.enqueueToggles(userKey, astId, toggles);
+    final payloadJson = jsonEncode({
+      'ast_ID': astId,
+      'status': status,
+      'remark': remark,
+      'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
+    });
+    return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
+  }
+
+  Future<void> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    final userKey = await _resolvedUserKey();
+    if (userKey == null) {
+      throw Exception('Missing session');
+    }
+
+    try {
+      await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+      // Keep the local cache aligned with what the user just submitted.
+      final updatedChecklist =
+          items.map((i) => AssetChecklistItem(featureId: i.featureId, title: '', response: i.response)).toList(growable: false);
+      // We don't have titles here; preserve cached titles by merging with last cached checklist if possible.
+      final cached = await db.loadChecklist(userKey, astId);
+      if (cached.isNotEmpty) {
+        final titleMap = {for (final c in cached) c.featureId: c.title};
+        await db.saveChecklist(
+          userKey,
+          astId,
+          updatedChecklist.map((i) => AssetChecklistItem(featureId: i.featureId, title: titleMap[i.featureId] ?? '', response: i.response)).toList(growable: false),
+        );
+      } else {
+        await db.saveChecklist(userKey, astId, updatedChecklist);
+      }
+    } catch (_) {
+      // Offline / failure: queue for later sync instead of failing the UI.
+      await queueChecklistSubmission(astId: astId, status: status, remark: remark, items: items);
+    }
   }
 
   Future<ToggleSyncResult> syncQueuedResponses() async {
@@ -124,78 +178,51 @@ class AssetRepository {
       return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
     }
 
-    final pending = await db.loadPendingToggles(userKey);
+    final pending = await db.loadPendingChecklistSubmissions(userKey);
     if (pending.isEmpty) {
       return const ToggleSyncResult(totalPending: 0, synced: 0, failed: 0);
-    }
-
-    final groups = <String, List<ToggleResponseQueueItem>>{};
-    for (final item in pending) {
-      groups.putIfAbsent(item.astId, () => []).add(item);
     }
 
     var syncedCount = 0;
     var failedCount = 0;
     final removableQueueIds = <int>[];
 
-    for (final entry in groups.entries) {
-      final astId = entry.key;
-      final toggles = entry.value;
+    // For each asset, only submit the latest queued payload.
+    final latestByAsset = <String, ChecklistSubmissionQueueItem>{};
+    for (final item in pending) {
+      latestByAsset[item.astId] = item;
+    }
 
+    for (final entry in latestByAsset.entries) {
+      final queueItem = entry.value;
       try {
-        final serverChecklist = await service.fetchChecklistByAssetId(astId);
-        final serverStateMap = {for (var item in serverChecklist) item.featureId: item.response};
-
-        final uniqueFeatures = <int, ToggleResponseQueueItem>{};
-        for (final t in toggles) {
-          uniqueFeatures[t.featureId] = t;
+        final payload = jsonDecode(queueItem.payloadJson);
+        if (payload is! Map<String, dynamic>) {
+          failedCount += 1;
+          continue;
         }
 
-        bool groupSuccess = true;
-        for (final featureId in uniqueFeatures.keys) {
-          final target = uniqueFeatures[featureId]!;
-          final currentOnServer = serverStateMap[featureId] ?? false;
-
-          if (currentOnServer != target.targetState) {
-            try {
-              await service.toggleChecklistResponse(featureId);
-              syncedCount++;
-            } catch (_) {
-              failedCount++;
-              groupSuccess = false;
-            }
-          } else {
-            syncedCount++;
-          }
+        final astId = (payload['ast_ID'] ?? queueItem.astId).toString();
+        final status = (payload['status'] ?? '').toString();
+        final remark = (payload['remark'] ?? '').toString();
+        final itemsRaw = payload['items'] as List<dynamic>? ?? const <dynamic>[];
+        final items = <({int featureId, bool response})>[];
+        for (final it in itemsRaw.whereType<Map<String, dynamic>>()) {
+          final featureId = _asInt(it['feature_id'] ?? it['featureId']);
+          if (featureId == 0) continue;
+          items.add((featureId: featureId, response: _asBool(it['response'])));
         }
 
-        if (groupSuccess) {
-          final verifiedChecklist = await service.fetchChecklistByAssetId(astId);
-          final verifiedStateMap = {for (var item in verifiedChecklist) item.featureId: item.response};
-
-          bool allVerified = true;
-          for (final featureId in uniqueFeatures.keys) {
-            final target = uniqueFeatures[featureId]!;
-            if (verifiedStateMap[featureId] != target.targetState) {
-              try {
-                await service.toggleChecklistResponse(featureId);
-              } catch (_) {
-                allVerified = false;
-              }
-            }
-          }
-
-          if (allVerified) {
-            removableQueueIds.addAll(toggles.map((t) => t.queueId));
-          }
-        }
+        await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+        syncedCount += 1;
+        removableQueueIds.add(queueItem.queueId);
       } catch (_) {
-        failedCount += toggles.length;
+        failedCount += 1;
       }
     }
 
     if (removableQueueIds.isNotEmpty) {
-      await db.removeQueuedToggles(removableQueueIds);
+      await db.markQueuedChecklistSubmissionsSynced(removableQueueIds);
     }
 
     return ToggleSyncResult(totalPending: pending.length, synced: syncedCount, failed: failedCount);
@@ -212,4 +239,16 @@ class ToggleSyncResult {
   final int failed;
 
   const ToggleSyncResult({required this.totalPending, required this.synced, required this.failed});
+}
+
+int _asInt(Object? value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+bool _asBool(Object? value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final normalized = value?.toString().trim().toLowerCase();
+  return normalized == 'true' || normalized == '1' || normalized == 'yes';
 }

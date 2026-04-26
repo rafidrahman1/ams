@@ -83,7 +83,7 @@ class _FakeAssetService extends AssetService {
 class _MemoryLocalDatabase extends LocalDatabase {
   final Map<String, List<VolunteerAsset>> _assets = {};
   final Map<String, List<AssetChecklistItem>> _checklists = {};
-  final List<Map<String, dynamic>> _toggles = [];
+  final List<Map<String, dynamic>> _submissions = [];
   int _nextQueueId = 1;
 
   @override
@@ -107,35 +107,44 @@ class _MemoryLocalDatabase extends LocalDatabase {
   }
 
   @override
-  Future<int> enqueueToggles(String userKey, String astId, List<({int featureId, bool targetState})> toggles) async {
-    for (final t in toggles) {
-      _toggles.add({'id': _nextQueueId++, 'user_key': userKey, 'ast_id': astId, 'feature_id': t.featureId, 'target_state': t.targetState ? 1 : 0});
-    }
-    return toggles.length;
+  Future<int> enqueueChecklistSubmission(String userKey, String astId, String payloadJson) async {
+    _submissions.add({'id': _nextQueueId++, 'user_key': userKey, 'ast_id': astId, 'payload_json': payloadJson, 'synced_at': null});
+    return 1;
   }
 
   @override
-  Future<List<ToggleResponseQueueItem>> loadPendingToggles(String userKey) async {
-    return _toggles
-        .where((t) => t['user_key'] == userKey)
-        .map(
-          (t) =>
-              ToggleResponseQueueItem(queueId: t['id'] as int, astId: t['ast_id'] as String, featureId: t['feature_id'] as int, targetState: (t['target_state'] as int) == 1),
-        )
+  Future<List<ChecklistSubmissionQueueItem>> loadPendingChecklistSubmissions(String userKey) async {
+    return _submissions
+        .where((s) => s['user_key'] == userKey && s['synced_at'] == null)
+        .map((s) => ChecklistSubmissionQueueItem(queueId: s['id'] as int, astId: s['ast_id'] as String, payloadJson: s['payload_json'] as String))
         .toList();
   }
 
   @override
-  Future<void> removeQueuedToggles(Iterable<int> queueIds) async {
+  Future<void> markQueuedChecklistSubmissionsSynced(Iterable<int> queueIds) async {
     final idSet = queueIds.toSet();
-    _toggles.removeWhere((t) => idSet.contains(t['id']));
+    for (final s in _submissions) {
+      if (idSet.contains(s['id'])) {
+        s['synced_at'] = 1;
+      }
+    }
+  }
+
+  @override
+  Future<String?> loadLatestChecklistSubmissionPayload(String userKey, String astId) async {
+    for (final s in _submissions.reversed) {
+      if (s['user_key'] == userKey && s['ast_id'] == astId) {
+        return s['payload_json'] as String;
+      }
+    }
+    return null;
   }
 
   @override
   Future<void> clearAll() async {
     _assets.clear();
     _checklists.clear();
-    _toggles.clear();
+    _submissions.clear();
   }
 }
 
@@ -161,10 +170,10 @@ class _SingleChecklistThenOfflineService extends AssetService {
 }
 
 class _RecordingAssetService extends AssetService {
-  _RecordingAssetService({this.failingFeatureIds = const <int>{}}) : super(ApiClient(TokenStorage()));
+  _RecordingAssetService({this.failSubmit = false}) : super(ApiClient(TokenStorage()));
 
-  final Set<int> failingFeatureIds;
-  final List<int> toggledFeatureIds = <int>[];
+  final bool failSubmit;
+  final List<String> submittedAstIds = <String>[];
 
   @override
   Future<List<VolunteerAsset>> fetchMyAssets() async => const <VolunteerAsset>[];
@@ -173,10 +182,10 @@ class _RecordingAssetService extends AssetService {
   Future<List<AssetChecklistItem>> fetchChecklistByAssetId(String astId) async => const <AssetChecklistItem>[];
 
   @override
-  Future<void> toggleChecklistResponse(int featureId) async {
-    toggledFeatureIds.add(featureId);
-    if (failingFeatureIds.contains(featureId)) {
-      throw Exception('sync failed for feature: $featureId');
+  Future<void> submitChecklist({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+    submittedAstIds.add(astId);
+    if (failSubmit) {
+      throw Exception('sync failed');
     }
   }
 }
@@ -504,7 +513,11 @@ void main() {
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
     const userKey = 'user@example.com';
     final db = _MemoryLocalDatabase();
-    await db.enqueueToggles(userKey, 'AST-000001', [(featureId: 1, targetState: true)]);
+    await db.enqueueChecklistSubmission(
+      userKey,
+      'AST-000001',
+      '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":1,"response":true}]}',
+    );
 
     final service = _SingleChecklistThenOfflineService(
       assets: const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')],
@@ -524,21 +537,18 @@ void main() {
     expect(secondChecklist.first.response, isTrue);
   });
 
-  test('sync verification toggles again if server state doesn\'t match target', () async {
+  test('sync submits the latest queued payload per asset', () async {
     final service = _RecordingAssetService();
     final db = _MemoryLocalDatabase();
     const userKey = 'user@example.com';
     const astId = 'AST-000001';
 
-    // Target is true, but recording service always returns false items
-    await db.enqueueToggles(userKey, astId, [(featureId: 42, targetState: true)]);
+    await db.enqueueChecklistSubmission(userKey, astId, '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"","items":[{"feature_id":42,"response":true}]}');
 
     final repository = AssetRepository(service, () async => userKey, db);
 
-    // This should call toggle once, verify (fail), then toggle again
     await repository.syncQueuedResponses();
 
-    // Since verification step sees it's still false, it calls toggle twice
-    expect(service.toggledFeatureIds, [42, 42]);
+    expect(service.submittedAstIds, [astId]);
   });
 }

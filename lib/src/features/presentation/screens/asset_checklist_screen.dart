@@ -19,6 +19,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   List<bool> _completed = const [];
   String? _loadedAstId;
   final TextEditingController _remarksController = TextEditingController();
+  String _status = 'ACTIVE';
 
   @override
   void dispose() {
@@ -60,16 +61,19 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   final items = await ref.read(assetChecklistProvider(widget.asset.astId).future);
                   final completed = _completed.length == items.length ? List<bool>.from(_completed) : items.map((item) => item.response).toList();
 
-                  final togglePayload = <({int featureId, bool targetState})>[];
+                  final submitItems = <({int featureId, bool response})>[];
                   for (var index = 0; index < items.length; index++) {
-                    if (items[index].response != completed[index]) {
-                      togglePayload.add((featureId: items[index].featureId, targetState: completed[index]));
-                    }
+                    submitItems.add((featureId: items[index].featureId, response: completed[index]));
                   }
 
-                  if (togglePayload.isNotEmpty) {
-                    await ref.read(assetRepositoryProvider).queueResponseToggles(widget.asset.astId, togglePayload);
-                  }
+                  // Always queue the submission so Home -> Sync can submit later.
+                  // This keeps behavior predictable for users who save while offline.
+                  await ref.read(assetRepositoryProvider).queueChecklistSubmission(
+                        astId: widget.asset.astId,
+                        status: _status,
+                        remark: _remarksController.text.trim(),
+                        items: submitItems,
+                      );
 
                   ref.invalidate(assetChecklistProvider(widget.asset.astId));
 
@@ -111,6 +115,21 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   child: ListView(
                     padding: const EdgeInsets.only(bottom: 96),
                     children: [
+                      DropdownButtonFormField<String>(
+                        value: _status,
+                        decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(value: 'APPROVAL PENDING', child: Text('APPROVAL PENDING')),
+                          DropdownMenuItem(value: 'UNDER MAINTENANCE', child: Text('UNDER MAINTENANCE')),
+                          DropdownMenuItem(value: 'ACTIVE', child: Text('ACTIVE')),
+                          DropdownMenuItem(value: 'INACTIVE', child: Text('INACTIVE')),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _status = value);
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       ...List.generate(items.length, (index) {
                         return CheckboxListTile(
                           value: index < _completed.length ? _completed[index] : items[index].response,
