@@ -27,6 +27,16 @@ class AuthNotifier extends Notifier<AuthStatus> {
     return AuthStatus.loading;
   }
 
+  void _invalidateSessionScopedProviders() {
+    // These providers are effectively session-scoped, but some are keyed only by
+    // `astId` (not by user). If the user changes, we must invalidate them to
+    // prevent showing stale data from the previous session.
+    ref.invalidate(myAssetsProvider);
+    ref.invalidate(assetChecklistProvider);
+    ref.invalidate(assetChecklistAllTrueProvider);
+    ref.invalidate(homeBootstrapProvider);
+  }
+
   Future<void> checkLogin() async {
     final loggedInFuture = repo.isLoggedIn();
     final delayFuture = Future<void>.delayed(_minimumStartupSplash);
@@ -49,6 +59,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
     try {
       await repo.login(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticated;
+      _invalidateSessionScopedProviders();
     } catch (_) {
       state = AuthStatus.unauthenticated;
     }
@@ -57,6 +68,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
   Future<void> logout() async {
     await repo.logout();
     state = AuthStatus.unauthenticated;
+    _invalidateSessionScopedProviders();
   }
 }
 
