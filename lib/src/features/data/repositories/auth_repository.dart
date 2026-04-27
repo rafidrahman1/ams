@@ -33,8 +33,11 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    final userKey = await storage.getSessionKey();
     await storage.clear();
-    await assetRepository.clearCache();
+    if (userKey != null) {
+      await assetRepository.clearCache(userKey);
+    }
   }
 
   String _resolveCacheKey(LoginResponse response, String fallbackEmail) {

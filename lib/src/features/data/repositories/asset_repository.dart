@@ -276,8 +276,8 @@ class AssetRepository {
     return true;
   }
 
-  Future<void> clearCache() async {
-    await db.clearAll();
+  Future<void> clearCache(String userKey) async {
+    await db.clearUserData(userKey);
   }
 }
 
