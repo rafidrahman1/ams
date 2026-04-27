@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
@@ -17,14 +19,31 @@ enum AuthStatus { loading, authenticated, unauthenticated }
 
 class AuthNotifier extends Notifier<AuthStatus> {
   static const _minimumStartupSplash = Duration(seconds: 2);
+  Timer? _autoLogoutTimer;
 
   AuthRepository get repo => ref.read(authRepositoryProvider);
 
   @override
   AuthStatus build() {
+    ref.onDispose(() => _autoLogoutTimer?.cancel());
     // Fire-and-forget startup check (keeps initial synchronous state simple).
     Future.microtask(checkLogin);
     return AuthStatus.loading;
+  }
+
+  void _startAutoLogoutCheck() {
+    _autoLogoutTimer?.cancel();
+    _performAutoLogoutCheck();
+    _autoLogoutTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _performAutoLogoutCheck();
+    });
+  }
+
+  void _performAutoLogoutCheck() {
+    final now = DateTime.now();
+    if (now.hour == 23 && now.minute == 59) {
+      logout();
+    }
   }
 
   void _invalidateSessionScopedProviders() {
@@ -45,6 +64,9 @@ class AuthNotifier extends Notifier<AuthStatus> {
     await delayFuture;
 
     state = loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+    if (state == AuthStatus.authenticated) {
+      _startAutoLogoutCheck();
+    }
   }
 
   Future<void> login(String email, String password) async {
@@ -60,12 +82,14 @@ class AuthNotifier extends Notifier<AuthStatus> {
       await repo.login(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticated;
       _invalidateSessionScopedProviders();
+      _startAutoLogoutCheck();
     } catch (_) {
       state = AuthStatus.unauthenticated;
     }
   }
 
   Future<void> logout() async {
+    _autoLogoutTimer?.cancel();
     await repo.logout();
     state = AuthStatus.unauthenticated;
     _invalidateSessionScopedProviders();
