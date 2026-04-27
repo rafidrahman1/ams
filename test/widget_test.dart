@@ -281,10 +281,12 @@ void main() {
             ],
           ),
           assetChecklistProvider.overrideWith(
-            (ref, astId) async => const [
-              AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false),
-              AssetChecklistItem(featureId: 7, title: 'Rafid er Condition', response: false),
-            ],
+            (ref, astId) async => const AssetChecklist(
+              items: [
+                AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false),
+                AssetChecklistItem(featureId: 7, title: 'Rafid er Condition', response: false),
+              ],
+            ),
           ),
         ],
         child: _localizedApp(const HomeScreen()),
@@ -336,7 +338,9 @@ void main() {
               VolunteerAsset(name: 'Asset 2', details: 'Description of Asset 2', astId: 'AST-000002'),
             ],
           ),
-          assetChecklistProvider.overrideWith((ref, astId) async => const [AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false)]),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false)]),
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -368,7 +372,9 @@ void main() {
               VolunteerAsset(name: 'Asset 2', details: 'Description of Asset 2', astId: 'AST-000002'),
             ],
           ),
-          assetChecklistProvider.overrideWith((ref, astId) async => const [AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false)]),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false)]),
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -391,7 +397,7 @@ void main() {
         overrides: [
           qrScannerLauncherProvider.overrideWithValue((context) async => 'AST-000999'),
           myAssetsProvider.overrideWith((ref) async => const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')]),
-          assetChecklistProvider.overrideWith((ref, astId) async => const <AssetChecklistItem>[]),
+          assetChecklistProvider.overrideWith((ref, astId) async => const AssetChecklist(items: <AssetChecklistItem>[])),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -419,7 +425,9 @@ void main() {
       ProviderScope(
         overrides: [
           myAssetsProvider.overrideWith((ref) async => assets),
-          assetChecklistProvider.overrideWith((ref, astId) async => const [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -443,7 +451,9 @@ void main() {
             fetchCount += 1;
             return const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')];
           }),
-          assetChecklistProvider.overrideWith((ref, astId) async => const [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          ),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -466,7 +476,7 @@ void main() {
         overrides: [
           qrScannerLauncherProvider.overrideWithValue((context) async => 'WRONG-000999'),
           myAssetsProvider.overrideWith((ref) async => const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')]),
-          assetChecklistProvider.overrideWith((ref, astId) async => const <AssetChecklistItem>[]),
+          assetChecklistProvider.overrideWith((ref, astId) async => const AssetChecklist(items: <AssetChecklistItem>[])),
         ],
         child: _localizedApp(const HomeScreen()),
       ),
@@ -489,7 +499,9 @@ void main() {
       ProviderScope(
         overrides: [
           nfcScannerLauncherProvider.overrideWithValue((context) async => 'AST-000001'),
-          assetChecklistProvider.overrideWith((ref, astId) async => const [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          assetChecklistProvider.overrideWith(
+            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
+          ),
         ],
         child: _localizedApp(
           const QrNfcScreen(
@@ -552,9 +564,9 @@ void main() {
 
     expect(cachedAssets, hasLength(1));
     expect(cachedAssets.first.astId, 'AST-000001');
-    expect(cachedChecklist, hasLength(1));
-    expect(cachedChecklist.first.title, 'Battery Condition');
-    expect(cachedChecklist.first.response, isTrue);
+    expect(cachedChecklist.items, hasLength(1));
+    expect(cachedChecklist.items.first.title, 'Battery Condition');
+    expect(cachedChecklist.items.first.response, isTrue);
   });
 
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {
@@ -574,10 +586,10 @@ void main() {
     final firstChecklist = await repository.fetchChecklistByAssetId('AST-000001');
     final secondChecklist = await repository.fetchChecklistByAssetId('AST-000001');
 
-    expect(firstChecklist, hasLength(1));
-    expect(firstChecklist.first.response, isTrue);
-    expect(secondChecklist, hasLength(1));
-    expect(secondChecklist.first.response, isTrue);
+    expect(firstChecklist.items, hasLength(1));
+    expect(firstChecklist.items.first.response, isTrue);
+    expect(secondChecklist.items, hasLength(1));
+    expect(secondChecklist.items.first.response, isTrue);
   });
 
   test('sync submits the latest queued payload per asset', () async {

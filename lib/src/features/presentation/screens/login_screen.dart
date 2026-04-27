@@ -108,91 +108,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = authState == AuthStatus.loading;
     final isSubmitting = _isLoggingIn;
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: ThemeColor.backGroundColor,
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: ThemePadding.p4,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: const BoxDecoration(color: ThemeColor.primary),
-                              child: Center(
-                                child: Text(
-                                  l10n.appTitle,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: ThemeColor.white),
-                                ),
+    return Scaffold(
+      backgroundColor: ThemeColor.backGroundColor,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: ThemePadding.p4,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: const BoxDecoration(color: ThemeColor.primary),
+                            child: Center(
+                              child: Text(
+                                l10n.appTitle,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: ThemeColor.white),
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      SizedBox(height: constraints.maxHeight * 0.1),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SquareActionButton(
-                              label: isLoading || isSubmitting ? l10n.loading : l10n.loginWithEmail,
-                              icon: Icons.mail_outline,
-                              onPressed: isLoading || isSubmitting ? null : _showEmailLoginForm,
-                              backgroundColor: ThemeColor.primary,
-                              foregroundColor: ThemeColor.white,
-                            ),
-                          ),
-                          Gap.x4,
-                          Expanded(
-                            child: SquareActionButton(
-                              label: l10n.loginWithNfc,
-                              icon: Icons.contactless,
-                              onPressed: isLoading || isSubmitting ? null : () => _loginWithNfc(context),
-                              backgroundColor: ThemeColor.primary.withValues(alpha: 0.35),
-                              foregroundColor: ThemeColor.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_showEmailForm) ...[
-                        Gap.y8,
-                        _buildField(controller: _emailController, hintText: l10n.email),
-                        Gap.y8,
-                        _buildField(
-                          controller: _passwordController,
-                          hintText: l10n.password,
-                          obscureText: _isPasswordObscured,
-                          onToggleObscureText: () {
-                            setState(() {
-                              _isPasswordObscured = !_isPasswordObscured;
-                            });
-                          },
                         ),
-                        Gap.y8,
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: isLoading || isSubmitting ? null : () => _loginWithEmailPassword(context),
-                            child: Text(isSubmitting ? l10n.loggingIn : l10n.login),
+                      ],
+                    ),
+                    SizedBox(height: constraints.maxHeight * 0.1),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SquareActionButton(
+                            label: isLoading || isSubmitting ? l10n.loading : l10n.loginWithEmail,
+                            icon: Icons.mail_outline,
+                            onPressed: isLoading || isSubmitting ? null : _showEmailLoginForm,
+                            backgroundColor: ThemeColor.primary,
+                            foregroundColor: ThemeColor.white,
+                          ),
+                        ),
+                        Gap.x4,
+                        Expanded(
+                          child: SquareActionButton(
+                            label: l10n.loginWithNfc,
+                            icon: Icons.contactless,
+                            onPressed: isLoading || isSubmitting ? null : () => _loginWithNfc(context),
+                            backgroundColor: ThemeColor.primary.withValues(alpha: 0.35),
+                            foregroundColor: ThemeColor.black,
                           ),
                         ),
                       ],
+                    ),
+                    if (_showEmailForm) ...[
+                      Gap.y8,
+                      _buildField(controller: _emailController, hintText: l10n.email),
+                      Gap.y8,
+                      _buildField(
+                        controller: _passwordController,
+                        hintText: l10n.password,
+                        obscureText: _isPasswordObscured,
+                        onToggleObscureText: () {
+                          setState(() {
+                            _isPasswordObscured = !_isPasswordObscured;
+                          });
+                        },
+                      ),
+                      Gap.y8,
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isLoading || isSubmitting ? null : () => _loginWithEmailPassword(context),
+                          child: Text(isSubmitting ? l10n.loggingIn : l10n.login),
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
