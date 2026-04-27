@@ -26,7 +26,6 @@ class AuthNotifier extends Notifier<AuthStatus> {
   @override
   AuthStatus build() {
     ref.onDispose(() => _autoLogoutTimer?.cancel());
-    // Fire-and-forget startup check (keeps initial synchronous state simple).
     Future.microtask(checkLogin);
     return AuthStatus.loading;
   }
