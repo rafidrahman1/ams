@@ -8,9 +8,14 @@ import '../../providers/qr_scanner_provider.dart';
 import '../../utils/ast_id_parser.dart';
 import '../../widgets/asset_card_builder.dart';
 import '../asset_checklist_screen.dart';
+import 'register_device_screen.dart';
 
 class HomeScreenActions {
   const HomeScreenActions._();
+
+  static Future<void> openRegisterDevice({required BuildContext context, AssetCardData? asset}) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
+  }
 
   static Future<void> showScanOptions({required BuildContext context, required WidgetRef ref, required bool Function() isMounted}) async {
     final l10n = AppLocalizations.of(context)!;
@@ -91,12 +96,6 @@ class HomeScreenActions {
       return;
     }
 
-    await openAssetChecklist(
-      context: context,
-      ref: ref,
-      scannedValue: scannedValue,
-      isMounted: isMounted,
-      mismatchMessage: mismatchMessage,
-    );
+    await openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, isMounted: isMounted, mismatchMessage: mismatchMessage);
   }
 }

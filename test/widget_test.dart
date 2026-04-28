@@ -41,7 +41,7 @@ class _TestAuthNotifier extends AuthNotifier {
 
   @override
   Future<void> login(String email, String password) async {
-    state = AuthStatus.authenticated;
+    state = AuthStatus.authenticatedVolunteer;
   }
 }
 
@@ -204,9 +204,9 @@ class _SingleChecklistThenOfflineService extends AssetService {
 }
 
 class _RecordingAssetService extends AssetService {
-  _RecordingAssetService({this.failSubmit = false}) : super(ApiClient(TokenStorage()));
+  _RecordingAssetService() : super(ApiClient(TokenStorage()));
 
-  final bool failSubmit;
+  final bool failSubmit = false;
   final List<String> submittedAstIds = <String>[];
 
   @override
@@ -551,7 +551,7 @@ void main() {
     );
 
     final onlineRepository = AssetRepository(onlineService, () async => userKey, db);
-    await onlineRepository.prefetchOfflineData(userKey);
+    await onlineRepository.prefetchOfflineData(userKey, isAdmin: false);
 
     final offlineRepository = AssetRepository(
       _FakeAssetService(assets: const [], checklists: const {}, failAssets: true, failChecklistIds: const {'AST-000001'}),

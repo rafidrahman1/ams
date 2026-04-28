@@ -6,6 +6,7 @@ class TokenStorage {
   static const _access = "access_token";
   static const _refresh = "refresh_token";
   static const _sessionKey = "session_user_key";
+  static const _sessionRole = "session_user_role";
 
   Future<void> saveTokens(String access, String refresh) async {
     await _storage.write(key: _access, value: access);
@@ -15,9 +16,14 @@ class TokenStorage {
   Future<String?> getAccess() => _storage.read(key: _access);
   Future<String?> getRefresh() => _storage.read(key: _refresh);
   Future<String?> getSessionKey() => _storage.read(key: _sessionKey);
+  Future<String?> getSessionRole() => _storage.read(key: _sessionRole);
 
   Future<void> saveSessionKey(String key) async {
     await _storage.write(key: _sessionKey, value: key);
+  }
+
+  Future<void> saveSessionRole(String role) async {
+    await _storage.write(key: _sessionRole, value: role);
   }
 
   Future<void> clear() async {

@@ -3,12 +3,13 @@ import 'package:asset_management_system/src/theme/border_radius.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/src/theme/gap.dart';
 import 'package:asset_management_system/src/theme/padding.dart';
-import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../widgets/app_text_field.dart';
 import '../widgets/square_action_button.dart';
+import 'admin_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -36,26 +37,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Widget _buildField({required TextEditingController controller, required String hintText, bool obscureText = false, VoidCallback? onToggleObscureText}) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: ThemeColor.primary.withValues(alpha: 0.35), borderRadius: ThemeBorderRadius.r3),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: ThemeTextStyles.hint,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding: ThemePadding.p3,
-          suffixIcon: onToggleObscureText == null ? null : IconButton(onPressed: onToggleObscureText, icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility)),
-        ),
-      ),
-    );
   }
 
   Future<void> _loginWithEmailPassword(BuildContext context) async {
@@ -137,26 +118,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 20),
-
+                    Gap.y8,
                     SizedBox(
                       width: double.infinity,
                       child: Material(
-                        color: ThemeColor.primary,
+                        color: ThemeColor.primary.withValues(alpha: 0.35),
                         borderRadius: ThemeBorderRadius.r2,
                         clipBehavior: Clip.antiAlias,
                         child: InkWell(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AdminScreen()));
+                          },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.admin_panel_settings, size: 48, color: ThemeColor.white),
+                                Icon(Icons.admin_panel_settings, size: 48, color: ThemeColor.red),
                                 Gap.x2,
                                 Text(
                                   l10n.adminLogin,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700, color: ThemeColor.white),
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700, color: ThemeColor.red),
                                 ),
                               ],
                             ),
@@ -165,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
 
-                    SizedBox(height: 20),
+                    Gap.y8,
                     Row(
                       children: [
                         Expanded(
@@ -191,9 +173,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (_showEmailForm) ...[
                       Gap.y8,
-                      _buildField(controller: _emailController, hintText: l10n.email),
+                      AppTextField(controller: _emailController, hintText: l10n.email),
                       Gap.y8,
-                      _buildField(
+                      AppTextField(
                         controller: _passwordController,
                         hintText: l10n.password,
                         obscureText: _isPasswordObscured,

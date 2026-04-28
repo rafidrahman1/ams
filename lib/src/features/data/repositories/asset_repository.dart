@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
 import '../models/asset_checklist_item.dart';
+import '../models/location_models.dart';
 import '../models/volunteer_asset.dart';
 import '../services/asset_service.dart';
 
@@ -37,6 +38,16 @@ class AssetRepository {
 
       rethrow;
     }
+  }
+
+  Future<List<VolunteerAsset>> fetchAdminAssets() async {
+    final userKey = await _resolvedUserKey();
+
+    if (userKey == null) {
+      return const <VolunteerAsset>[];
+    }
+
+    return db.loadAssets(userKey);
   }
 
   Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
@@ -101,9 +112,26 @@ class AssetRepository {
     }
   }
 
-  Future<void> prefetchOfflineData(String userKey) async {
+  Future<List<IdNamePair>> fetchCampLocations() async {
+    return service.fetchCampLocations();
+  }
+
+  Future<List<IdNamePair>> fetchBlocks() async {
+    return service.fetchBlocks();
+  }
+
+  Future<List<IdNamePair>> fetchAssetTypes() async {
+    return service.fetchAssetTypes();
+  }
+
+  Future<void> prefetchOfflineData(String userKey, {bool isAdmin = false}) async {
     final trimmedUserKey = userKey.trim();
     if (trimmedUserKey.isEmpty) {
+      return;
+    }
+
+    if (isAdmin) {
+      // Admin assets are sourced locally only; there is no remote list API.
       return;
     }
 
@@ -278,6 +306,273 @@ class AssetRepository {
 
   Future<void> clearCache(String userKey) async {
     await db.clearUserData(userKey);
+  }
+
+  Future<Map<String, dynamic>> createAsset({
+    required String name,
+    required String details,
+    required String addressLine,
+    required String astId,
+    String? status,
+    String? assetType,
+    String? location,
+    String? block,
+    List<Map<String, dynamic>>? specifications,
+    String? warrantyEnd,
+    String? amount,
+    String? purchaseDate,
+    String? manufactureDate,
+    String? imagePath,
+    String? attachmentPath,
+  }) async {
+    return service.createAsset(
+      name: name,
+      details: details,
+      addressLine: addressLine,
+      astId: astId,
+      status: status,
+      assetType: assetType,
+      location: location,
+      block: block,
+      specifications: specifications,
+      warrantyEnd: warrantyEnd,
+      amount: amount,
+      purchaseDate: purchaseDate,
+      manufactureDate: manufactureDate,
+      imagePath: imagePath,
+      attachmentPath: attachmentPath,
+    );
+  }
+
+  Future<int> saveRegisteredDeviceLocally({
+    required String name,
+    required String details,
+    required String addressLine,
+    required String astId,
+    String? status,
+    String? assetType,
+    String? location,
+    String? block,
+    String? imagePath,
+    String? warrantyEnd,
+    String? specification,
+    String? amount,
+    String? purchaseDate,
+    String? manufactureDate,
+    String? assetAttachment,
+  }) async {
+    final deviceData = RegisteredDeviceData(
+      name: name,
+      details: details,
+      addressLine: addressLine,
+      astId: astId,
+      status: status,
+      assetType: assetType,
+      location: location,
+      block: block,
+      imagePath: imagePath,
+      warrantyEnd: warrantyEnd,
+      specification: specification,
+      amount: amount,
+      purchaseDate: purchaseDate,
+      manufactureDate: manufactureDate,
+      assetAttachment: assetAttachment,
+      createdAt: DateTime.now(),
+      synced: false,
+    );
+    return db.insertRegisteredDevice(deviceData);
+  }
+
+  Future<void> syncRegisteredDevice(int deviceId) async {
+    final device = await db.getRegisteredDeviceById(deviceId);
+    if (device == null) {
+      throw Exception('Device not found');
+    }
+
+    final normalizedAstId = _normalizeAstId(device.astId);
+    if (normalizedAstId == null) {
+      throw Exception('Asset ID is missing for this device');
+    }
+
+    final normalizedName = device.name.trim().isEmpty ? 'Asset $normalizedAstId' : device.name.trim();
+    final normalizedAddressLine = device.addressLine.trim().isEmpty
+        ? (device.details.trim().isEmpty ? 'N/A' : device.details.trim())
+        : device.addressLine.trim();
+
+    final normalizedDetails = device.details.trim().isEmpty ? normalizedName : device.details.trim();
+
+    final specifications = _normalizeSpecifications(device.specification);
+
+    final responseBody = await service.createAsset(
+      name: normalizedName,
+      details: normalizedDetails,
+      addressLine: normalizedAddressLine,
+      astId: normalizedAstId,
+      status: device.status,
+      assetType: device.assetType,
+      location: device.location,
+      block: device.block,
+      imagePath: device.imagePath,
+      specifications: specifications,
+      warrantyEnd: _normalizeApiDate(device.warrantyEnd),
+      amount: device.amount,
+      purchaseDate: _normalizeApiDate(device.purchaseDate),
+      manufactureDate: _normalizeApiDate(device.manufactureDate),
+      attachmentPath: device.assetAttachment,
+    );
+
+    if (!_isAssetCreationVerified(device: device, response: responseBody)) {
+      throw Exception('Asset sync verification failed: Response data mismatch');
+    }
+
+    await db.markRegisteredDeviceSynced(deviceId);
+  }
+
+  bool _isAssetCreationVerified({required RegisteredDeviceData device, required Map<String, dynamic> response}) {
+    if (response['code'] != 200) return false;
+
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) return false;
+
+    final expectedAstId = _normalizeAstId(device.astId);
+    if (expectedAstId == null || expectedAstId.isEmpty) return false;
+
+    if (_normalized(data['ast_ID']) != _normalized(expectedAstId)) return false;
+    if (_normalized(data['name']) != _normalized(device.name)) return false;
+    if (_normalized(data['status']) != _normalized(device.status)) return false;
+    if (_normalized(data['address_line']) != _normalized(device.addressLine)) return false;
+    if (_normalized(data['details']) != _normalized(device.details)) return false;
+    if (_normalized(data['asset_type']) != _normalized(device.assetType)) return false;
+    if (_normalized(data['location']) != _normalized(device.location)) return false;
+    if (_normalized(data['block']) != _normalized(device.block)) return false;
+    if (_normalized(data['amount']) != _normalized(device.amount)) return false;
+    if (_normalizedDate(data['warranty_end']) != _normalizedDate(device.warrantyEnd)) return false;
+    if (_normalizedDate(data['purchase_date']) != _normalizedDate(device.purchaseDate)) return false;
+    if (_normalizedDate(data['manufacture_date']) != _normalizedDate(device.manufactureDate)) return false;
+
+    final submittedSpecs = _normalizeSpecificationForCompare(device.specification);
+    final responseSpecs = _normalizeSpecificationForCompare(data['specification']?.toString());
+    if (submittedSpecs != responseSpecs) return false;
+
+    // Server returns URLs for files; ensure those fields are present when a file was submitted.
+    if ((device.imagePath?.trim().isNotEmpty ?? false) && _normalized(data['image']).isEmpty) return false;
+    if ((device.assetAttachment?.trim().isNotEmpty ?? false)) {
+      final attachments = data['asset_attach'];
+      if (attachments is! List || attachments.isEmpty) return false;
+    }
+
+    return true;
+  }
+
+  List<Map<String, dynamic>>? _normalizeSpecifications(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is List) {
+        final normalized = <Map<String, dynamic>>[];
+        var fallbackId = 1;
+        for (final item in decoded) {
+          if (item is Map<String, dynamic>) {
+            final name = (item['name'] ?? '').toString().trim();
+            if (name.isEmpty) continue;
+            normalized.add({
+              'id': _asInt(item['id']) == 0 ? fallbackId : _asInt(item['id']),
+              'name': name,
+              'description': (item['description'] ?? '').toString(),
+            });
+            fallbackId += 1;
+          } else {
+            final name = item.toString().trim();
+            if (name.isEmpty) continue;
+            normalized.add({'id': fallbackId, 'name': name, 'description': ''});
+            fallbackId += 1;
+          }
+        }
+        return normalized.isEmpty ? null : normalized;
+      }
+    } catch (_) {
+      // Fall back to plain-text format.
+    }
+
+    return <Map<String, dynamic>>[
+      {'id': 1, 'name': trimmed, 'description': ''}
+    ];
+  }
+
+  String _normalizeSpecificationForCompare(String? raw) {
+    final list = _normalizeSpecifications(raw) ?? const <Map<String, dynamic>>[];
+    if (list.isEmpty) return '';
+
+    final pairs = list
+        .map((e) => '${_normalized(e['name'])}|${_normalized(e['description'])}')
+        .where((e) => e.isNotEmpty && e != '|')
+        .toList(growable: false);
+    pairs.sort();
+    return pairs.join('||');
+  }
+
+  String? _normalizeAstId(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) {
+        final fromAstId = decoded['ast_ID'] ?? decoded['ast_id'] ?? decoded['astId'];
+        final astId = fromAstId?.toString().trim();
+        if (astId != null && astId.isNotEmpty) {
+          return astId;
+        }
+      }
+    } catch (_) {
+      // Keep plain IDs as-is.
+    }
+
+    return trimmed;
+  }
+
+  String? _normalizeApiDate(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed != null) {
+      final month = parsed.month.toString().padLeft(2, '0');
+      final day = parsed.day.toString().padLeft(2, '0');
+      return '${parsed.year}-$month-$day';
+    }
+
+    final isDateOnly =
+        trimmed.length == 10 &&
+        trimmed[4] == '-' &&
+        trimmed[7] == '-' &&
+        int.tryParse(trimmed.substring(0, 4)) != null &&
+        int.tryParse(trimmed.substring(5, 7)) != null &&
+        int.tryParse(trimmed.substring(8, 10)) != null;
+    return isDateOnly ? trimmed : null;
+  }
+
+  String _normalized(Object? value) => (value?.toString() ?? '').trim();
+
+  String _normalizedDate(Object? value) => _normalizeApiDate(value?.toString()) ?? '';
+
+  Future<List<RegisteredDeviceData>> getUnsyncedRegisteredDevices() async {
+    return db.getUnyncedRegisteredDevices();
+  }
+
+  Future<void> deleteRegisteredDevice(int id) async {
+    await db.deleteRegisteredDevice(id);
+  }
+
+  Future<void> deleteAsset(String astId) async {
+    final userKey = await _resolvedUserKey();
+    if (userKey != null) {
+      await db.deleteAsset(userKey, astId);
+    }
   }
 }
 

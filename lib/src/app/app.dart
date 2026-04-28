@@ -42,7 +42,8 @@ class App extends ConsumerWidget {
       ),
       home: switch (auth) {
         AuthStatus.loading => const SplashScreen(),
-        AuthStatus.authenticated => const HomeScreen(),
+        AuthStatus.authenticatedVolunteer => const HomeScreen(),
+        AuthStatus.authenticatedAdmin => const HomeScreen(isAdmin: true),
         AuthStatus.unauthenticated => const LoginScreen(),
       },
     );

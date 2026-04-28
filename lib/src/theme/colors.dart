@@ -12,8 +12,12 @@ class ThemeColor {
   // static const Color cyan = Color(0xFFACD1BF);
   static const Color primary = Color(0xFFD27146);
 
+  static const Color secondary = Color(0xFFFFDAC6);
+
   //static const Color yellow = Color(0xFFE9DA73);
   static const Color yellow = Color(0xFF1C1C30);
+
+  static const Color red = Color(0xFFE94B3C);
 }
 
 class ThemeGradient {
@@ -24,14 +28,40 @@ class ThemeGradient {
   static LinearGradient chokmoke = LinearGradient(colors: [HexColor("#FA4A4E"), HexColor("#6457F5")], begin: Alignment.centerLeft, end: Alignment.centerRight);
   static LinearGradient pink = LinearGradient(colors: [HexColor("#D4488B"), HexColor("#FF2876")], begin: Alignment.centerLeft, end: Alignment.centerRight);
   static LinearGradient lite = LinearGradient(colors: [HexColor("#D8D3D3"), HexColor("#EE6C6C")], begin: Alignment.centerLeft, end: Alignment.centerRight);
-  static LinearGradient orange = LinearGradient(colors: [HexColor("#ED8A6B"), HexColor("#D15353")], begin: Alignment.topLeft, end: Alignment.bottomRight, stops: const [0.25, 0.75]);
-  static LinearGradient advancedSearch = LinearGradient(colors: [HexColor("#dd6161"), HexColor("#ea8686")], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.5, 1]);
-  static LinearGradient gold = LinearGradient(colors: [HexColor("#FFFFFF"), HexColor("#e0dbc0"), HexColor("#C7BE8E")], begin: Alignment.topCenter, end: Alignment.bottomCenter);
-  static LinearGradient semiTransparentBlack = LinearGradient(colors: [Colors.transparent, HexColor("#181717").withValues(alpha: 0.7)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
-  static LinearGradient semiTransparentWhite =
-      LinearGradient(colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.2, .8]);
-  static LinearGradient qtrTransparentWhite =
-      LinearGradient(colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.6, 1]);
+  static LinearGradient orange = LinearGradient(
+    colors: [HexColor("#ED8A6B"), HexColor("#D15353")],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.25, 0.75],
+  );
+  static LinearGradient advancedSearch = LinearGradient(
+    colors: [HexColor("#dd6161"), HexColor("#ea8686")],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: const [0.5, 1],
+  );
+  static LinearGradient gold = LinearGradient(
+    colors: [HexColor("#FFFFFF"), HexColor("#e0dbc0"), HexColor("#C7BE8E")],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static LinearGradient semiTransparentBlack = LinearGradient(
+    colors: [Colors.transparent, HexColor("#181717").withValues(alpha: 0.7)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+  static LinearGradient semiTransparentWhite = LinearGradient(
+    colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: const [0.2, .8],
+  );
+  static LinearGradient qtrTransparentWhite = LinearGradient(
+    colors: [HexColor("#ffffff").withValues(alpha: 0), HexColor("#ffffff").withValues(alpha: 1)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: const [0.6, 1],
+  );
 }
 
 class HexColor extends Color {
@@ -61,4 +91,3 @@ class ColorToHex extends Color {
 
   ColorToHex(final Color color) : super(_convertColorTHex(color));
 }
-

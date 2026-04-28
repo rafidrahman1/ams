@@ -9,7 +9,7 @@ String? normalizeAstId(String? value) {
   try {
     final decoded = jsonDecode(trimmed);
     if (decoded is Map<String, dynamic>) {
-      final fromAstId = decoded['ast_ID'] ?? decoded['astId'];
+      final fromAstId = decoded['ast_ID'] ?? decoded['ast_id'] ?? decoded['astId'];
       final astId = fromAstId?.toString().trim();
       if (astId != null && astId.isNotEmpty) {
         return astId;

@@ -26,6 +26,7 @@ class LocalDatabase {
   static const _submissionsTable = 'pending_checklist_submissions';
   static const _assetsTable = 'cached_assets';
   static const _checklistTable = 'cached_checklist_items';
+  static const _registeredDevicesTable = 'registered_devices';
 
   Future<Database>? _dbFuture;
 
@@ -38,7 +39,7 @@ class LocalDatabase {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, _databaseName),
-      version: 5,
+      version: 8,
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -47,7 +48,6 @@ class LocalDatabase {
           await db.execute('DROP TABLE IF EXISTS $_togglesTable');
           await _createTables(db);
         } else if (oldVersion < 3) {
-          // Add ast_id and target_state to toggles table
           await db.execute('ALTER TABLE $_togglesTable ADD COLUMN ast_id TEXT NOT NULL DEFAULT ""');
           await db.execute('ALTER TABLE $_togglesTable ADD COLUMN target_state INTEGER NOT NULL DEFAULT 0');
         }
@@ -66,6 +66,34 @@ class LocalDatabase {
         if (oldVersion < 5) {
           // Keep submission history: mark rows as synced instead of deleting them.
           await db.execute('ALTER TABLE $_submissionsTable ADD COLUMN synced_at INTEGER');
+        }
+        if (oldVersion < 6) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_registeredDevicesTable (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              details TEXT NOT NULL,
+              address_line TEXT NOT NULL,
+              status TEXT,
+              location TEXT,
+              block TEXT,
+              image_path TEXT,
+              created_at INTEGER NOT NULL,
+              synced INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+        }
+        if (oldVersion < 7) {
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN asset_type TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN warranty_end TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN specification TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN amount TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN purchase_date TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN manufacture_date TEXT');
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN asset_attachment TEXT');
+        }
+        if (oldVersion < 8) {
+          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN ast_id TEXT');
         }
       },
     );
@@ -111,6 +139,28 @@ class LocalDatabase {
         PRIMARY KEY (user_key, ast_id, feature_id)
       )
     ''');
+    await db.execute('''
+      CREATE TABLE $_registeredDevicesTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ast_id TEXT,
+        name TEXT NOT NULL,
+        details TEXT NOT NULL,
+        address_line TEXT NOT NULL,
+        status TEXT,
+        asset_type TEXT,
+        location TEXT,
+        block TEXT,
+        image_path TEXT,
+        warranty_end TEXT,
+        specification TEXT,
+        amount TEXT,
+        purchase_date TEXT,
+        manufacture_date TEXT,
+        asset_attachment TEXT,
+        created_at INTEGER NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
   }
 
   // Assets Cache
@@ -130,6 +180,11 @@ class LocalDatabase {
     final db = await _getDatabase();
     final rows = await db.query(_assetsTable, where: 'user_key = ?', whereArgs: [userKey]);
     return rows.map((row) => VolunteerAsset(name: row['name'] as String, details: row['details'] as String, astId: row['ast_id'] as String)).toList();
+  }
+
+  Future<void> deleteAsset(String userKey, String astId) async {
+    final db = await _getDatabase();
+    await db.delete(_assetsTable, where: 'user_key = ? AND ast_id = ?', whereArgs: [userKey, astId]);
   }
 
   // Checklist Cache
@@ -205,20 +260,9 @@ class LocalDatabase {
 
   Future<List<ChecklistSubmissionQueueItem>> loadPendingChecklistSubmissions(String userKey) async {
     final db = await _getDatabase();
-    final rows = await db.query(
-      _submissionsTable,
-      where: 'user_key = ? AND synced_at IS NULL',
-      whereArgs: [userKey],
-      orderBy: 'id ASC',
-    );
+    final rows = await db.query(_submissionsTable, where: 'user_key = ? AND synced_at IS NULL', whereArgs: [userKey], orderBy: 'id ASC');
     return rows
-        .map(
-          (row) => ChecklistSubmissionQueueItem(
-            queueId: row['id'] as int,
-            astId: row['ast_id'] as String,
-            payloadJson: row['payload_json'] as String,
-          ),
-        )
+        .map((row) => ChecklistSubmissionQueueItem(queueId: row['id'] as int, astId: row['ast_id'] as String, payloadJson: row['payload_json'] as String))
         .toList(growable: false);
   }
 
@@ -263,5 +307,122 @@ class LocalDatabase {
     await db.delete(_checklistTable);
     await db.delete(_togglesTable);
     await db.delete(_submissionsTable);
+  }
+
+  // Registered Devices
+  Future<int> insertRegisteredDevice(RegisteredDeviceData device) async {
+    final db = await _getDatabase();
+    return db.insert(_registeredDevicesTable, device.toMap());
+  }
+
+  Future<RegisteredDeviceData?> getRegisteredDeviceById(int id) async {
+    final db = await _getDatabase();
+    final rows = await db.query(_registeredDevicesTable, where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    return RegisteredDeviceData.fromMap(rows.first);
+  }
+
+  Future<List<RegisteredDeviceData>> getUnyncedRegisteredDevices() async {
+    final db = await _getDatabase();
+    final rows = await db.query(_registeredDevicesTable, where: 'synced = ?', whereArgs: [0]);
+    return rows.map((row) => RegisteredDeviceData.fromMap(row)).toList();
+  }
+
+  Future<void> markRegisteredDeviceSynced(int id) async {
+    final db = await _getDatabase();
+    await db.update(_registeredDevicesTable, {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteRegisteredDevice(int id) async {
+    final db = await _getDatabase();
+    await db.delete(_registeredDevicesTable, where: 'id = ?', whereArgs: [id]);
+  }
+}
+
+class RegisteredDeviceData {
+  final int? id;
+  final String? astId;
+  final String name;
+  final String details;
+  final String addressLine;
+  final String? status;
+  final String? assetType;
+  final String? location;
+  final String? block;
+  final String? imagePath;
+  final String? warrantyEnd;
+  final String? specification;
+  final String? amount;
+  final String? purchaseDate;
+  final String? manufactureDate;
+  final String? assetAttachment;
+  final DateTime createdAt;
+  final bool synced;
+
+  RegisteredDeviceData({
+    this.id,
+    this.astId,
+    required this.name,
+    required this.details,
+    required this.addressLine,
+    this.status,
+    this.assetType,
+    this.location,
+    this.block,
+    this.imagePath,
+    this.warrantyEnd,
+    this.specification,
+    this.amount,
+    this.purchaseDate,
+    this.manufactureDate,
+    this.assetAttachment,
+    required this.createdAt,
+    this.synced = false,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (id != null) 'id': id,
+      'ast_id': astId,
+      'name': name,
+      'details': details,
+      'address_line': addressLine,
+      'status': status,
+      'asset_type': assetType,
+      'location': location,
+      'block': block,
+      'image_path': imagePath,
+      'warranty_end': warrantyEnd,
+      'specification': specification,
+      'amount': amount,
+      'purchase_date': purchaseDate,
+      'manufacture_date': manufactureDate,
+      'asset_attachment': assetAttachment,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'synced': synced ? 1 : 0,
+    };
+  }
+
+  factory RegisteredDeviceData.fromMap(Map<String, dynamic> map) {
+    return RegisteredDeviceData(
+      id: map['id'] as int?,
+      astId: map['ast_id'] as String?,
+      name: map['name'] as String,
+      details: map['details'] as String,
+      addressLine: map['address_line'] as String,
+      status: map['status'] as String?,
+      assetType: map['asset_type'] as String?,
+      location: map['location'] as String?,
+      block: map['block'] as String?,
+      imagePath: map['image_path'] as String?,
+      warrantyEnd: map['warranty_end'] as String?,
+      specification: map['specification'] as String?,
+      amount: map['amount'] as String?,
+      purchaseDate: map['purchase_date'] as String?,
+      manufactureDate: map['manufacture_date'] as String?,
+      assetAttachment: map['asset_attachment'] as String?,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+      synced: (map['synced'] as int) == 1,
+    );
   }
 }
