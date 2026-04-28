@@ -33,6 +33,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scan => 'Scan';
 
   @override
+  String get adminLogin => 'Admin Login';
+
+  @override
   String get assets => 'Assets';
 
   @override

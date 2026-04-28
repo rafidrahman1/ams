@@ -146,6 +146,12 @@ abstract class AppLocalizations {
   /// **'Scan'**
   String get scan;
 
+  /// No description provided for @adminLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Login'**
+  String get adminLogin;
+
   /// No description provided for @assets.
   ///
   /// In en, this message translates to:
