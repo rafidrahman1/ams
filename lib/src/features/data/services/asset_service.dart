@@ -4,6 +4,7 @@ import 'package:asset_management_system/src/core/network/api_client.dart';
 import 'package:asset_management_system/src/core/network/endpoints.dart';
 
 import '../models/asset_checklist_item.dart';
+import '../models/location_models.dart';
 import '../models/volunteer_asset.dart';
 
 class AssetService {
@@ -17,6 +18,19 @@ class AssetService {
 
     if (res.statusCode != 200 || body is! Map<String, dynamic>) {
       throw Exception('Failed to load assets');
+    }
+
+    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
+
+    return items.whereType<Map<String, dynamic>>().map(VolunteerAsset.fromAssignmentJson).toList();
+  }
+
+  Future<List<VolunteerAsset>> fetchAdminAssets() async {
+    final res = await client.get(Endpoints.adminAsset, auth: true);
+    final body = jsonDecode(res.body);
+
+    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
+      throw Exception('Failed to load admin assets');
     }
 
     final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
@@ -47,6 +61,36 @@ class AssetService {
     return AssetChecklist(items: items, status: status, remark: remark);
   }
 
+  Future<List<IdNamePair>> fetchCampLocations() async {
+    final res = await client.get(Endpoints.campLocations, auth: true);
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
+      throw Exception('Failed to load camp locations');
+    }
+    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
+    return items.whereType<Map<String, dynamic>>().map(IdNamePair.fromJson).toList();
+  }
+
+  Future<List<IdNamePair>> fetchBlocks() async {
+    final res = await client.get(Endpoints.blocks, auth: true);
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
+      throw Exception('Failed to load blocks');
+    }
+    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
+    return items.whereType<Map<String, dynamic>>().map(IdNamePair.fromJson).toList();
+  }
+
+  Future<List<IdNamePair>> fetchAssetTypes() async {
+    final res = await client.get(Endpoints.assetTypes, auth: true);
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
+      throw Exception('Failed to load asset types');
+    }
+    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
+    return items.whereType<Map<String, dynamic>>().map(IdNamePair.fromJson).toList();
+  }
+
   Future<Map<String, dynamic>> submitChecklist({
     required String astId,
     required String status,
@@ -70,5 +114,88 @@ class AssetService {
     }
 
     return body;
+  }
+
+  Future<Map<String, dynamic>> createAsset({
+    required String name,
+    required String details,
+    required String addressLine,
+    required String astId,
+    String? status,
+    String? assetType,
+    String? location,
+    String? block,
+    List<Map<String, dynamic>>? specifications,
+    String? warrantyEnd,
+    String? amount,
+    String? purchaseDate,
+    String? manufactureDate,
+    String? imagePath,
+    String? attachmentPath,
+  }) async {
+    final normalizedAstId = astId.trim();
+
+    final fields = <String, String>{
+      'name': name,
+      'details': details,
+      'address_line': addressLine,
+      'ast_ID': normalizedAstId,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (assetType != null && assetType.isNotEmpty) 'asset_type': assetType,
+      if (location != null && location.isNotEmpty) 'location': location,
+      if (block != null && block.isNotEmpty) 'block': block,
+      if (warrantyEnd != null && warrantyEnd.isNotEmpty) 'warranty_end': warrantyEnd,
+      if (amount != null && amount.isNotEmpty) 'amount': amount,
+      if (purchaseDate != null && purchaseDate.isNotEmpty) 'purchase_date': purchaseDate,
+      if (manufactureDate != null && manufactureDate.isNotEmpty) 'manufacture_date': manufactureDate,
+    };
+
+    if (specifications != null && specifications.isNotEmpty) {
+      fields['specification'] = jsonEncode(specifications);
+    }
+
+    final Map<String, String> filePaths = {};
+    if (imagePath != null) filePaths['image'] = imagePath;
+    if (attachmentPath != null) filePaths['asset_attachment'] = attachmentPath;
+
+    final res = await client.postFormDataWithFile(Endpoints.assetCreate, fields: fields, filePaths: filePaths.isNotEmpty ? filePaths : null, auth: true);
+
+    final body = jsonDecode(res.body);
+
+    if ((res.statusCode != 200 && res.statusCode != 201) || body is! Map<String, dynamic> || body['code'] != 200) {
+      final errorMessage = body is Map<String, dynamic> ? body['response']?.toString() : null;
+      throw Exception(errorMessage ?? 'Failed to create asset');
+    }
+
+    return body;
+  }
+
+  @Deprecated('Use createAsset instead')
+  Future<Map<String, dynamic>> createAssetWithImage({
+    required String name,
+    required String details,
+    required String addressLine,
+    required String astId,
+    String? status,
+    String? assetType,
+    String? location,
+    String? block,
+    String? specification,
+    String? imagePath,
+  }) async {
+    return createAsset(
+      name: name,
+      details: details,
+      addressLine: addressLine,
+      astId: astId,
+      status: status,
+      assetType: assetType,
+      location: location,
+      block: block,
+      specifications: specification != null ? <Map<String, dynamic>>[
+        {'id': 1, 'name': specification, 'description': ''}
+      ] : null,
+      imagePath: imagePath,
+    );
   }
 }

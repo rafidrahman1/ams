@@ -14,15 +14,26 @@ class AuthRepository {
   Future<LoginResponse> login(String email, String password) async {
     final res = await service.login(email, password);
 
+    return _persistLogin(res, email, role: 'volunteer');
+  }
+
+  Future<LoginResponse> adminLogin(String email, String password) async {
+    final res = await service.adminLogin(email, password);
+
+    return _persistLogin(res, email, role: 'admin');
+  }
+
+  Future<LoginResponse> _persistLogin(LoginResponse res, String email, {required String role}) async {
     if (res.access.isEmpty || res.refresh.isEmpty) {
       throw Exception('Invalid login response');
     }
 
     await storage.saveTokens(res.access, res.refresh);
+    await storage.saveSessionRole(role);
 
     final cacheKey = _resolveCacheKey(res, email);
     await storage.saveSessionKey(cacheKey);
-    await assetRepository.prefetchOfflineData(cacheKey);
+    await assetRepository.prefetchOfflineData(cacheKey, isAdmin: role == 'admin');
 
     return res;
   }
@@ -39,6 +50,8 @@ class AuthRepository {
       await assetRepository.clearCache(userKey);
     }
   }
+
+  Future<String?> getSessionRole() => storage.getSessionRole();
 
   String _resolveCacheKey(LoginResponse response, String fallbackEmail) {
     final email = response.userObject?.email ?? '';

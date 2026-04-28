@@ -5,18 +5,20 @@ import 'package:flutter/material.dart';
 class HomeActionButtonsRow extends StatefulWidget {
   const HomeActionButtonsRow({
     super.key,
-    required this.scanLabel,
-    required this.assetsLabel,
+    required this.primaryLabel,
+    required this.primaryIcon,
+    required this.secondaryLabel,
     required this.isSyncing,
-    required this.onScanPressed,
-    required this.onSyncPressed,
+    required this.onPrimaryPressed,
+    required this.onSecondaryPressed,
   });
 
-  final String scanLabel;
-  final String assetsLabel;
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final String secondaryLabel;
   final bool isSyncing;
-  final VoidCallback onScanPressed;
-  final VoidCallback onSyncPressed;
+  final VoidCallback onPrimaryPressed;
+  final VoidCallback onSecondaryPressed;
 
   @override
   State<HomeActionButtonsRow> createState() => _HomeActionButtonsRowState();
@@ -58,17 +60,17 @@ class _HomeActionButtonsRowState extends State<HomeActionButtonsRow> with Single
       children: [
         SquareActionButton(
           size: 180,
-          label: widget.scanLabel,
-          icon: Icons.document_scanner,
-          onPressed: widget.isSyncing ? null : widget.onScanPressed,
+          label: widget.primaryLabel,
+          icon: widget.primaryIcon,
+          onPressed: widget.isSyncing ? null : widget.onPrimaryPressed,
           backgroundColor: ThemeColor.primary,
           foregroundColor: ThemeColor.backGroundColor,
         ),
         SquareActionButton(
           size: 180,
-          label: widget.assetsLabel,
+          label: widget.secondaryLabel,
           iconWidget: RotationTransition(turns: _syncRotationController, child: const Icon(Icons.sync, size: 36)),
-          onPressed: widget.isSyncing ? null : widget.onSyncPressed,
+          onPressed: widget.isSyncing ? null : widget.onSecondaryPressed,
           backgroundColor: ThemeColor.primary,
           foregroundColor: ThemeColor.backGroundColor,
         ),

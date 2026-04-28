@@ -8,6 +8,7 @@
   "logoutConfirmationMessage": "Are you sure you want to logout?",
   "cancel": "Cancel",
   "scan": "Scan",
+  "adminLogin": "Admin Login",
   "assets": "Assets",
   "assetTitle1": "Asset 1",
   "assetDescription1": "Description of Asset 1",

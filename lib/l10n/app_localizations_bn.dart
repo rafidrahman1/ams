@@ -34,6 +34,9 @@ class AppLocalizationsBn extends AppLocalizations {
   String get scan => 'স্ক্যান';
 
   @override
+  String get adminLogin => 'অ্যাডমিন লগইন';
+
+  @override
   String get assets => 'অ্যাসেটসমূহ';
 
   @override

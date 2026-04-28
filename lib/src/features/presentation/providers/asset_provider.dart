@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/storage/local_database.dart';
 import '../../data/models/asset_checklist_item.dart';
+import '../../data/models/location_models.dart';
 import '../../data/models/volunteer_asset.dart';
 import '../../data/repositories/asset_repository.dart';
 import '../../data/services/asset_service.dart';
@@ -18,8 +20,24 @@ final myAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
   return ref.read(assetRepositoryProvider).fetchMyAssets();
 });
 
+final adminAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
+  return ref.read(assetRepositoryProvider).fetchAdminAssets();
+});
+
 final assetChecklistProvider = FutureProvider.family<AssetChecklist, String>((ref, astId) {
   return ref.read(assetRepositoryProvider).fetchChecklistByAssetId(astId);
+});
+
+final campLocationsProvider = FutureProvider<List<IdNamePair>>((ref) {
+  return ref.read(assetRepositoryProvider).fetchCampLocations();
+});
+
+final blocksProvider = FutureProvider<List<IdNamePair>>((ref) {
+  return ref.read(assetRepositoryProvider).fetchBlocks();
+});
+
+final assetTypesProvider = FutureProvider<List<IdNamePair>>((ref) {
+  return ref.read(assetRepositoryProvider).fetchAssetTypes();
 });
 
 final assetChecklistAllTrueProvider = FutureProvider.family<bool, String>((ref, astId) async {
@@ -35,4 +53,37 @@ final homeBootstrapProvider = FutureProvider<void>((ref) async {
   final assets = await ref.watch(myAssetsProvider.future);
 
   await Future.wait(assets.map((asset) => ref.watch(assetChecklistAllTrueProvider(asset.astId).future)));
+});
+
+final adminHomeBootstrapProvider = FutureProvider<void>((ref) async {
+  await Future.wait([ref.watch(adminAssetsProvider.future), ref.watch(unsyncedRegisteredDevicesProvider.future)]);
+});
+
+final unsyncedRegisteredDevicesProvider = FutureProvider<List<RegisteredDeviceData>>((ref) {
+  return ref.read(assetRepositoryProvider).getUnsyncedRegisteredDevices();
+});
+
+class ShowAllTrueAssets extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void update(bool value) => state = value;
+}
+
+final showAllTrueAssetsProvider = NotifierProvider<ShowAllTrueAssets, bool>(ShowAllTrueAssets.new);
+
+final filteredAssetsProvider = Provider<AsyncValue<List<VolunteerAsset>>>((ref) {
+  final assetsAsync = ref.watch(myAssetsProvider);
+  final showAllTrue = ref.watch(showAllTrueAssetsProvider);
+
+  return assetsAsync.whenData((assets) {
+    final filtered = <VolunteerAsset>[];
+    for (final asset in assets) {
+      final isAllTrue = ref.watch(assetChecklistAllTrueProvider(asset.astId)).maybeWhen(data: (d) => d, orElse: () => false);
+      if (showAllTrue == isAllTrue) {
+        filtered.add(asset);
+      }
+    }
+    return filtered;
+  });
 });

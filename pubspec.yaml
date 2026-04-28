@@ -45,6 +45,7 @@ dependencies:
   nfc_manager: ^3.5.0
   sqflite: ^2.4.2
   path: ^1.9.1
+  file_picker: ^11.0.2
 
 
 
