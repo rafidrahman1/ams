@@ -8,6 +8,7 @@ import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/location_models.dart';
 import '../../providers/asset_provider.dart';
@@ -203,10 +204,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
       // If we needed to cache bytes, update the stored path after writing temp file.
       // This runs after the UI state update so the user immediately sees the picked filename.
-      final cachedPath = await _resolveCachedUploadPath(
-        picked,
-        prefix: isImage ? 'image' : 'asset_attachment',
-      );
+      final cachedPath = await _resolveCachedUploadPath(picked, prefix: isImage ? 'image' : 'asset_attachment');
       if (!mounted) return;
       setState(() {
         if (isImage) {
@@ -215,6 +213,24 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
           _selectedAttachmentPath = cachedPath;
         }
       });
+    }
+  }
+
+  Future<void> _captureImageFromCamera() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+
+      if (photo != null && mounted) {
+        setState(() {
+          _selectedImagePath = photo.path;
+          _selectedImageName = photo.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error capturing image: ${e.toString()}')));
+      }
     }
   }
 
@@ -564,6 +580,21 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
           ),
           child: Text(isImage ? 'Choose Image' : 'Choose Attachment', style: const TextStyle(fontSize: 12)),
         ),
+        if (isImage)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: ElevatedButton.icon(
+              onPressed: _isSubmitting ? null : _captureImageFromCamera,
+              icon: const Icon(Icons.camera_alt, size: 16),
+              label: const Text('Take Photo', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[200],
+                foregroundColor: Colors.black,
+                elevation: 0,
+                side: const BorderSide(color: Colors.blue),
+              ),
+            ),
+          ),
         Gap.x2,
         Expanded(
           child: Text(
@@ -604,10 +635,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     return '${value.year}-$month-$day';
   }
 
-  Future<String?> _resolveCachedUploadPath(
-    PlatformFile picked, {
-    required String prefix,
-  }) async {
+  Future<String?> _resolveCachedUploadPath(PlatformFile picked, {required String prefix}) async {
     final originalPath = picked.path;
     final originalName = picked.name;
 
