@@ -664,15 +664,6 @@ class AssetRepository {
     ];
   }
 
-  String _normalizeSpecificationForCompare(String? raw) {
-    final list = _normalizeSpecifications(raw) ?? const <Map<String, dynamic>>[];
-    if (list.isEmpty) return '';
-
-    final pairs = list.map((e) => '${_normalized(e['name'])}|${_normalized(e['description'])}').where((e) => e.isNotEmpty && e != '|').toList(growable: false);
-    pairs.sort();
-    return pairs.join('||');
-  }
-
   String? _normalizeAstId(String? value) {
     if (value == null) return null;
     final trimmed = value.trim();

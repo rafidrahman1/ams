@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/src/theme/gap.dart';
@@ -7,7 +8,6 @@ import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:io';
 
 import '../../../data/models/location_models.dart';
 import '../../providers/asset_provider.dart';
@@ -49,6 +49,9 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
   final List<Map<String, TextEditingController>> _items = [];
 
+  static const _defaultDatePickerStartYear = 2000;
+  static const _defaultDatePickerEndYear = 2101;
+
   @override
   void initState() {
     super.initState();
@@ -65,13 +68,34 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   void _removeItem(int index) {
     setState(() {
       if (_items.length > 1) {
-        _items.removeAt(index);
+        final removed = _items.removeAt(index);
+        removed['item']?.dispose();
+        removed['description']?.dispose();
       }
     });
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _astIdController.dispose();
+    _amountController.dispose();
+    _addressLineController.dispose();
+    _assetDetailsController.dispose();
+    for (final entry in _items) {
+      entry['item']?.dispose();
+      entry['description']?.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _selectDate(BuildContext context, {required Function(DateTime) onDateSelected}) async {
-    final DateTime? picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2101));
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(_defaultDatePickerStartYear),
+      lastDate: DateTime(_defaultDatePickerEndYear),
+    );
     if (picked != null) {
       onDateSelected(picked);
     }
@@ -167,38 +191,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     );
     if (result != null && result.files.isNotEmpty) {
       final picked = result.files.first;
-
-      Future<String?> toCachedPath({required String prefix}) async {
-        final originalPath = picked.path;
-        final originalName = picked.name;
-
-        // If we have a readable filesystem path, keep it.
-        if (originalPath != null && originalPath.trim().isNotEmpty) {
-          try {
-            final f = File(originalPath);
-            if (await f.exists()) {
-              return originalPath;
-            }
-          } catch (_) {
-            // Fall through to bytes caching.
-          }
-        }
-
-        // If we can't read by path, but we do have bytes, write them to a temp file.
-        final bytes = picked.bytes;
-        if (bytes != null && bytes.isNotEmpty) {
-          final safeName = (originalName.isNotEmpty ? originalName : 'upload.bin').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-          final tempDir = await Directory.systemTemp.createTemp('asset_upload_cache_$prefix');
-          final outPath = '${tempDir.path}/$prefix-$safeName';
-          final outFile = File(outPath);
-          await outFile.writeAsBytes(bytes, flush: true);
-          return outPath;
-        }
-
-        // Last resort: keep whatever path we got (might still work).
-        return originalPath;
-      }
-
       setState(() {
         if (isImage) {
           _selectedImagePath = picked.path;
@@ -211,7 +203,10 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
       // If we needed to cache bytes, update the stored path after writing temp file.
       // This runs after the UI state update so the user immediately sees the picked filename.
-      final cachedPath = await toCachedPath(prefix: isImage ? 'image' : 'asset_attachment');
+      final cachedPath = await _resolveCachedUploadPath(
+        picked,
+        prefix: isImage ? 'image' : 'asset_attachment',
+      );
       if (!mounted) return;
       setState(() {
         if (isImage) {
@@ -529,7 +524,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       items: items,
-      onChanged: onChanged as void Function(String?)?,
+      onChanged: onChanged,
       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
     );
   }
@@ -607,5 +602,36 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final month = value.month.toString().padLeft(2, '0');
     final day = value.day.toString().padLeft(2, '0');
     return '${value.year}-$month-$day';
+  }
+
+  Future<String?> _resolveCachedUploadPath(
+    PlatformFile picked, {
+    required String prefix,
+  }) async {
+    final originalPath = picked.path;
+    final originalName = picked.name;
+
+    if (originalPath != null && originalPath.trim().isNotEmpty) {
+      try {
+        final f = File(originalPath);
+        if (await f.exists()) {
+          return originalPath;
+        }
+      } catch (_) {
+        // Fall through to bytes caching.
+      }
+    }
+
+    final bytes = picked.bytes;
+    if (bytes != null && bytes.isNotEmpty) {
+      final safeName = (originalName.isNotEmpty ? originalName : 'upload.bin').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final tempDir = await Directory.systemTemp.createTemp('asset_upload_cache_$prefix');
+      final outPath = '${tempDir.path}/$prefix-$safeName';
+      final outFile = File(outPath);
+      await outFile.writeAsBytes(bytes, flush: true);
+      return outPath;
+    }
+
+    return originalPath;
   }
 }

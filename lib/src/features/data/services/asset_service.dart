@@ -26,19 +26,6 @@ class AssetService {
     return items.whereType<Map<String, dynamic>>().map(VolunteerAsset.fromAssignmentJson).toList();
   }
 
-  Future<List<VolunteerAsset>> fetchAdminAssets() async {
-    final res = await client.get(Endpoints.adminAsset, auth: true);
-    final body = jsonDecode(res.body);
-
-    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
-      throw Exception('Failed to load admin assets');
-    }
-
-    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
-
-    return items.whereType<Map<String, dynamic>>().map(VolunteerAsset.fromAssignmentJson).toList();
-  }
-
   Future<AssetChecklist> fetchChecklistByAssetId(String astId) async {
     final res = await client.get('${Endpoints.assetChecklistByAssetBase}/$astId', auth: true);
     final body = jsonDecode(res.body);
@@ -185,45 +172,14 @@ class AssetService {
 
       final sentSummary =
           'sent: ast_ID=${fields['ast_ID']}, asset_type=${fields['asset_type']}, location=${fields['location']}, block=${fields['block']}, ' //
-          'name="${fields['name']}", details="${fields['details']}", address_line="${address}", ' //
+          'name="${fields['name']}", details="${fields['details']}", address_line="$address", ' //
           'specification_present=${fields.containsKey('specification')}, spec_format=[$specFormat], spec_preview="$specPreview", ' //
           'files=$filePresence';
 
       final baseError = (normalizedError != null && normalizedError.isNotEmpty) ? normalizedError : 'Failed to create asset';
-      throw Exception(baseError + ' | ' + sentSummary);
+      throw Exception('$baseError | $sentSummary');
     }
 
     return body;
-  }
-
-  @Deprecated('Use createAsset instead')
-  Future<Map<String, dynamic>> createAssetWithImage({
-    required String name,
-    required String details,
-    required String addressLine,
-    required String astId,
-    String? status,
-    String? assetType,
-    String? location,
-    String? block,
-    String? specification,
-    String? imagePath,
-  }) async {
-    return createAsset(
-      name: name,
-      details: details,
-      addressLine: addressLine,
-      astId: astId,
-      status: status,
-      assetType: assetType,
-      location: location,
-      block: block,
-      specifications: specification != null
-          ? <Map<String, dynamic>>[
-              {'id': 1, 'name': specification, 'description': ''},
-            ]
-          : null,
-      imagePath: imagePath,
-    );
   }
 }
