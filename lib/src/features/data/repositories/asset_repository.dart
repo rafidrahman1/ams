@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
@@ -412,6 +413,31 @@ class AssetRepository {
 
     final specifications = _normalizeSpecifications(device.specification);
 
+    // The local file picker path might become unavailable by the time the user taps Sync
+    // (e.g. temp files cleared, permission changes). Only attempt uploads + verification
+    // when the files actually exist right now.
+    String? imagePathForUpload = device.imagePath;
+    if (imagePathForUpload?.trim().isNotEmpty ?? false) {
+      try {
+        if (!await File(imagePathForUpload!).exists()) {
+          imagePathForUpload = null;
+        }
+      } catch (_) {
+        imagePathForUpload = null;
+      }
+    }
+
+    String? attachmentPathForUpload = device.assetAttachment;
+    if (attachmentPathForUpload?.trim().isNotEmpty ?? false) {
+      try {
+        if (!await File(attachmentPathForUpload!).exists()) {
+          attachmentPathForUpload = null;
+        }
+      } catch (_) {
+        attachmentPathForUpload = null;
+      }
+    }
+
     Map<String, dynamic> responseBody;
     try {
       responseBody = await service.createAsset(
@@ -423,13 +449,13 @@ class AssetRepository {
         assetType: device.assetType,
         location: device.location,
         block: device.block,
-        imagePath: device.imagePath,
+        imagePath: imagePathForUpload,
         specifications: specifications,
         warrantyEnd: _normalizeApiDate(device.warrantyEnd),
         amount: device.amount,
         purchaseDate: _normalizeApiDate(device.purchaseDate),
         manufactureDate: _normalizeApiDate(device.manufactureDate),
-        attachmentPath: device.assetAttachment,
+        attachmentPath: attachmentPathForUpload,
       );
     } catch (e) {
       final msg = e.toString();
@@ -452,13 +478,13 @@ class AssetRepository {
           assetType: device.assetType,
           location: device.location,
           block: null,
-          imagePath: device.imagePath,
+          imagePath: imagePathForUpload,
           specifications: specifications,
           warrantyEnd: _normalizeApiDate(device.warrantyEnd),
           amount: device.amount,
           purchaseDate: _normalizeApiDate(device.purchaseDate),
           manufactureDate: _normalizeApiDate(device.manufactureDate),
-          attachmentPath: device.assetAttachment,
+          attachmentPath: attachmentPathForUpload,
         );
       } catch (e2) {
         throw Exception('Sync failed during upload (createAsset) after retry-without-block: ${e2.toString()}');
@@ -473,6 +499,8 @@ class AssetRepository {
       submittedAddressLine: normalizedAddressLine,
       submittedAstId: normalizedAstId,
       submittedSpecifications: specifications,
+      uploadedImagePath: imagePathForUpload,
+      uploadedAttachmentPath: attachmentPathForUpload,
     );
     if (!isVerified) {
       final data = responseBody['data'];
@@ -490,6 +518,8 @@ class AssetRepository {
     required String submittedAddressLine,
     required String submittedAstId,
     required List<Map<String, dynamic>>? submittedSpecifications,
+    required String? uploadedImagePath,
+    required String? uploadedAttachmentPath,
   }) {
     if (response['code'] != 200) return false;
 
@@ -506,14 +536,17 @@ class AssetRepository {
       if (_normalized(responseAddressLine) != _normalized(submittedAddressLine)) return false;
     }
 
-    if (device.status?.trim().isNotEmpty ?? false) {
-      if (_normalized(_readValue(data, const ['status'])) != _normalized(device.status)) return false;
-    }
+    // Status is often overridden by the backend workflow (e.g. request ACTIVE but backend sets APPROVAL PENDING),
+    // so we don't strict-verify it here.
+
+    final responseAssetType = _readValue(data, const ['asset_type', 'assetType']);
     if (device.assetType?.trim().isNotEmpty ?? false) {
-      if (_normalized(_readValue(data, const ['asset_type', 'assetType'])) != _normalized(device.assetType)) return false;
+      if (responseAssetType != null && _normalized(responseAssetType) != _normalized(device.assetType)) return false;
     }
+
+    final responseLocation = _readValue(data, const ['location']);
     if (device.location?.trim().isNotEmpty ?? false) {
-      if (_normalized(_readValue(data, const ['location'])) != _normalized(device.location)) return false;
+      if (responseLocation != null && _normalized(responseLocation) != _normalized(device.location)) return false;
     }
     final responseBlock = _readValue(data, const ['block']);
     if ((device.block?.trim().isNotEmpty ?? false) && responseBlock != null) {
@@ -549,8 +582,8 @@ class AssetRepository {
     }
 
     // Server returns URLs for files; ensure those fields are present when a file was submitted.
-    if ((device.imagePath?.trim().isNotEmpty ?? false) && _normalized(_readValue(data, const ['image', 'image_url'])).isEmpty) return false;
-    if ((device.assetAttachment?.trim().isNotEmpty ?? false)) {
+    if ((uploadedImagePath?.trim().isNotEmpty ?? false) && _normalized(_readValue(data, const ['image', 'image_url'])).isEmpty) return false;
+    if ((uploadedAttachmentPath?.trim().isNotEmpty ?? false)) {
       final attachmentsValue = _readValue(data, const ['asset_attach', 'asset_attachment', 'asset_attachments']);
       if (!_hasAttachmentData(attachmentsValue)) return false;
     }

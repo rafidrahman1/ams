@@ -7,6 +7,7 @@ import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
 
 import '../../../data/models/location_models.dart';
 import '../../providers/asset_provider.dart';
@@ -159,15 +160,64 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
   Future<void> _pickFile({required bool isImage}) async {
     // file_picker API changed in recent versions; use static pickFiles which is available
-    final result = await FilePicker.pickFiles(type: isImage ? FileType.image : FileType.any);
+    final result = await FilePicker.pickFiles(
+      type: isImage ? FileType.image : FileType.any,
+      // Cache bytes immediately so Sync can upload later even if the original path becomes inaccessible.
+      withData: true,
+    );
     if (result != null && result.files.isNotEmpty) {
+      final picked = result.files.first;
+
+      Future<String?> toCachedPath({required String prefix}) async {
+        final originalPath = picked.path;
+        final originalName = picked.name;
+
+        // If we have a readable filesystem path, keep it.
+        if (originalPath != null && originalPath.trim().isNotEmpty) {
+          try {
+            final f = File(originalPath);
+            if (await f.exists()) {
+              return originalPath;
+            }
+          } catch (_) {
+            // Fall through to bytes caching.
+          }
+        }
+
+        // If we can't read by path, but we do have bytes, write them to a temp file.
+        final bytes = picked.bytes;
+        if (bytes != null && bytes.isNotEmpty) {
+          final safeName = (originalName.isNotEmpty ? originalName : 'upload.bin').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+          final tempDir = await Directory.systemTemp.createTemp('asset_upload_cache_$prefix');
+          final outPath = '${tempDir.path}/$prefix-$safeName';
+          final outFile = File(outPath);
+          await outFile.writeAsBytes(bytes, flush: true);
+          return outPath;
+        }
+
+        // Last resort: keep whatever path we got (might still work).
+        return originalPath;
+      }
+
       setState(() {
         if (isImage) {
-          _selectedImagePath = result.files.first.path;
-          _selectedImageName = result.files.first.name;
+          _selectedImagePath = picked.path;
+          _selectedImageName = picked.name;
         } else {
-          _selectedAttachmentPath = result.files.first.path;
-          _selectedAttachmentName = result.files.first.name;
+          _selectedAttachmentPath = picked.path;
+          _selectedAttachmentName = picked.name;
+        }
+      });
+
+      // If we needed to cache bytes, update the stored path after writing temp file.
+      // This runs after the UI state update so the user immediately sees the picked filename.
+      final cachedPath = await toCachedPath(prefix: isImage ? 'image' : 'asset_attachment');
+      if (!mounted) return;
+      setState(() {
+        if (isImage) {
+          _selectedImagePath = cachedPath;
+        } else {
+          _selectedAttachmentPath = cachedPath;
         }
       });
     }
