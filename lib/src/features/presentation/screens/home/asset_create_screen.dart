@@ -568,9 +568,11 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   Widget _buildFilePicker({required bool isImage}) {
     final isSelected = isImage ? _selectedImageName != null : _selectedAttachmentName != null;
 
-    return Row(
-      children: [
-        ElevatedButton(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+
+        final chooseButton = ElevatedButton(
           onPressed: _isSubmitting ? null : () => _pickFile(isImage: isImage),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[200],
@@ -579,52 +581,74 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             side: const BorderSide(color: Colors.grey),
           ),
           child: Text(isImage ? 'Choose Image' : 'Choose Attachment', style: const TextStyle(fontSize: 12)),
-        ),
-        if (isImage)
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: ElevatedButton.icon(
-              onPressed: _isSubmitting ? null : _captureImageFromCamera,
-              icon: const Icon(Icons.camera_alt, size: 16),
-              label: const Text('Take Photo', style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[200],
-                foregroundColor: Colors.black,
-                elevation: 0,
-                side: const BorderSide(color: Colors.blue),
-              ),
-            ),
-          ),
-        Gap.x2,
-        Expanded(
-          child: Text(
-            (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? 'No image chosen' : 'No attachment chosen'),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (isSelected)
-          ElevatedButton(
-            onPressed: _isSubmitting
-                ? null
-                : () => setState(() {
-                    if (isImage) {
-                      _selectedImagePath = null;
-                      _selectedImageName = null;
-                    } else {
-                      _selectedAttachmentPath = null;
-                      _selectedAttachmentName = null;
-                    }
-                  }),
+        );
+
+        final cameraButton = Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: ElevatedButton.icon(
+            onPressed: _isSubmitting ? null : _captureImageFromCamera,
+            icon: const Icon(Icons.camera_alt, size: 16),
+            label: const Text('Take Photo', style: TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[300],
-              foregroundColor: Colors.white,
+              backgroundColor: Colors.blue[200],
+              foregroundColor: Colors.black,
               elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              side: const BorderSide(color: Colors.blue),
             ),
-            child: const Text('Remove', style: TextStyle(fontSize: 11)),
           ),
-      ],
+        );
+
+        final removeButton = ElevatedButton(
+          onPressed: _isSubmitting
+              ? null
+              : () => setState(() {
+                  if (isImage) {
+                    _selectedImagePath = null;
+                    _selectedImageName = null;
+                  } else {
+                    _selectedAttachmentPath = null;
+                    _selectedAttachmentName = null;
+                  }
+                }),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[300],
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text('Remove', style: TextStyle(fontSize: 11)),
+        );
+
+        final fileName = Text(
+          (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? 'No image chosen' : 'No attachment chosen'),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          overflow: TextOverflow.ellipsis,
+        );
+
+        if (!isNarrow) {
+          return Row(
+            children: [
+              chooseButton,
+              if (isImage) cameraButton,
+              Gap.x2,
+              Expanded(child: fileName),
+              if (isSelected) removeButton,
+            ],
+          );
+        }
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            chooseButton,
+            if (isImage) cameraButton,
+            SizedBox(width: constraints.maxWidth, child: fileName),
+            if (isSelected) removeButton,
+          ],
+        );
+      },
     );
   }
 
