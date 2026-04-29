@@ -470,6 +470,52 @@ void main() {
     expect(fetchCount, greaterThanOrEqualTo(2));
   });
 
+  testWidgets('admin home device card opens stored db details', (WidgetTester tester) async {
+    final device = RegisteredDeviceData(
+      id: 1,
+      astId: 'AST-000777',
+      name: 'Generator',
+      details: 'Backup generator for building A',
+      addressLine: 'Warehouse 4',
+      status: 'ACTIVE',
+      assetType: 'Electrical',
+      location: 'Main Camp',
+      block: 'Block B',
+      imagePath: '/tmp/generator.jpg',
+      warrantyEnd: '2026-12-31',
+      specification: '{"capacity":"20kVA"}',
+      amount: '120000',
+      purchaseDate: '2026-01-10',
+      manufactureDate: '2025-12-01',
+      assetAttachment: '/tmp/generator.pdf',
+      createdAt: DateTime(2026, 4, 29),
+      synced: false,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminAssetsProvider.overrideWith((ref) async => const <VolunteerAsset>[]),
+          unsyncedRegisteredDevicesProvider.overrideWith((ref) async => [device]),
+          registeredDeviceProvider.overrideWith((ref, id) async => id == device.id ? device : null),
+        ],
+        child: _localizedApp(const HomeScreen(isAdmin: true)),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Generator'), findsOneWidget);
+
+    await tester.tap(find.byType(ListTile).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Device Details'), findsOneWidget);
+    expect(find.text('AST-000777'), findsOneWidget);
+    expect(find.text('Backup generator for building A'), findsOneWidget);
+    expect(find.text('Warehouse 4'), findsOneWidget);
+  });
+
   testWidgets('mismatched qr code keeps the user on the qr screen', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/models/location_models.dart';
 import '../../providers/asset_provider.dart';
 import '../../utils/ast_id_parser.dart';
 
@@ -94,6 +95,13 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
     if (name.isEmpty || address.isEmpty) {
       messenger.showSnackBar(const SnackBar(content: Text('Name and address are required')));
+      return;
+    }
+
+    if ((_selectedType ?? '').trim().isEmpty || (_selectedCamp ?? '').trim().isEmpty || (_selectedBlock ?? '').trim().isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Type, camp, and block are required. Ensure camp is selected first to load available blocks.'), duration: Duration(seconds: 3)),
+      );
       return;
     }
 
@@ -191,8 +199,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
       Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
-
-      messenger.showSnackBar(SnackBar(content: Text('Sync Error: ${error.toString()}')));
+      final message = error.toString();
+      messenger.showSnackBar(SnackBar(content: Text('Sync Error: $message')));
     } finally {
       if (mounted) {
         setState(() {
@@ -205,8 +213,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   @override
   Widget build(BuildContext context) {
     final campLocationsAsync = ref.watch(campLocationsProvider);
-    final blocksAsync = ref.watch(blocksProvider);
     final assetTypesAsync = ref.watch(assetTypesProvider);
+
+    // Only fetch blocks if a camp is selected
+    final blocksAsync = _selectedCamp != null && _selectedCamp!.isNotEmpty
+        ? ref.watch(blocksProvider(int.parse(_selectedCamp!)))
+        : const AsyncValue<List<IdNamePair>>.data(<IdNamePair>[]);
 
     return Scaffold(
       backgroundColor: ThemeColor.backGroundColor,
@@ -221,6 +233,20 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue, width: 0.5),
+                  ),
+                  child: const Text(
+                    '* Required: Asset ID, Name, Address, Type, Camp, Block\n'
+                    '• Important: Select Camp FIRST to load available Blocks',
+                    style: TextStyle(fontSize: 11, color: Colors.blue),
+                  ),
+                ),
+                Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID', readOnly: true)),
                   _buildFieldContainer('Name *', _buildTextField(controller: _nameController, hint: 'Enter asset name')),
@@ -243,7 +269,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         onChanged: (v) => setState(() => _selectedType = v),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => const Text('Error loading types'),
+                      error: (err, stack) => Text('Error loading types: $err', style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
                   ),
                   _buildFieldContainer('Amount', _buildTextField(controller: _amountController, hint: 'Enter asset amount', keyboardType: TextInputType.number)),
@@ -278,7 +304,11 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                               ),
                             )
                             .toList(),
-                        onChanged: (v) => setState(() => _selectedCamp = v),
+                        onChanged: (v) => setState(() {
+                          _selectedCamp = v;
+                          // Prevent stale block id from a previous camp selection.
+                          _selectedBlock = null;
+                        }),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
                       error: (err, stack) => const Text('Error loading camps'),
@@ -290,20 +320,25 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   _buildFieldContainer(
                     'Block',
                     blocksAsync.when(
-                      data: (items) => _buildDropdown(
-                        value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
-                        items: items
-                            .map(
-                              (i) => DropdownMenuItem(
-                                value: i.id.toString(),
-                                child: Text(i.name, style: ThemeTextStyles.values),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedBlock = v),
-                      ),
+                      data: (List<IdNamePair> items) {
+                        if (items.isEmpty) {
+                          return const Text('No blocks available for this camp - check if camp/location exists and has blocks', style: TextStyle(color: Colors.orange));
+                        }
+                        return _buildDropdown(
+                          value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
+                          items: items
+                              .map(
+                                (i) => DropdownMenuItem(
+                                  value: i.id.toString(),
+                                  child: Text(i.name, style: ThemeTextStyles.values),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _selectedBlock = v),
+                        );
+                      },
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => const Text('Error loading blocks'),
+                      error: (err, stack) => Text('Error loading blocks:\n$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
                     ),
                   ),
                   _buildFieldContainer('Address Line', _buildTextField(controller: _addressLineController, hint: 'Enter address line')),
@@ -403,22 +438,22 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                 _buildFieldContainer('Asset Details', _buildTextField(controller: _assetDetailsController, hint: 'Enter asset details', maxLines: 3)),
 
                 Gap.y8,
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.start,
                   children: [
                     ElevatedButton(
                       onPressed: _isSubmitting || _isSyncing ? null : _submitForm,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: ThemePadding.px6),
                       child: Text(_isSubmitting ? 'Saving...' : 'Create', style: const TextStyle(color: Colors.white)),
                     ),
-                    if (_savedDeviceId != null) ...[
-                      Gap.x2,
+                    if (_savedDeviceId != null)
                       ElevatedButton(
                         onPressed: _isSubmitting || _isSyncing ? null : _syncDevice,
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: ThemePadding.px6),
                         child: Text(_isSyncing ? 'Syncing...' : 'Sync', style: const TextStyle(color: Colors.white)),
                       ),
-                    ],
-                    Gap.x4,
                     ElevatedButton(
                       onPressed: _isSubmitting || _isSyncing ? null : () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: ThemePadding.px6),

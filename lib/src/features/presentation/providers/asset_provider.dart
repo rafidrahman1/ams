@@ -32,8 +32,9 @@ final campLocationsProvider = FutureProvider<List<IdNamePair>>((ref) {
   return ref.read(assetRepositoryProvider).fetchCampLocations();
 });
 
-final blocksProvider = FutureProvider<List<IdNamePair>>((ref) {
-  return ref.read(assetRepositoryProvider).fetchBlocks();
+
+final blocksProvider = FutureProvider.family<List<IdNamePair>, int>((ref, campId) {
+  return ref.read(assetRepositoryProvider).fetchBlocks(campId);
 });
 
 final assetTypesProvider = FutureProvider<List<IdNamePair>>((ref) {
@@ -61,6 +62,10 @@ final adminHomeBootstrapProvider = FutureProvider<void>((ref) async {
 
 final unsyncedRegisteredDevicesProvider = FutureProvider<List<RegisteredDeviceData>>((ref) {
   return ref.read(assetRepositoryProvider).getUnsyncedRegisteredDevices();
+});
+
+final registeredDeviceProvider = FutureProvider.family<RegisteredDeviceData?, int>((ref, id) {
+  return ref.read(assetRepositoryProvider).getRegisteredDeviceById(id);
 });
 
 class ShowAllTrueAssets extends Notifier<bool> {
