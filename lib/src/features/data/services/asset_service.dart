@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:asset_management_system/src/core/network/api_client.dart';
 import 'package:asset_management_system/src/core/network/endpoints.dart';
@@ -18,19 +19,6 @@ class AssetService {
 
     if (res.statusCode != 200 || body is! Map<String, dynamic>) {
       throw Exception('Failed to load assets');
-    }
-
-    final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
-
-    return items.whereType<Map<String, dynamic>>().map(VolunteerAsset.fromAssignmentJson).toList();
-  }
-
-  Future<List<VolunteerAsset>> fetchAdminAssets() async {
-    final res = await client.get(Endpoints.adminAsset, auth: true);
-    final body = jsonDecode(res.body);
-
-    if (res.statusCode != 200 || body is! Map<String, dynamic>) {
-      throw Exception('Failed to load admin assets');
     }
 
     final items = body['data'] as List<dynamic>? ?? const <dynamic>[];
@@ -71,8 +59,8 @@ class AssetService {
     return items.whereType<Map<String, dynamic>>().map(IdNamePair.fromJson).toList();
   }
 
-  Future<List<IdNamePair>> fetchBlocks() async {
-    final res = await client.get(Endpoints.blocks, auth: true);
+  Future<List<IdNamePair>> fetchBlocks(int campId) async {
+    final res = await client.get(Endpoints.blocksByCamp(campId), auth: true);
     final body = jsonDecode(res.body);
     if (res.statusCode != 200 || body is! Map<String, dynamic>) {
       throw Exception('Failed to load blocks');
@@ -156,7 +144,17 @@ class AssetService {
 
     final Map<String, String> filePaths = {};
     if (imagePath != null) filePaths['image'] = imagePath;
-    if (attachmentPath != null) filePaths['asset_attachment'] = attachmentPath;
+    if (attachmentPath != null && attachmentPath.isNotEmpty) filePaths['asset_attachment'] = attachmentPath;
+
+    // Helps us debug backend "data not found" errors by confirming file existence.
+    final filePresence = <String, bool>{};
+    for (final entry in filePaths.entries) {
+      try {
+        filePresence[entry.key] = await File(entry.value).exists();
+      } catch (_) {
+        filePresence[entry.key] = false;
+      }
+    }
 
     final res = await client.postFormDataWithFile(Endpoints.assetCreate, fields: fields, filePaths: filePaths.isNotEmpty ? filePaths : null, auth: true);
 
@@ -164,38 +162,24 @@ class AssetService {
 
     if ((res.statusCode != 200 && res.statusCode != 201) || body is! Map<String, dynamic> || body['code'] != 200) {
       final errorMessage = body is Map<String, dynamic> ? body['response']?.toString() : null;
-      throw Exception(errorMessage ?? 'Failed to create asset');
+      final normalizedError = errorMessage?.replaceFirst(RegExp(r'^Exception:\s*', caseSensitive: false), '').trim();
+
+      final spec = fields['specification'];
+      final specPreview = spec == null ? 'none' : (spec.length <= 80 ? spec : '${spec.substring(0, 80)}...');
+      final specFormat = spec == null ? 'none' : 'len=${spec.length} startsWithBracket=${spec.trimLeft().startsWith('[')} endsWithBracket=${spec.trimRight().endsWith(']')}';
+
+      final address = fields['address_line'];
+
+      final sentSummary =
+          'sent: ast_ID=${fields['ast_ID']}, asset_type=${fields['asset_type']}, location=${fields['location']}, block=${fields['block']}, ' //
+          'name="${fields['name']}", details="${fields['details']}", address_line="$address", ' //
+          'specification_present=${fields.containsKey('specification')}, spec_format=[$specFormat], spec_preview="$specPreview", ' //
+          'files=$filePresence';
+
+      final baseError = (normalizedError != null && normalizedError.isNotEmpty) ? normalizedError : 'Failed to create asset';
+      throw Exception('$baseError | $sentSummary');
     }
 
     return body;
-  }
-
-  @Deprecated('Use createAsset instead')
-  Future<Map<String, dynamic>> createAssetWithImage({
-    required String name,
-    required String details,
-    required String addressLine,
-    required String astId,
-    String? status,
-    String? assetType,
-    String? location,
-    String? block,
-    String? specification,
-    String? imagePath,
-  }) async {
-    return createAsset(
-      name: name,
-      details: details,
-      addressLine: addressLine,
-      astId: astId,
-      status: status,
-      assetType: assetType,
-      location: location,
-      block: block,
-      specifications: specification != null ? <Map<String, dynamic>>[
-        {'id': 1, 'name': specification, 'description': ''}
-      ] : null,
-      imagePath: imagePath,
-    );
   }
 }

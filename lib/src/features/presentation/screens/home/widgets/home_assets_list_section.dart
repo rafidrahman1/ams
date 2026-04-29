@@ -115,6 +115,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                             subtitle: Text('${device.details}\n(Pending Sync)'),
                             isThreeLine: true,
                             trailing: const Icon(Icons.sync_problem, color: Colors.orange),
+                            onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
                           ),
                         ),
                       ),
@@ -127,6 +128,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 3),
                       child: Dismissible(
                         key: Key('asset-${apiAsset.astId}'),
+
                         direction: DismissDirection.endToStart,
                         background: Container(
                           alignment: Alignment.centerRight,
@@ -236,3 +238,98 @@ class HomeAssetsListSection extends ConsumerWidget {
     );
   }
 }
+
+extension on HomeAssetsListSection {
+  Future<void> _showRegisteredDeviceDetails(BuildContext context, int deviceId) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, sheetRef, _) {
+            final deviceAsync = sheetRef.watch(registeredDeviceProvider(deviceId));
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+                child: deviceAsync.when(
+                  loading: () => const SizedBox(height: 220, child: Center(child: CircularProgressIndicator())),
+                  error: (error, _) => SizedBox(height: 220, child: Center(child: Text(error.toString()))),
+                  data: (device) {
+                    if (device == null) {
+                      return const SizedBox(height: 220, child: Center(child: Text('Device not found')));
+                    }
+
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Device Details',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              IconButton(onPressed: () => Navigator.of(sheetContext).pop(), icon: const Icon(Icons.close)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _buildDetailRow('Record ID', device.id?.toString() ?? '-'),
+                          _buildDetailRow('Asset ID', device.astId ?? '-'),
+                          _buildDetailRow('Name', device.name),
+                          _buildDetailRow('Details', device.details),
+                          _buildDetailRow('Address Line', device.addressLine),
+                          _buildDetailRow('Status', device.status),
+                          _buildDetailRow('Asset Type', device.assetType),
+                          _buildDetailRow('Location', device.location),
+                          _buildDetailRow('Block', device.block),
+                          _buildDetailRow('Amount', device.amount),
+                          _buildDetailRow('Purchase Date', device.purchaseDate),
+                          _buildDetailRow('Manufacture Date', device.manufactureDate),
+                          _buildDetailRow('Warranty End', device.warrantyEnd),
+                          _buildDetailRow('Image Path', device.imagePath),
+                          _buildDetailRow('Attachment Path', device.assetAttachment),
+                          _buildDetailRow('Specification', device.specification),
+                          _buildDetailRow('Created At', device.createdAt.toIso8601String()),
+                          _buildDetailRow('Synced', device.synced ? 'Yes' : 'No'),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String? value) {
+    final displayValue = (value == null || value.trim().isEmpty) ? '-' : value.trim();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          SelectableText(displayValue),
+        ],
+      ),
+    );
+  }
+}
+

@@ -9,6 +9,7 @@ class Endpoints {
   static const assetCreate = "/api/asset/create/by-QR";
 
   static const campLocations = "/api/location/camp-location";
-  static const blocks = "/api/location/block";
   static const assetTypes = "/api/asset/type/list";
+
+  static String blocksByCamp(int campId) => "/api/location/block/read/camp/$campId";
 }

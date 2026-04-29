@@ -118,7 +118,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                     padding: const EdgeInsets.only(bottom: 96),
                     children: [
                       DropdownButtonFormField<String>(
-                        value: _status,
+                        initialValue: _status,
                         decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Status'),
                         items: const [
                           DropdownMenuItem(value: 'APPROVAL PENDING', child: Text('APPROVAL PENDING')),

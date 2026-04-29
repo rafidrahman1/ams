@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:asset_management_system/src/theme/gap.dart';
@@ -7,7 +8,9 @@ import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../data/models/location_models.dart';
 import '../../providers/asset_provider.dart';
 import '../../utils/ast_id_parser.dart';
 
@@ -35,8 +38,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   String? _selectedBlock;
 
   bool _isSubmitting = false;
-  bool _isSyncing = false;
-  int? _savedDeviceId;
   String? _selectedImagePath;
   String? _selectedImageName;
   String? _selectedAttachmentPath;
@@ -48,6 +49,9 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   DateTime? _warrantyEndDate;
 
   final List<Map<String, TextEditingController>> _items = [];
+
+  static const _defaultDatePickerStartYear = 2000;
+  static const _defaultDatePickerEndYear = 2101;
 
   @override
   void initState() {
@@ -65,13 +69,34 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   void _removeItem(int index) {
     setState(() {
       if (_items.length > 1) {
-        _items.removeAt(index);
+        final removed = _items.removeAt(index);
+        removed['item']?.dispose();
+        removed['description']?.dispose();
       }
     });
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _astIdController.dispose();
+    _amountController.dispose();
+    _addressLineController.dispose();
+    _assetDetailsController.dispose();
+    for (final entry in _items) {
+      entry['item']?.dispose();
+      entry['description']?.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _selectDate(BuildContext context, {required Function(DateTime) onDateSelected}) async {
-    final DateTime? picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2101));
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(_defaultDatePickerStartYear),
+      lastDate: DateTime(_defaultDatePickerEndYear),
+    );
     if (picked != null) {
       onDateSelected(picked);
     }
@@ -97,6 +122,13 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
       return;
     }
 
+    if ((_selectedType ?? '').trim().isEmpty || (_selectedCamp ?? '').trim().isEmpty || (_selectedBlock ?? '').trim().isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Type, camp, and block are required. Ensure camp is selected first to load available blocks.'), duration: Duration(seconds: 3)),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -109,16 +141,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             final itemName = entry.value['item']!.text.trim();
             final itemDesc = entry.value['description']!.text.trim();
             if (itemName.isEmpty) return null;
-            return <String, dynamic>{
-              'id': entry.key + 1,
-              'name': itemName,
-              'description': itemDesc,
-            };
+            return <String, dynamic>{'id': entry.key + 1, 'name': itemName, 'description': itemDesc};
           })
           .whereType<Map<String, dynamic>>()
           .toList(growable: false);
 
-      final deviceId = await ref
+      await ref
           .read(assetRepositoryProvider)
           .saveRegisteredDeviceLocally(
             name: name,
@@ -140,11 +168,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _savedDeviceId = deviceId;
-      });
-
-      messenger.showSnackBar(const SnackBar(content: Text('Asset saved locally. Click Sync to upload.')));
+      messenger.showSnackBar(const SnackBar(content: Text('Asset saved locally. Sync from Home screen.')));
+      Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
 
@@ -160,48 +185,51 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
   Future<void> _pickFile({required bool isImage}) async {
     // file_picker API changed in recent versions; use static pickFiles which is available
-    final result = await FilePicker.pickFiles(type: isImage ? FileType.image : FileType.any);
+    final result = await FilePicker.pickFiles(
+      type: isImage ? FileType.image : FileType.any,
+      // Cache bytes immediately so Sync can upload later even if the original path becomes inaccessible.
+      withData: true,
+    );
     if (result != null && result.files.isNotEmpty) {
+      final picked = result.files.first;
       setState(() {
         if (isImage) {
-          _selectedImagePath = result.files.first.path;
-          _selectedImageName = result.files.first.name;
+          _selectedImagePath = picked.path;
+          _selectedImageName = picked.name;
         } else {
-          _selectedAttachmentPath = result.files.first.path;
-          _selectedAttachmentName = result.files.first.name;
+          _selectedAttachmentPath = picked.path;
+          _selectedAttachmentName = picked.name;
+        }
+      });
+
+      // If we needed to cache bytes, update the stored path after writing temp file.
+      // This runs after the UI state update so the user immediately sees the picked filename.
+      final cachedPath = await _resolveCachedUploadPath(picked, prefix: isImage ? 'image' : 'asset_attachment');
+      if (!mounted) return;
+      setState(() {
+        if (isImage) {
+          _selectedImagePath = cachedPath;
+        } else {
+          _selectedAttachmentPath = cachedPath;
         }
       });
     }
   }
 
-  Future<void> _syncDevice() async {
-    if (_savedDeviceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No device to sync')));
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
-
-    setState(() {
-      _isSyncing = true;
-    });
-
+  Future<void> _captureImageFromCamera() async {
+    final ImagePicker picker = ImagePicker();
     try {
-      await ref.read(assetRepositoryProvider).syncRegisteredDevice(_savedDeviceId!);
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
 
-      if (!mounted) return;
-
-      messenger.showSnackBar(const SnackBar(content: Text('Asset uploaded successfully')));
-      Navigator.of(context).pop();
-    } catch (error) {
-      if (!mounted) return;
-
-      messenger.showSnackBar(SnackBar(content: Text('Sync Error: ${error.toString()}')));
-    } finally {
-      if (mounted) {
+      if (photo != null && mounted) {
         setState(() {
-          _isSyncing = false;
+          _selectedImagePath = photo.path;
+          _selectedImageName = photo.name;
         });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error capturing image: ${e.toString()}')));
       }
     }
   }
@@ -209,8 +237,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   @override
   Widget build(BuildContext context) {
     final campLocationsAsync = ref.watch(campLocationsProvider);
-    final blocksAsync = ref.watch(blocksProvider);
     final assetTypesAsync = ref.watch(assetTypesProvider);
+
+    // Only fetch blocks if a camp is selected
+    final blocksAsync = _selectedCamp != null && _selectedCamp!.isNotEmpty
+        ? ref.watch(blocksProvider(int.parse(_selectedCamp!)))
+        : const AsyncValue<List<IdNamePair>>.data(<IdNamePair>[]);
 
     return Scaffold(
       backgroundColor: ThemeColor.backGroundColor,
@@ -225,8 +257,22 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue, width: 0.5),
+                  ),
+                  child: const Text(
+                    '* Required: Asset ID, Name, Address, Type, Camp, Block\n'
+                    '• Important: Select Camp FIRST to load available Blocks',
+                    style: TextStyle(fontSize: 11, color: Colors.blue),
+                  ),
+                ),
+                Gap.y4,
                 _buildResponsiveRow([
-                  _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID')),
+                  _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID', readOnly: true)),
                   _buildFieldContainer('Name *', _buildTextField(controller: _nameController, hint: 'Enter asset name')),
                 ]),
                 Gap.y4,
@@ -247,7 +293,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         onChanged: (v) => setState(() => _selectedType = v),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => const Text('Error loading types'),
+                      error: (err, stack) => Text('Error loading types: $err', style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
                   ),
                   _buildFieldContainer('Amount', _buildTextField(controller: _amountController, hint: 'Enter asset amount', keyboardType: TextInputType.number)),
@@ -282,7 +328,11 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                               ),
                             )
                             .toList(),
-                        onChanged: (v) => setState(() => _selectedCamp = v),
+                        onChanged: (v) => setState(() {
+                          _selectedCamp = v;
+                          // Prevent stale block id from a previous camp selection.
+                          _selectedBlock = null;
+                        }),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
                       error: (err, stack) => const Text('Error loading camps'),
@@ -294,20 +344,25 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   _buildFieldContainer(
                     'Block',
                     blocksAsync.when(
-                      data: (items) => _buildDropdown(
-                        value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
-                        items: items
-                            .map(
-                              (i) => DropdownMenuItem(
-                                value: i.id.toString(),
-                                child: Text(i.name, style: ThemeTextStyles.values),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedBlock = v),
-                      ),
+                      data: (List<IdNamePair> items) {
+                        if (items.isEmpty) {
+                          return const Text('No blocks available for this camp - check if camp/location exists and has blocks', style: TextStyle(color: Colors.orange));
+                        }
+                        return _buildDropdown(
+                          value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
+                          items: items
+                              .map(
+                                (i) => DropdownMenuItem(
+                                  value: i.id.toString(),
+                                  child: Text(i.name, style: ThemeTextStyles.values),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _selectedBlock = v),
+                        );
+                      },
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => const Text('Error loading blocks'),
+                      error: (err, stack) => Text('Error loading blocks:\n$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
                     ),
                   ),
                   _buildFieldContainer('Address Line', _buildTextField(controller: _addressLineController, hint: 'Enter address line')),
@@ -338,7 +393,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                       onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _warrantyEndDate = d)),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox.shrink(),
                 ]),
 
                 Gap.y8,
@@ -407,24 +462,18 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                 _buildFieldContainer('Asset Details', _buildTextField(controller: _assetDetailsController, hint: 'Enter asset details', maxLines: 3)),
 
                 Gap.y8,
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.start,
                   children: [
                     ElevatedButton(
-                      onPressed: _isSubmitting || _isSyncing ? null : _submitForm,
+                      onPressed: _isSubmitting ? null : _submitForm,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: ThemePadding.px6),
                       child: Text(_isSubmitting ? 'Saving...' : 'Create', style: const TextStyle(color: Colors.white)),
                     ),
-                    if (_savedDeviceId != null) ...[
-                      Gap.x2,
-                      ElevatedButton(
-                        onPressed: _isSubmitting || _isSyncing ? null : _syncDevice,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: ThemePadding.px6),
-                        child: Text(_isSyncing ? 'Syncing...' : 'Sync', style: const TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                    Gap.x4,
                     ElevatedButton(
-                      onPressed: _isSubmitting || _isSyncing ? null : () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: ThemePadding.px6),
                       child: const Text('Go Back', style: TextStyle(color: Colors.white)),
                     ),
@@ -472,11 +521,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType? keyboardType, int maxLines = 1}) {
+  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType? keyboardType, int maxLines = 1, bool readOnly = false}) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      readOnly: readOnly,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: ThemeTextStyles.hint,
@@ -490,7 +540,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       items: items,
-      onChanged: onChanged as void Function(String?)?,
+      onChanged: onChanged,
       decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
     );
   }
@@ -516,10 +566,14 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   }
 
   Widget _buildFilePicker({required bool isImage}) {
-    return Row(
-      children: [
-        ElevatedButton(
-          onPressed: _isSubmitting || _isSyncing ? null : () => _pickFile(isImage: isImage),
+    final isSelected = isImage ? _selectedImageName != null : _selectedAttachmentName != null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+
+        final chooseButton = ElevatedButton(
+          onPressed: _isSubmitting ? null : () => _pickFile(isImage: isImage),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[200],
             foregroundColor: Colors.black,
@@ -527,16 +581,74 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             side: const BorderSide(color: Colors.grey),
           ),
           child: Text(isImage ? 'Choose Image' : 'Choose Attachment', style: const TextStyle(fontSize: 12)),
-        ),
-        Gap.x2,
-        Expanded(
-          child: Text(
-            (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? 'No image chosen' : 'No attachment chosen'),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-            overflow: TextOverflow.ellipsis,
+        );
+
+        final cameraButton = Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: ElevatedButton.icon(
+            onPressed: _isSubmitting ? null : _captureImageFromCamera,
+            icon: const Icon(Icons.camera_alt, size: 16),
+            label: const Text('Take Photo', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[200],
+              foregroundColor: Colors.black,
+              elevation: 0,
+              side: const BorderSide(color: Colors.blue),
+            ),
           ),
-        ),
-      ],
+        );
+
+        final removeButton = ElevatedButton(
+          onPressed: _isSubmitting
+              ? null
+              : () => setState(() {
+                  if (isImage) {
+                    _selectedImagePath = null;
+                    _selectedImageName = null;
+                  } else {
+                    _selectedAttachmentPath = null;
+                    _selectedAttachmentName = null;
+                  }
+                }),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[300],
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text('Remove', style: TextStyle(fontSize: 11)),
+        );
+
+        final fileName = Text(
+          (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? 'No image chosen' : 'No attachment chosen'),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          overflow: TextOverflow.ellipsis,
+        );
+
+        if (!isNarrow) {
+          return Row(
+            children: [
+              chooseButton,
+              if (isImage) cameraButton,
+              Gap.x2,
+              Expanded(child: fileName),
+              if (isSelected) removeButton,
+            ],
+          );
+        }
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            chooseButton,
+            if (isImage) cameraButton,
+            SizedBox(width: constraints.maxWidth, child: fileName),
+            if (isSelected) removeButton,
+          ],
+        );
+      },
     );
   }
 
@@ -545,5 +657,33 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final month = value.month.toString().padLeft(2, '0');
     final day = value.day.toString().padLeft(2, '0');
     return '${value.year}-$month-$day';
+  }
+
+  Future<String?> _resolveCachedUploadPath(PlatformFile picked, {required String prefix}) async {
+    final originalPath = picked.path;
+    final originalName = picked.name;
+
+    if (originalPath != null && originalPath.trim().isNotEmpty) {
+      try {
+        final f = File(originalPath);
+        if (await f.exists()) {
+          return originalPath;
+        }
+      } catch (_) {
+        // Fall through to bytes caching.
+      }
+    }
+
+    final bytes = picked.bytes;
+    if (bytes != null && bytes.isNotEmpty) {
+      final safeName = (originalName.isNotEmpty ? originalName : 'upload.bin').replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final tempDir = await Directory.systemTemp.createTemp('asset_upload_cache_$prefix');
+      final outPath = '${tempDir.path}/$prefix-$safeName';
+      final outFile = File(outPath);
+      await outFile.writeAsBytes(bytes, flush: true);
+      return outPath;
+    }
+
+    return originalPath;
   }
 }

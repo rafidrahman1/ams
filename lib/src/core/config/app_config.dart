@@ -8,8 +8,8 @@ class AppConfig {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     // Keep the existing dev default to avoid breaking current runs.
-    // defaultValue: 'https://api-ams.bitflex.xyz',
-    defaultValue: 'http://192.168.68.119:8000',
+    defaultValue: 'https://api-ams.bitflex.xyz',
+    // defaultValue: 'http://192.168.68.119:8000',
   );
 
   static Uri get apiBaseUri {

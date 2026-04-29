@@ -104,12 +104,11 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                         onPressed: isSubmitting
                             ? null
                             : () async {
-                                final messenger = ScaffoldMessenger.of(context);
                                 final cleanedEmail = _emailController.text.trim();
                                 final cleanedPassword = _passwordController.text.trim();
 
                                 if (cleanedEmail.isEmpty || cleanedPassword.isEmpty) {
-                                  messenger.showSnackBar(SnackBar(content: Text(l10n.emailAndPasswordRequired)));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.emailAndPasswordRequired)));
                                   return;
                                 }
 
@@ -119,7 +118,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
                                 await ref.read(authProvider.notifier).adminLogin(cleanedEmail, cleanedPassword);
 
-                                if (!mounted) {
+                                if (!context.mounted) {
                                   return;
                                 }
 
@@ -130,7 +129,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                 });
 
                                 if (authState == AuthStatus.unauthenticated) {
-                                  messenger.showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
                                 } else if (authState == AuthStatus.authenticatedAdmin || authState == AuthStatus.authenticatedVolunteer) {
                                   Navigator.of(context).pop();
                                 }

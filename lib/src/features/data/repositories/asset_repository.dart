@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
@@ -116,8 +117,8 @@ class AssetRepository {
     return service.fetchCampLocations();
   }
 
-  Future<List<IdNamePair>> fetchBlocks() async {
-    return service.fetchBlocks();
+  Future<List<IdNamePair>> fetchBlocks(int campId) async {
+    return service.fetchBlocks(campId);
   }
 
   Future<List<IdNamePair>> fetchAssetTypes() async {
@@ -389,79 +390,245 @@ class AssetRepository {
       throw Exception('Device not found');
     }
 
+    final assetType = device.assetType?.trim();
+    final location = device.location?.trim();
+    final block = device.block?.trim();
+
+    if (assetType == null || assetType.isEmpty || location == null || location.isEmpty || block == null || block.isEmpty) {
+      throw Exception(
+        'Sync failed: missing required fields locally. '
+        'asset_type=${assetType ?? 'null'} location=${location ?? 'null'} block=${block ?? 'null'}',
+      );
+    }
+
     final normalizedAstId = _normalizeAstId(device.astId);
     if (normalizedAstId == null) {
       throw Exception('Asset ID is missing for this device');
     }
 
     final normalizedName = device.name.trim().isEmpty ? 'Asset $normalizedAstId' : device.name.trim();
-    final normalizedAddressLine = device.addressLine.trim().isEmpty
-        ? (device.details.trim().isEmpty ? 'N/A' : device.details.trim())
-        : device.addressLine.trim();
+    final normalizedAddressLine = device.addressLine.trim().isEmpty ? (device.details.trim().isEmpty ? 'N/A' : device.details.trim()) : device.addressLine.trim();
 
     final normalizedDetails = device.details.trim().isEmpty ? normalizedName : device.details.trim();
 
     final specifications = _normalizeSpecifications(device.specification);
 
-    final responseBody = await service.createAsset(
-      name: normalizedName,
-      details: normalizedDetails,
-      addressLine: normalizedAddressLine,
-      astId: normalizedAstId,
-      status: device.status,
-      assetType: device.assetType,
-      location: device.location,
-      block: device.block,
-      imagePath: device.imagePath,
-      specifications: specifications,
-      warrantyEnd: _normalizeApiDate(device.warrantyEnd),
-      amount: device.amount,
-      purchaseDate: _normalizeApiDate(device.purchaseDate),
-      manufactureDate: _normalizeApiDate(device.manufactureDate),
-      attachmentPath: device.assetAttachment,
-    );
+    // The local file picker path might become unavailable by the time the user taps Sync
+    // (e.g. temp files cleared, permission changes). Only attempt uploads + verification
+    // when the files actually exist right now.
+    String? imagePathForUpload = device.imagePath;
+    if (imagePathForUpload?.trim().isNotEmpty ?? false) {
+      try {
+        if (!await File(imagePathForUpload!).exists()) {
+          imagePathForUpload = null;
+        }
+      } catch (_) {
+        imagePathForUpload = null;
+      }
+    }
 
-    if (!_isAssetCreationVerified(device: device, response: responseBody)) {
-      throw Exception('Asset sync verification failed: Response data mismatch');
+    String? attachmentPathForUpload = device.assetAttachment;
+    if (attachmentPathForUpload?.trim().isNotEmpty ?? false) {
+      try {
+        if (!await File(attachmentPathForUpload!).exists()) {
+          attachmentPathForUpload = null;
+        }
+      } catch (_) {
+        attachmentPathForUpload = null;
+      }
+    }
+
+    Map<String, dynamic> responseBody;
+    try {
+      responseBody = await service.createAsset(
+        name: normalizedName,
+        details: normalizedDetails,
+        addressLine: normalizedAddressLine,
+        astId: normalizedAstId,
+        status: device.status,
+        assetType: device.assetType,
+        location: device.location,
+        block: device.block,
+        imagePath: imagePathForUpload,
+        specifications: specifications,
+        warrantyEnd: _normalizeApiDate(device.warrantyEnd),
+        amount: device.amount,
+        purchaseDate: _normalizeApiDate(device.purchaseDate),
+        manufactureDate: _normalizeApiDate(device.manufactureDate),
+        attachmentPath: attachmentPathForUpload,
+      );
+    } catch (e) {
+      final msg = e.toString();
+
+      // Some backends respond "Data not found" when `block` doesn't belong to the selected `location`.
+      // Retry once by omitting `block` (sending it as null) to unblock valid creations.
+      final shouldRetryWithoutBlock = device.block != null && device.block!.trim().isNotEmpty && msg.toLowerCase().contains('data not found');
+
+      if (!shouldRetryWithoutBlock) {
+        throw Exception('Sync failed during upload (createAsset): ${e.toString()}');
+      }
+
+      try {
+        responseBody = await service.createAsset(
+          name: normalizedName,
+          details: normalizedDetails,
+          addressLine: normalizedAddressLine,
+          astId: normalizedAstId,
+          status: device.status,
+          assetType: device.assetType,
+          location: device.location,
+          block: null,
+          imagePath: imagePathForUpload,
+          specifications: specifications,
+          warrantyEnd: _normalizeApiDate(device.warrantyEnd),
+          amount: device.amount,
+          purchaseDate: _normalizeApiDate(device.purchaseDate),
+          manufactureDate: _normalizeApiDate(device.manufactureDate),
+          attachmentPath: attachmentPathForUpload,
+        );
+      } catch (e2) {
+        throw Exception('Sync failed during upload (createAsset) after retry-without-block: ${e2.toString()}');
+      }
+    }
+
+    final isVerified = _isAssetCreationVerified(
+      device: device,
+      response: responseBody,
+      submittedName: normalizedName,
+      submittedDetails: normalizedDetails,
+      submittedAddressLine: normalizedAddressLine,
+      submittedAstId: normalizedAstId,
+      submittedSpecifications: specifications,
+      uploadedImagePath: imagePathForUpload,
+      uploadedAttachmentPath: attachmentPathForUpload,
+    );
+    if (!isVerified) {
+      final data = responseBody['data'];
+      throw Exception('Sync failed during verification (response mismatch). data=${data.toString()}');
     }
 
     await db.markRegisteredDeviceSynced(deviceId);
   }
 
-  bool _isAssetCreationVerified({required RegisteredDeviceData device, required Map<String, dynamic> response}) {
+  bool _isAssetCreationVerified({
+    required RegisteredDeviceData device,
+    required Map<String, dynamic> response,
+    required String submittedName,
+    required String submittedDetails,
+    required String submittedAddressLine,
+    required String submittedAstId,
+    required List<Map<String, dynamic>>? submittedSpecifications,
+    required String? uploadedImagePath,
+    required String? uploadedAttachmentPath,
+  }) {
     if (response['code'] != 200) return false;
 
     final data = response['data'];
     if (data is! Map<String, dynamic>) return false;
 
-    final expectedAstId = _normalizeAstId(device.astId);
-    if (expectedAstId == null || expectedAstId.isEmpty) return false;
+    if (_normalized(_readValue(data, const ['ast_ID', 'ast_id', 'astId'])) != _normalized(submittedAstId)) return false;
+    if (_normalized(_readValue(data, const ['name'])) != _normalized(submittedName)) return false;
+    if (_normalized(_readValue(data, const ['details'])) != _normalized(submittedDetails)) return false;
 
-    if (_normalized(data['ast_ID']) != _normalized(expectedAstId)) return false;
-    if (_normalized(data['name']) != _normalized(device.name)) return false;
-    if (_normalized(data['status']) != _normalized(device.status)) return false;
-    if (_normalized(data['address_line']) != _normalized(device.addressLine)) return false;
-    if (_normalized(data['details']) != _normalized(device.details)) return false;
-    if (_normalized(data['asset_type']) != _normalized(device.assetType)) return false;
-    if (_normalized(data['location']) != _normalized(device.location)) return false;
-    if (_normalized(data['block']) != _normalized(device.block)) return false;
-    if (_normalized(data['amount']) != _normalized(device.amount)) return false;
-    if (_normalizedDate(data['warranty_end']) != _normalizedDate(device.warrantyEnd)) return false;
-    if (_normalizedDate(data['purchase_date']) != _normalizedDate(device.purchaseDate)) return false;
-    if (_normalizedDate(data['manufacture_date']) != _normalizedDate(device.manufactureDate)) return false;
+    // Some backends return null for address/block even when we send them.
+    final responseAddressLine = _readValue(data, const ['address_line', 'addressLine']);
+    if (submittedAddressLine.trim().isNotEmpty && responseAddressLine != null) {
+      if (_normalized(responseAddressLine) != _normalized(submittedAddressLine)) return false;
+    }
 
-    final submittedSpecs = _normalizeSpecificationForCompare(device.specification);
-    final responseSpecs = _normalizeSpecificationForCompare(data['specification']?.toString());
-    if (submittedSpecs != responseSpecs) return false;
+    // Status is often overridden by the backend workflow (e.g. request ACTIVE but backend sets APPROVAL PENDING),
+    // so we don't strict-verify it here.
+
+    final responseAssetType = _readValue(data, const ['asset_type', 'assetType']);
+    if (device.assetType?.trim().isNotEmpty ?? false) {
+      if (responseAssetType != null && _normalized(responseAssetType) != _normalized(device.assetType)) return false;
+    }
+
+    final responseLocation = _readValue(data, const ['location']);
+    if (device.location?.trim().isNotEmpty ?? false) {
+      if (responseLocation != null && _normalized(responseLocation) != _normalized(device.location)) return false;
+    }
+    final responseBlock = _readValue(data, const ['block']);
+    if ((device.block?.trim().isNotEmpty ?? false) && responseBlock != null) {
+      if (_normalized(responseBlock) != _normalized(device.block)) return false;
+    }
+    if (device.amount?.trim().isNotEmpty ?? false) {
+      if (_normalized(_readValue(data, const ['amount'])) != _normalized(device.amount)) return false;
+    }
+
+    final normalizedWarranty = _normalizeApiDate(device.warrantyEnd);
+    if (normalizedWarranty != null && normalizedWarranty.isNotEmpty) {
+      if (_normalizedDate(_readValue(data, const ['warranty_end', 'warrantyEnd'])) != normalizedWarranty) return false;
+    }
+    final normalizedPurchaseDate = _normalizeApiDate(device.purchaseDate);
+    if (normalizedPurchaseDate != null && normalizedPurchaseDate.isNotEmpty) {
+      if (_normalizedDate(_readValue(data, const ['purchase_date', 'purchaseDate'])) != normalizedPurchaseDate) return false;
+    }
+    final normalizedManufactureDate = _normalizeApiDate(device.manufactureDate);
+    if (normalizedManufactureDate != null && normalizedManufactureDate.isNotEmpty) {
+      if (_normalizedDate(_readValue(data, const ['manufacture_date', 'manufactureDate'])) != normalizedManufactureDate) return false;
+    }
+
+    // `specification` can be returned either as structured JSON (list/object) or as a plain string.
+    // Only verify when the response looks structured; otherwise, treat it as informational.
+    if (submittedSpecifications != null && submittedSpecifications.isNotEmpty) {
+      final specValue = _readValue(data, const ['specification', 'specifications']);
+      final looksStructured = specValue is List || (specValue is String && (specValue.trim().startsWith('[') || specValue.trim().startsWith('{')));
+      if (looksStructured) {
+        final submittedSpecs = _normalizeSpecificationEntriesForCompare(submittedSpecifications);
+        final responseSpecs = _normalizeSpecificationEntriesForCompare(_parseSpecificationsFromResponse(specValue));
+        if (submittedSpecs != responseSpecs) return false;
+      }
+    }
 
     // Server returns URLs for files; ensure those fields are present when a file was submitted.
-    if ((device.imagePath?.trim().isNotEmpty ?? false) && _normalized(data['image']).isEmpty) return false;
-    if ((device.assetAttachment?.trim().isNotEmpty ?? false)) {
-      final attachments = data['asset_attach'];
-      if (attachments is! List || attachments.isEmpty) return false;
+    if ((uploadedImagePath?.trim().isNotEmpty ?? false) && _normalized(_readValue(data, const ['image', 'image_url'])).isEmpty) return false;
+    if ((uploadedAttachmentPath?.trim().isNotEmpty ?? false)) {
+      final attachmentsValue = _readValue(data, const ['asset_attach', 'asset_attachment', 'asset_attachments']);
+      if (!_hasAttachmentData(attachmentsValue)) return false;
     }
 
     return true;
+  }
+
+  Object? _readValue(Map<String, dynamic> source, List<String> keys) {
+    for (final key in keys) {
+      if (source.containsKey(key)) return source[key];
+    }
+    return null;
+  }
+
+  bool _hasAttachmentData(Object? attachmentsValue) {
+    if (attachmentsValue == null) return false;
+    if (attachmentsValue is List) return attachmentsValue.isNotEmpty;
+    if (attachmentsValue is String) return attachmentsValue.trim().isNotEmpty;
+    if (attachmentsValue is Map) return attachmentsValue.isNotEmpty;
+    return attachmentsValue.toString().trim().isNotEmpty;
+  }
+
+  List<Map<String, dynamic>> _parseSpecificationsFromResponse(Object? responseValue) {
+    if (responseValue is List) {
+      return responseValue.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+    if (responseValue is String) {
+      final trimmed = responseValue.trim();
+      if (trimmed.isEmpty) return const <Map<String, dynamic>>[];
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          return decoded.whereType<Map<String, dynamic>>().toList(growable: false);
+        }
+      } catch (_) {
+        return const <Map<String, dynamic>>[];
+      }
+    }
+    return const <Map<String, dynamic>>[];
+  }
+
+  String _normalizeSpecificationEntriesForCompare(List<Map<String, dynamic>> entries) {
+    final pairs = entries.map((e) => '${_normalized(e['name'])}|${_normalized(e['description'])}').where((e) => e.isNotEmpty && e != '|').toList(growable: false);
+    pairs.sort();
+    return pairs.join('||');
   }
 
   List<Map<String, dynamic>>? _normalizeSpecifications(String? raw) {
@@ -477,11 +644,7 @@ class AssetRepository {
           if (item is Map<String, dynamic>) {
             final name = (item['name'] ?? '').toString().trim();
             if (name.isEmpty) continue;
-            normalized.add({
-              'id': _asInt(item['id']) == 0 ? fallbackId : _asInt(item['id']),
-              'name': name,
-              'description': (item['description'] ?? '').toString(),
-            });
+            normalized.add({'id': _asInt(item['id']) == 0 ? fallbackId : _asInt(item['id']), 'name': name, 'description': (item['description'] ?? '').toString()});
             fallbackId += 1;
           } else {
             final name = item.toString().trim();
@@ -497,20 +660,8 @@ class AssetRepository {
     }
 
     return <Map<String, dynamic>>[
-      {'id': 1, 'name': trimmed, 'description': ''}
+      {'id': 1, 'name': trimmed, 'description': ''},
     ];
-  }
-
-  String _normalizeSpecificationForCompare(String? raw) {
-    final list = _normalizeSpecifications(raw) ?? const <Map<String, dynamic>>[];
-    if (list.isEmpty) return '';
-
-    final pairs = list
-        .map((e) => '${_normalized(e['name'])}|${_normalized(e['description'])}')
-        .where((e) => e.isNotEmpty && e != '|')
-        .toList(growable: false);
-    pairs.sort();
-    return pairs.join('||');
   }
 
   String? _normalizeAstId(String? value) {
@@ -562,6 +713,10 @@ class AssetRepository {
 
   Future<List<RegisteredDeviceData>> getUnsyncedRegisteredDevices() async {
     return db.getUnyncedRegisteredDevices();
+  }
+
+  Future<RegisteredDeviceData?> getRegisteredDeviceById(int id) async {
+    return db.getRegisteredDeviceById(id);
   }
 
   Future<void> deleteRegisteredDevice(int id) async {

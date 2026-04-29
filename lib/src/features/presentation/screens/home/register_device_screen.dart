@@ -36,7 +36,14 @@ class RegisterDeviceScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Device registered for ${asset!.title}')));
       Navigator.of(context).pop(normalizedScannedAstId);
     } else {
-      Navigator.of(context).push(MaterialPageRoute(builder: (context) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
+      final created = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)),
+      );
+      if (!context.mounted) return;
+      if (created == true) {
+        // Asset was created (saved locally). Go back to Home so syncing happens there.
+        Navigator.of(context).pop();
+      }
     }
   }
 

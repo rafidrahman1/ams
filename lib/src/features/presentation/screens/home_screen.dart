@@ -59,7 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final scannedValue = await NfcParser.extractTagValue(tag);
         if (scannedValue != null && mounted) {
           final l10n = AppLocalizations.of(context)!;
-          HomeScreenActions.openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, isMounted: () => mounted, mismatchMessage: l10n.nfcTagMismatch);
+          HomeScreenActions.openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, mismatchMessage: l10n.nfcTagMismatch);
         }
       },
     );
@@ -121,34 +121,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Keep refresh indicator active until assets and checklist statuses are ready.
     await ref.read(homeBootstrapProvider.future);
-  }
-
-  Future<void> _refreshAdminAssets(BuildContext context) async {
-    if (_isSyncing) return;
-
-    setState(() {
-      _isSyncing = true;
-    });
-
-    try {
-      ref.invalidate(adminAssetsProvider);
-      ref.invalidate(unsyncedRegisteredDevicesProvider);
-      ref.invalidate(adminHomeBootstrapProvider);
-      await ref.read(adminHomeBootstrapProvider.future);
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin assets refreshed')));
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSyncing = false;
-        });
-      }
-    }
   }
 
   Future<void> _syncRegisteredDevices(BuildContext context) async {
@@ -287,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ref.invalidate(unsyncedRegisteredDevicesProvider);
                     }
                   }
-                : () => HomeScreenActions.showScanOptions(context: context, ref: ref, isMounted: () => mounted),
+                : () => HomeScreenActions.showScanOptions(context: context, ref: ref),
             onSecondaryPressed: widget.isAdmin ? () => _syncRegisteredDevices(context) : () => _syncChecklistToggles(context),
           ),
           if (!widget.isAdmin) ...[
