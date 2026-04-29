@@ -109,11 +109,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             final itemName = entry.value['item']!.text.trim();
             final itemDesc = entry.value['description']!.text.trim();
             if (itemName.isEmpty) return null;
-            return <String, dynamic>{
-              'id': entry.key + 1,
-              'name': itemName,
-              'description': itemDesc,
-            };
+            return <String, dynamic>{'id': entry.key + 1, 'name': itemName, 'description': itemDesc};
           })
           .whereType<Map<String, dynamic>>()
           .toList(growable: false);
@@ -338,7 +334,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                       onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _warrantyEndDate = d)),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox.shrink(),
                 ]),
 
                 Gap.y8,
