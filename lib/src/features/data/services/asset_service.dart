@@ -157,7 +157,7 @@ class AssetService {
 
     final Map<String, String> filePaths = {};
     if (imagePath != null) filePaths['image'] = imagePath;
-    if (attachmentPath != null) filePaths['asset_attachment'] = attachmentPath;
+    if (attachmentPath != null && attachmentPath.isNotEmpty) filePaths['asset_attachment'] = attachmentPath;
 
     // Helps us debug backend "data not found" errors by confirming file existence.
     final filePresence = <String, bool>{};

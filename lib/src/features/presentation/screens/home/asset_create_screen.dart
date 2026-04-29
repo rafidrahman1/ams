@@ -36,8 +36,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   String? _selectedBlock;
 
   bool _isSubmitting = false;
-  bool _isSyncing = false;
-  int? _savedDeviceId;
   String? _selectedImagePath;
   String? _selectedImageName;
   String? _selectedAttachmentPath;
@@ -122,7 +120,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
           .whereType<Map<String, dynamic>>()
           .toList(growable: false);
 
-      final deviceId = await ref
+      await ref
           .read(assetRepositoryProvider)
           .saveRegisteredDeviceLocally(
             name: name,
@@ -144,11 +142,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _savedDeviceId = deviceId;
-      });
-
-      messenger.showSnackBar(const SnackBar(content: Text('Asset saved locally. Click Sync to upload.')));
+      messenger.showSnackBar(const SnackBar(content: Text('Asset saved locally. Sync from Home screen.')));
+      Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
 
@@ -175,38 +170,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
           _selectedAttachmentName = result.files.first.name;
         }
       });
-    }
-  }
-
-  Future<void> _syncDevice() async {
-    if (_savedDeviceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No device to sync')));
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
-
-    setState(() {
-      _isSyncing = true;
-    });
-
-    try {
-      await ref.read(assetRepositoryProvider).syncRegisteredDevice(_savedDeviceId!);
-
-      if (!mounted) return;
-
-      messenger.showSnackBar(const SnackBar(content: Text('Asset uploaded successfully')));
-      Navigator.of(context).pop();
-    } catch (error) {
-      if (!mounted) return;
-      final message = error.toString();
-      messenger.showSnackBar(SnackBar(content: Text('Sync Error: $message')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSyncing = false;
-        });
-      }
     }
   }
 
@@ -444,18 +407,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   alignment: WrapAlignment.start,
                   children: [
                     ElevatedButton(
-                      onPressed: _isSubmitting || _isSyncing ? null : _submitForm,
+                      onPressed: _isSubmitting ? null : _submitForm,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: ThemePadding.px6),
                       child: Text(_isSubmitting ? 'Saving...' : 'Create', style: const TextStyle(color: Colors.white)),
                     ),
-                    if (_savedDeviceId != null)
-                      ElevatedButton(
-                        onPressed: _isSubmitting || _isSyncing ? null : _syncDevice,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: ThemePadding.px6),
-                        child: Text(_isSyncing ? 'Syncing...' : 'Sync', style: const TextStyle(color: Colors.white)),
-                      ),
                     ElevatedButton(
-                      onPressed: _isSubmitting || _isSyncing ? null : () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: ThemePadding.px6),
                       child: const Text('Go Back', style: TextStyle(color: Colors.white)),
                     ),
@@ -548,10 +505,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   }
 
   Widget _buildFilePicker({required bool isImage}) {
+    final isSelected = isImage ? _selectedImageName != null : _selectedAttachmentName != null;
+
     return Row(
       children: [
         ElevatedButton(
-          onPressed: _isSubmitting || _isSyncing ? null : () => _pickFile(isImage: isImage),
+          onPressed: _isSubmitting ? null : () => _pickFile(isImage: isImage),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[200],
             foregroundColor: Colors.black,
@@ -568,6 +527,27 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (isSelected)
+          ElevatedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () => setState(() {
+                    if (isImage) {
+                      _selectedImagePath = null;
+                      _selectedImageName = null;
+                    } else {
+                      _selectedAttachmentPath = null;
+                      _selectedAttachmentName = null;
+                    }
+                  }),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[300],
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: const Text('Remove', style: TextStyle(fontSize: 11)),
+          ),
       ],
     );
   }
