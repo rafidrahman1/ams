@@ -17,7 +17,7 @@ class HomeScreenActions {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
   }
 
-  static Future<void> showScanOptions({required BuildContext context, required WidgetRef ref, required bool Function() isMounted}) async {
+  static Future<void> showScanOptions({required BuildContext context, required WidgetRef ref}) async {
     final l10n = AppLocalizations.of(context)!;
     final selectedOption = await showModalBottomSheet<String>(
       context: context,
@@ -34,23 +34,22 @@ class HomeScreenActions {
       },
     );
 
-    if (!isMounted() || selectedOption == null) {
+    if (!context.mounted || selectedOption == null) {
       return;
     }
 
     if (selectedOption == 'qr') {
-      await _openChecklistFromScan(context: context, ref: ref, isMounted: isMounted, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch);
+      await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch);
       return;
     }
 
-    await _openChecklistFromScan(context: context, ref: ref, isMounted: isMounted, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch);
+    await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch);
   }
 
   static Future<void> openAssetChecklist({
     required BuildContext context,
     required WidgetRef ref,
     required String scannedValue,
-    required bool Function() isMounted,
     required String mismatchMessage,
   }) async {
     final scannedAstId = normalizeAstId(scannedValue);
@@ -61,7 +60,7 @@ class HomeScreenActions {
     try {
       final assets = await ref.read(myAssetsProvider.future);
 
-      if (!isMounted()) {
+      if (!context.mounted) {
         return;
       }
 
@@ -76,7 +75,7 @@ class HomeScreenActions {
       final selectedAsset = AssetCardData(title: matchedAsset.name, description: matchedAsset.details, astId: matchedAsset.astId);
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: selectedAsset)));
     } catch (error) {
-      if (!isMounted()) {
+      if (!context.mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
@@ -86,16 +85,15 @@ class HomeScreenActions {
   static Future<void> _openChecklistFromScan({
     required BuildContext context,
     required WidgetRef ref,
-    required bool Function() isMounted,
     required Future<String?> Function(BuildContext context) scanLauncher,
     required String mismatchMessage,
   }) async {
     final scannedValue = await scanLauncher(context);
 
-    if (!isMounted() || scannedValue == null) {
+    if (!context.mounted || scannedValue == null) {
       return;
     }
 
-    await openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, isMounted: isMounted, mismatchMessage: mismatchMessage);
+    await openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, mismatchMessage: mismatchMessage);
   }
 }

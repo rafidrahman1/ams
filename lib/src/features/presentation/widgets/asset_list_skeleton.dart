@@ -10,7 +10,7 @@ class AssetListSkeleton extends StatelessWidget {
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) => Container(
         height: 92,
         decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
