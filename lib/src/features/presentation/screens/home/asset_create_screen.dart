@@ -222,7 +222,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildResponsiveRow([
-                  _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID')),
+                  _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID', readOnly: true)),
                   _buildFieldContainer('Name *', _buildTextField(controller: _nameController, hint: 'Enter asset name')),
                 ]),
                 Gap.y4,
@@ -468,11 +468,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType? keyboardType, int maxLines = 1}) {
+  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType? keyboardType, int maxLines = 1, bool readOnly = false}) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      readOnly: readOnly,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: ThemeTextStyles.hint,
