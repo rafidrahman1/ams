@@ -140,14 +140,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
 
       int syncedCount = 0;
-      int failedCount = 0;
+      final errors = <String>[];
 
       for (final device in unaycdDevices) {
         try {
           await ref.read(assetRepositoryProvider).syncRegisteredDevice(device.id!);
           syncedCount++;
-        } catch (_) {
-          failedCount++;
+        } catch (error) {
+          // Extract API error message, removing "Exception:" prefix and debug info
+          final errorMsg = error.toString();
+          final cleanedError = errorMsg
+              .replaceFirst(RegExp(r'^Exception:\s*', caseSensitive: false), '')
+              .replaceFirst(RegExp(r'\s*\|\s*sent:.*$'), '')
+              .trim();
+          errors.add(cleanedError);
         }
       }
 
@@ -158,9 +164,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (!context.mounted) return;
 
-      final message = failedCount > 0
-          ? 'Synced $syncedCount of ${unaycdDevices.length} devices. $failedCount failed.'
-          : 'Successfully synced ${unaycdDevices.length} device(s)';
+      final failedCount = errors.length;
+      String message;
+
+      if (failedCount == 0) {
+        message = 'Successfully synced ${unaycdDevices.length} device(s)';
+      } else if (syncedCount == 0) {
+        message = errors.first;
+      } else {
+        message = 'Synced $syncedCount of ${unaycdDevices.length} devices. ${errors.first}';
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!context.mounted) return;
