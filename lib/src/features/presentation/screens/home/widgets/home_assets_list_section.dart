@@ -27,6 +27,7 @@ class HomeAssetsListSection extends ConsumerWidget {
     required this.onRefresh,
     required this.onFilteredCountChanged,
     required this.ensureScrollablePage,
+    this.failedDeviceIds = const <int>{},
   });
 
   final String assetsLabel;
@@ -44,6 +45,7 @@ class HomeAssetsListSection extends ConsumerWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<int> onFilteredCountChanged;
   final ValueChanged<bool> ensureScrollablePage;
+  final Set<int> failedDeviceIds;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -109,12 +111,12 @@ class HomeAssetsListSection extends ConsumerWidget {
                           }
                         },
                         child: Card(
-                          color: Colors.orange.shade50,
+                          color: failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
                           child: ListTile(
                             title: Text(device.name),
                             subtitle: Text('${device.details}\n(Pending Sync)'),
                             isThreeLine: true,
-                            trailing: const Icon(Icons.sync_problem, color: Colors.orange),
+                            trailing: failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
                             onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
                           ),
                         ),
@@ -268,10 +270,7 @@ extension on HomeAssetsListSection {
                           Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  'Device Details',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                                ),
+                                child: Text('Device Details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                               ),
                               IconButton(onPressed: () => Navigator.of(sheetContext).pop(), icon: const Icon(Icons.close)),
                             ],
@@ -298,10 +297,7 @@ extension on HomeAssetsListSection {
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () => Navigator.of(sheetContext).pop(),
-                              child: const Text('Close'),
-                            ),
+                            child: TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Close')),
                           ),
                         ],
                       ),
@@ -332,4 +328,3 @@ extension on HomeAssetsListSection {
     );
   }
 }
-

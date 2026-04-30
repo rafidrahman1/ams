@@ -391,6 +391,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'({failed} failed)'**
   String syncFailedSuffix(Object failed);
+
+  /// No description provided for @deviceSyncSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully synced {count, plural, =1{1 device} other{{count} devices}}'**
+  String deviceSyncSuccess(num count);
+
+  /// No description provided for @deviceSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to sync {count, plural, =1{1 device} other{{count} devices}}: {failedIds}'**
+  String deviceSyncFailed(Object failedIds, num count);
+
+  /// No description provided for @deviceSyncPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {synced} of {total} devices. Failed: {failedIds}'**
+  String deviceSyncPartial(Object synced, Object total, Object failedIds);
+
+  /// No description provided for @astIdAlreadyAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'{astId} has already been assigned'**
+  String astIdAlreadyAssigned(Object astId);
+
+  /// No description provided for @unknownSyncError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown error occurred during sync'**
+  String get unknownSyncError;
+
+  /// No description provided for @noPendingDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending devices to sync'**
+  String get noPendingDevices;
 }
 
 class _AppLocalizationsDelegate

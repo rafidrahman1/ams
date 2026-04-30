@@ -64,5 +64,34 @@
     "placeholders": {
       "failed": {}
     }
-  }
+  },
+  "deviceSyncSuccess": "{count, plural, =1{১টি ডিভাইস সফলভাবে সিঙ্ক হয়েছে} other{{count}টি ডিভাইস সফলভাবে সিঙ্ক হয়েছে}}",
+  "@deviceSyncSuccess": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "deviceSyncFailed": "{count, plural, =1{১টি ডিভাইস} other{{count}টি ডিভাইস}} সিঙ্ক করতে ব্যর্থ: {failedIds}",
+  "@deviceSyncFailed": {
+    "placeholders": {
+      "failedIds": {},
+      "count": {}
+    }
+  },
+  "deviceSyncPartial": "{synced}টি থেকে {total}টি ডিভাইস সিঙ্ক হয়েছে। ব্যর্থ: {failedIds}",
+  "@deviceSyncPartial": {
+    "placeholders": {
+      "synced": {},
+      "total": {},
+      "failedIds": {}
+    }
+  },
+  "astIdAlreadyAssigned": "{astId} ইতিমধ্যে বরাদ্দ করা হয়েছে",
+  "@astIdAlreadyAssigned": {
+    "placeholders": {
+      "astId": {}
+    }
+  },
+  "unknownSyncError": "সিঙ্ক করার সময় অজানা ত্রুটি ঘটেছে",
+  "noPendingDevices": "সিঙ্ক করার জন্য কোনো অপেক্ষমাণ ডিভাইস নেই"
 }

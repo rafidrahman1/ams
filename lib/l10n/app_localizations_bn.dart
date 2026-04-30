@@ -163,4 +163,42 @@ class AppLocalizationsBn extends AppLocalizations {
   String syncFailedSuffix(Object failed) {
     return '($failed টি ব্যর্থ)';
   }
+
+  @override
+  String deviceSyncSuccess(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countটি ডিভাইস সফলভাবে সিঙ্ক হয়েছে',
+      one: '১টি ডিভাইস সফলভাবে সিঙ্ক হয়েছে',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deviceSyncFailed(Object failedIds, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countটি ডিভাইস',
+      one: '১টি ডিভাইস',
+    );
+    return '$_temp0 সিঙ্ক করতে ব্যর্থ: $failedIds';
+  }
+
+  @override
+  String deviceSyncPartial(Object synced, Object total, Object failedIds) {
+    return '$syncedটি থেকে $totalটি ডিভাইস সিঙ্ক হয়েছে। ব্যর্থ: $failedIds';
+  }
+
+  @override
+  String astIdAlreadyAssigned(Object astId) {
+    return '$astId ইতিমধ্যে বরাদ্দ করা হয়েছে';
+  }
+
+  @override
+  String get unknownSyncError => 'সিঙ্ক করার সময় অজানা ত্রুটি ঘটেছে';
+
+  @override
+  String get noPendingDevices => 'সিঙ্ক করার জন্য কোনো অপেক্ষমাণ ডিভাইস নেই';
 }
