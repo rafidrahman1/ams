@@ -230,6 +230,7 @@ class AssetRepository {
     required String remark,
     required String parameter,
     required String image,
+    String? imagePath,
     required List<({int featureId, bool response})> items,
   }) async {
     final userKey = await _resolvedUserKey();
@@ -241,6 +242,7 @@ class AssetRepository {
       'remark': remark,
       'parameter': parameter,
       'image': image,
+      'image_path': imagePath ?? '',
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
     });
     return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
@@ -252,6 +254,7 @@ class AssetRepository {
     required String remark,
     required String parameter,
     required String image,
+    String? imagePath,
     required List<({int featureId, bool response})> items,
   }) async {
     final userKey = await _resolvedUserKey();
@@ -265,8 +268,11 @@ class AssetRepository {
       'remark': remark,
       'parameter': parameter,
       'image': image,
+      'image_path': imagePath ?? '',
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
     };
+
+    final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
 
     try {
       final responseBody = await service.submitChecklist(
@@ -274,7 +280,7 @@ class AssetRepository {
         status: status,
         remark: remark,
         parameter: parameter,
-        image: image,
+        image: imagePayload,
         items: items,
       );
 
@@ -304,6 +310,7 @@ class AssetRepository {
         remark: remark,
         parameter: parameter,
         image: image,
+        imagePath: imagePath,
         items: items,
       );
     }
@@ -344,6 +351,7 @@ class AssetRepository {
         final remark = (payload['remark'] ?? '').toString();
         final parameter = (payload['parameter'] ?? '').toString();
         final image = (payload['image'] ?? '').toString();
+        final imagePath = (payload['image_path'] ?? '').toString();
         final itemsRaw = payload['items'] as List<dynamic>? ?? const <dynamic>[];
         final items = <({int featureId, bool response})>[];
         for (final it in itemsRaw.whereType<Map<String, dynamic>>()) {
@@ -352,12 +360,13 @@ class AssetRepository {
           items.add((featureId: featureId, response: _asBool(it['response'])));
         }
 
+        final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
         final responseBody = await service.submitChecklist(
           astId: astId,
           status: status,
           remark: remark,
           parameter: parameter,
-          image: image,
+          image: imagePayload,
           items: items,
         );
         if (_isSyncVerified(submission: payload, response: responseBody)) {
@@ -700,6 +709,38 @@ class AssetRepository {
       if (source.containsKey(key)) return source[key];
     }
     return null;
+  }
+
+  Future<String> _resolveChecklistImageForUpload({required String image, String? imagePath}) async {
+    final inlineImage = image.trim();
+    if (inlineImage.isNotEmpty) {
+      return inlineImage;
+    }
+
+    final path = imagePath?.trim() ?? '';
+    if (path.isEmpty) {
+      return '';
+    }
+
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        return '';
+      }
+      final bytes = await file.readAsBytes();
+      return 'data:${_mimeTypeFromPath(path)};base64,${base64Encode(bytes)}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _mimeTypeFromPath(String path) {
+    final loweredPath = path.toLowerCase();
+    if (loweredPath.endsWith('.png')) return 'image/png';
+    if (loweredPath.endsWith('.jpg') || loweredPath.endsWith('.jpeg')) return 'image/jpeg';
+    if (loweredPath.endsWith('.webp')) return 'image/webp';
+    if (loweredPath.endsWith('.gif')) return 'image/gif';
+    return 'image/png';
   }
 
   bool _hasAttachmentData(Object? attachmentsValue) {

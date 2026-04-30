@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:asset_management_system/l10n/app_localizations.dart';
@@ -26,7 +25,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   final TextEditingController _remarksController = TextEditingController();
   final TextEditingController _parameterController = TextEditingController();
   String _status = 'ACTIVE';
-  String _imageData = '';
+  String _imagePath = '';
 
   @override
   void dispose() {
@@ -48,7 +47,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         _status = data.status;
         _remarksController.text = data.remark;
         _parameterController.text = data.parameter;
-        _imageData = data.image;
+        _imagePath = data.image;
       });
     });
   }
@@ -60,25 +59,37 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       final XFile? picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
       if (picked == null) return;
 
-      final bytes = await File(picked.path).readAsBytes();
-      final extension = picked.path.split('.').last.toLowerCase();
-      final mimeType = switch (extension) {
-        'png' => 'image/png',
-        'jpg' || 'jpeg' => 'image/jpeg',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        _ => 'image/png',
-      };
-      final encoded = base64Encode(bytes);
+      final cachedPath = await _resolveCachedCameraImagePath(picked);
 
       if (!mounted) return;
       setState(() {
-        _imageData = 'data:$mimeType;base64,$encoded';
+        _imagePath = cachedPath;
       });
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('Error capturing image: ${error.toString()}')));
     }
+  }
+
+  Future<String> _resolveCachedCameraImagePath(XFile picked) async {
+    final originalPath = picked.path;
+    if (originalPath.trim().isNotEmpty) {
+      try {
+        if (await File(originalPath).exists()) {
+          return originalPath;
+        }
+      } catch (_) {
+        // Fall through to bytes caching.
+      }
+    }
+
+    final bytes = await picked.readAsBytes();
+    final safeName = picked.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final tempDir = await Directory.systemTemp.createTemp('checklist_upload_cache_image');
+    final outPath = '${tempDir.path}/image-$safeName';
+    final outFile = File(outPath);
+    await outFile.writeAsBytes(bytes, flush: true);
+    return outPath;
   }
 
   @override
@@ -116,7 +127,8 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                         status: _status,
                         remark: _remarksController.text.trim(),
                         parameter: _parameterController.text.trim(),
-                        image: _imageData,
+                        image: '',
+                        imagePath: _imagePath,
                         items: submitItems,
                       );
 
@@ -203,9 +215,9 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                       OutlinedButton.icon(
                         onPressed: _captureImageFromCamera,
                         icon: const Icon(Icons.camera_alt),
-                        label: Text(_imageData.isNotEmpty ? 'Retake Image' : 'Capture Image'),
+                        label: Text(_imagePath.isNotEmpty ? 'Retake Image' : 'Capture Image'),
                       ),
-                      if (_imageData.isNotEmpty) ...[
+                      if (_imagePath.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Text(
                           'Image selected',
