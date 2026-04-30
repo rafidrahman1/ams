@@ -154,38 +154,12 @@ class AssetService {
     if (imagePath != null) filePaths['image'] = imagePath;
     if (attachmentPath != null && attachmentPath.isNotEmpty) filePaths['asset_attachment'] = attachmentPath;
 
-    // Helps us debug backend "data not found" errors by confirming file existence.
-    final filePresence = <String, bool>{};
-    for (final entry in filePaths.entries) {
-      try {
-        filePresence[entry.key] = await File(entry.value).exists();
-      } catch (_) {
-        filePresence[entry.key] = false;
-      }
-    }
-
     final res = await client.postFormDataWithFile(Endpoints.assetCreate, fields: fields, filePaths: filePaths.isNotEmpty ? filePaths : null, auth: true);
 
     final body = jsonDecode(res.body);
 
     if ((res.statusCode != 200 && res.statusCode != 201) || body is! Map<String, dynamic> || body['code'] != 200) {
-      final errorMessage = body is Map<String, dynamic> ? body['response']?.toString() : null;
-      final normalizedError = errorMessage?.replaceFirst(RegExp(r'^Exception:\s*', caseSensitive: false), '').trim();
-
-      final spec = fields['specification'];
-      final specPreview = spec == null ? 'none' : (spec.length <= 80 ? spec : '${spec.substring(0, 80)}...');
-      final specFormat = spec == null ? 'none' : 'len=${spec.length} startsWithBracket=${spec.trimLeft().startsWith('[')} endsWithBracket=${spec.trimRight().endsWith(']')}';
-
-      final address = fields['address_line'];
-
-      final sentSummary =
-          'sent: ast_ID=${fields['ast_ID']}, asset_type=${fields['asset_type']}, location=${fields['location']}, block=${fields['block']}, ' //
-          'name="${fields['name']}", details="${fields['details']}", address_line="$address", ' //
-          'specification_present=${fields.containsKey('specification')}, spec_format=[$specFormat], spec_preview="$specPreview", ' //
-          'files=$filePresence';
-
-      final baseError = (normalizedError != null && normalizedError.isNotEmpty) ? normalizedError : 'Failed to create asset';
-      throw Exception('$baseError | $sentSummary');
+      throw Exception(body is Map<String, dynamic> ? (body['response']?.toString() ?? 'Failed to create asset') : 'Failed to create asset');
     }
 
     return body;

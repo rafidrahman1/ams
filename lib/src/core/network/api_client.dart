@@ -32,52 +32,12 @@ class ApiClient {
     return res;
   }
 
-  Future<http.Response> postFormData(String path, {required Map<String, String> fields, Map<String, String>? files, bool auth = false}) async {
-    final headers = await _buildHeadersForMultipart(auth: auth);
-    final request = http.MultipartRequest('POST', _uri(path));
-
-    request.headers.addAll(headers);
-    request.fields.addAll(fields);
-
-    if (files != null) {
-      for (final entry in files.entries) {
-        final file = http.MultipartFile.fromString(entry.key, entry.value);
-        request.files.add(file);
-      }
-    }
-
-    final response = await request.send().timeout(timeout);
-    final res = await http.Response.fromStream(response);
-
-    // 🔁 auto refresh if expired
-    if (res.statusCode == 401 && auth) {
-      final refreshed = await _refreshToken();
-      if (refreshed) {
-        final retriedHeaders = await _buildHeadersForMultipart(auth: auth);
-        final retriedRequest = http.MultipartRequest('POST', _uri(path));
-        retriedRequest.headers.addAll(retriedHeaders);
-        retriedRequest.fields.addAll(fields);
-        if (files != null) {
-          for (final entry in files.entries) {
-            final file = http.MultipartFile.fromString(entry.key, entry.value);
-            retriedRequest.files.add(file);
-          }
-        }
-        final retriedResponse = await retriedRequest.send().timeout(timeout);
-        return await http.Response.fromStream(retriedResponse);
-      }
-    }
-
-    return res;
-  }
-
   Future<http.Response> post(String path, {Map<String, dynamic>? body, bool auth = false}) async {
     final headers = await _buildHeaders(auth: auth);
 
     final encodedBody = body == null ? null : jsonEncode(body);
     final res = await _http.post(_uri(path), headers: headers, body: encodedBody).timeout(timeout);
 
-    // 🔁 auto refresh if expired
     if (res.statusCode == 401 && auth) {
       final refreshed = await _refreshToken();
 
@@ -118,7 +78,6 @@ class ApiClient {
     final response = await request.send().timeout(timeout);
     final res = await http.Response.fromStream(response);
 
-    // 🔁 auto refresh if expired
     if (res.statusCode == 401 && auth) {
       final refreshed = await _refreshToken();
       if (refreshed) {

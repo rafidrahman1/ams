@@ -45,11 +45,5 @@ class AssetChecklist {
   final String parameter;
   final String image;
 
-  const AssetChecklist({
-    required this.items,
-    this.status = 'ACTIVE',
-    this.remark = '',
-    this.parameter = '',
-    this.image = '',
-  });
+  const AssetChecklist({required this.items, this.status = 'ACTIVE', this.remark = '', this.parameter = '', this.image = ''});
 }

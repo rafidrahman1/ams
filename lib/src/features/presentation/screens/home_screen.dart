@@ -150,9 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (unaycdDevices.isEmpty) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.noPendingDevices)),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.noPendingDevices)));
         return;
       }
 
@@ -204,18 +202,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         message = l10n.deviceSyncPartial(syncedCount, unaycdDevices.length, astIdList);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 4)));
     } catch (error) {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.unknownSyncError)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.unknownSyncError)));
     } finally {
       if (mounted) {
         setState(() {
