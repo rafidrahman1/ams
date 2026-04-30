@@ -32,6 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _visibleAssetCount = _pageSize;
   int _lastFilteredAssetCount = 0;
   final ScrollController _assetListScrollController = ScrollController();
+  final Set<int> _failedDeviceIds = {};
 
   @override
   void initState() {
@@ -104,6 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mounted) {
       setState(() {
         _visibleAssetCount = _pageSize;
+        _failedDeviceIds.clear();
       });
     }
 
@@ -123,33 +125,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(homeBootstrapProvider.future);
   }
 
+  String? _extractAstIdFromError(String errorMsg) {
+    // Try to extract ast_ID from error messages like:
+    // "ast_ID = 'AST-000101' has already been assigned to an asset."
+    final regexp = RegExp("ast_ID\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"]");
+    final match = regexp.firstMatch(errorMsg);
+    if (match != null) {
+      return match.group(1);
+    }
+    return null;
+  }
+
   Future<void> _syncRegisteredDevices(BuildContext context) async {
     if (_isSyncing) return;
 
     setState(() {
       _isSyncing = true;
+      _failedDeviceIds.clear();
     });
 
     try {
+      final l10n = AppLocalizations.of(context)!;
       final unaycdDevices = await ref.read(assetRepositoryProvider).getUnsyncedRegisteredDevices();
 
       if (unaycdDevices.isEmpty) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No pending devices to sync')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.noPendingDevices)),
+        );
         return;
       }
 
       int syncedCount = 0;
-      int failedCount = 0;
+      final failedAstIds = <String>[];
+      final failedDeviceIdsList = <int>[];
 
       for (final device in unaycdDevices) {
         try {
           await ref.read(assetRepositoryProvider).syncRegisteredDevice(device.id!);
           syncedCount++;
-        } catch (_) {
-          failedCount++;
+        } catch (error) {
+          if (device.id != null) {
+            failedDeviceIdsList.add(device.id!);
+          }
+
+          // Extract AST ID from error message
+          final errorMsg = error.toString();
+          final astId = _extractAstIdFromError(errorMsg);
+
+          if (astId != null && !failedAstIds.contains(astId)) {
+            failedAstIds.add(astId);
+          }
         }
       }
+
+      // Update failed device IDs for UI flagging
+      setState(() {
+        _failedDeviceIds.addAll(failedDeviceIdsList);
+      });
 
       if (syncedCount > 0) {
         ref.invalidate(unsyncedRegisteredDevicesProvider);
@@ -158,13 +191,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (!context.mounted) return;
 
-      final message = failedCount > 0
-          ? 'Synced $syncedCount of ${unaycdDevices.length} devices. $failedCount failed.'
-          : 'Successfully synced ${unaycdDevices.length} device(s)';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      final failedCount = failedAstIds.length;
+      String message;
+
+      if (failedCount == 0) {
+        message = l10n.deviceSyncSuccess(unaycdDevices.length);
+      } else if (syncedCount == 0) {
+        final astIdList = failedAstIds.join(', ');
+        message = l10n.deviceSyncFailed(astIdList, failedCount);
+      } else {
+        final astIdList = failedAstIds.join(', ');
+        message = l10n.deviceSyncPartial(syncedCount, unaycdDevices.length, astIdList);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.unknownSyncError)),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -300,6 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _lastFilteredAssetCount = count;
               },
               ensureScrollablePage: _ensureScrollablePage,
+              failedDeviceIds: _failedDeviceIds,
             ),
           ),
         ],

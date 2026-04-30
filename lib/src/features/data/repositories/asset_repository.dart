@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
 import '../models/asset_checklist_item.dart';
@@ -12,8 +13,11 @@ class AssetRepository {
   final AssetService service;
   final Future<String?> Function() getUserKey;
   final LocalDatabase db;
+  final AssetCacheStore cache;
 
-  AssetRepository(this.service, this.getUserKey, this.db);
+  AssetRepository(this.service, this.getUserKey, this.db) : cache = AssetCacheStore();
+
+  AssetRepository.withCache(this.service, this.getUserKey, this.db, this.cache);
 
   Future<String?> _resolvedUserKey() async {
     final key = (await getUserKey())?.trim();
@@ -114,15 +118,45 @@ class AssetRepository {
   }
 
   Future<List<IdNamePair>> fetchCampLocations() async {
-    return service.fetchCampLocations();
+    try {
+      final campLocations = await service.fetchCampLocations();
+      await cache.saveCampLocations(campLocations);
+      return campLocations;
+    } catch (_) {
+      if (await cache.hasCampLocationsCache()) {
+        return cache.loadCampLocations();
+      }
+
+      rethrow;
+    }
   }
 
   Future<List<IdNamePair>> fetchBlocks(int campId) async {
-    return service.fetchBlocks(campId);
+    try {
+      final blocks = await service.fetchBlocks(campId);
+      await cache.saveBlocks(campId, blocks);
+      return blocks;
+    } catch (_) {
+      if (await cache.hasBlocksCache(campId)) {
+        return cache.loadBlocks(campId);
+      }
+
+      rethrow;
+    }
   }
 
   Future<List<IdNamePair>> fetchAssetTypes() async {
-    return service.fetchAssetTypes();
+    try {
+      final assetTypes = await service.fetchAssetTypes();
+      await cache.saveAssetTypes(assetTypes);
+      return assetTypes;
+    } catch (_) {
+      if (await cache.hasAssetTypesCache()) {
+        return cache.loadAssetTypes();
+      }
+
+      rethrow;
+    }
   }
 
   Future<void> prefetchOfflineData(String userKey, {bool isAdmin = false}) async {
@@ -132,7 +166,7 @@ class AssetRepository {
     }
 
     if (isAdmin) {
-      // Admin assets are sourced locally only; there is no remote list API.
+      await _prefetchAdminLookupData();
       return;
     }
 
@@ -161,7 +195,44 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueChecklistSubmission({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+  Future<void> _prefetchAdminLookupData() async {
+    List<IdNamePair> campLocations = const <IdNamePair>[];
+
+    try {
+      campLocations = await service.fetchCampLocations();
+      await cache.saveCampLocations(campLocations);
+    } catch (_) {
+      if (await cache.hasCampLocationsCache()) {
+        campLocations = await cache.loadCampLocations();
+      }
+    }
+
+    try {
+      final assetTypes = await service.fetchAssetTypes();
+      await cache.saveAssetTypes(assetTypes);
+    } catch (_) {
+      // Keep previously cached asset types if the refresh is unavailable.
+    }
+
+    for (final campLocation in campLocations) {
+      try {
+        final blocks = await service.fetchBlocks(campLocation.id);
+        await cache.saveBlocks(campLocation.id, blocks);
+      } catch (_) {
+        // Best effort: preserve any cached blocks already stored for this camp.
+      }
+    }
+  }
+
+  Future<int> queueChecklistSubmission({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    String? imagePath,
+    required List<({int featureId, bool response})> items,
+  }) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
@@ -169,12 +240,23 @@ class AssetRepository {
       'ast_ID': astId,
       'status': status,
       'remark': remark,
+      'parameter': parameter,
+      'image': image,
+      'image_path': imagePath ?? '',
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
     });
     return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
   }
 
-  Future<void> submitChecklist({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+  Future<void> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    String? imagePath,
+    required List<({int featureId, bool response})> items,
+  }) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) {
       throw Exception('Missing session');
@@ -184,11 +266,23 @@ class AssetRepository {
       'ast_ID': astId,
       'status': status,
       'remark': remark,
+      'parameter': parameter,
+      'image': image,
+      'image_path': imagePath ?? '',
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
     };
 
+    final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
+
     try {
-      final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+      final responseBody = await service.submitChecklist(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: imagePayload,
+        items: items,
+      );
 
       if (!_isSyncVerified(submission: payload, response: responseBody)) {
         throw Exception('Sync verification failed');
@@ -210,7 +304,15 @@ class AssetRepository {
       }
     } catch (_) {
       // Offline / failure: queue for later sync instead of failing the UI.
-      await queueChecklistSubmission(astId: astId, status: status, remark: remark, items: items);
+      await queueChecklistSubmission(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: image,
+        imagePath: imagePath,
+        items: items,
+      );
     }
   }
 
@@ -247,6 +349,9 @@ class AssetRepository {
         final astId = (payload['ast_ID'] ?? queueItem.astId).toString();
         final status = (payload['status'] ?? '').toString();
         final remark = (payload['remark'] ?? '').toString();
+        final parameter = (payload['parameter'] ?? '').toString();
+        final image = (payload['image'] ?? '').toString();
+        final imagePath = (payload['image_path'] ?? '').toString();
         final itemsRaw = payload['items'] as List<dynamic>? ?? const <dynamic>[];
         final items = <({int featureId, bool response})>[];
         for (final it in itemsRaw.whereType<Map<String, dynamic>>()) {
@@ -255,7 +360,15 @@ class AssetRepository {
           items.add((featureId: featureId, response: _asBool(it['response'])));
         }
 
-        final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+        final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
+        final responseBody = await service.submitChecklist(
+          astId: astId,
+          status: status,
+          remark: remark,
+          parameter: parameter,
+          image: imagePayload,
+          items: items,
+        );
         if (_isSyncVerified(submission: payload, response: responseBody)) {
           syncedCount += 1;
           removableQueueIds.add(queueItem.queueId);
@@ -596,6 +709,38 @@ class AssetRepository {
       if (source.containsKey(key)) return source[key];
     }
     return null;
+  }
+
+  Future<String> _resolveChecklistImageForUpload({required String image, String? imagePath}) async {
+    final inlineImage = image.trim();
+    if (inlineImage.isNotEmpty) {
+      return inlineImage;
+    }
+
+    final path = imagePath?.trim() ?? '';
+    if (path.isEmpty) {
+      return '';
+    }
+
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        return '';
+      }
+      final bytes = await file.readAsBytes();
+      return 'data:${_mimeTypeFromPath(path)};base64,${base64Encode(bytes)}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _mimeTypeFromPath(String path) {
+    final loweredPath = path.toLowerCase();
+    if (loweredPath.endsWith('.png')) return 'image/png';
+    if (loweredPath.endsWith('.jpg') || loweredPath.endsWith('.jpeg')) return 'image/jpeg';
+    if (loweredPath.endsWith('.webp')) return 'image/webp';
+    if (loweredPath.endsWith('.gif')) return 'image/gif';
+    return 'image/png';
   }
 
   bool _hasAttachmentData(Object? attachmentsValue) {

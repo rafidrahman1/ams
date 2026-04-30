@@ -1,11 +1,14 @@
+import 'dart:io';
+
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../data/models/asset_checklist_item.dart';
 import '../providers/asset_provider.dart';
 import '../widgets/asset_card_builder.dart';
-import '../../data/models/asset_checklist_item.dart';
 
 class AssetChecklistScreen extends ConsumerStatefulWidget {
   const AssetChecklistScreen({super.key, required this.asset});
@@ -20,11 +23,14 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   List<bool> _completed = const [];
   String? _loadedAstId;
   final TextEditingController _remarksController = TextEditingController();
+  final TextEditingController _parameterController = TextEditingController();
   String _status = 'ACTIVE';
+  String _imagePath = '';
 
   @override
   void dispose() {
     _remarksController.dispose();
+    _parameterController.dispose();
     super.dispose();
   }
 
@@ -40,8 +46,69 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         _completed = data.items.map((item) => item.response).toList();
         _status = data.status;
         _remarksController.text = data.remark;
+        _parameterController.text = data.parameter;
+        _imagePath = data.image;
       });
     });
+  }
+
+  Future<void> _captureImageFromCamera() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (picked == null) return;
+
+      final cachedPath = await _resolveCachedCameraImagePath(picked);
+
+      if (!mounted) return;
+      setState(() {
+        _imagePath = cachedPath;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Error capturing image: ${error.toString()}')));
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (picked == null) return;
+
+      final cachedPath = await _resolveCachedCameraImagePath(picked);
+
+      if (!mounted) return;
+      setState(() {
+        _imagePath = cachedPath;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Error picking image: ${error.toString()}')));
+    }
+  }
+
+  Future<String> _resolveCachedCameraImagePath(XFile picked) async {
+    final originalPath = picked.path;
+    if (originalPath.trim().isNotEmpty) {
+      try {
+        if (await File(originalPath).exists()) {
+          return originalPath;
+        }
+      } catch (_) {
+        // Fall through to bytes caching.
+      }
+    }
+
+    final bytes = await picked.readAsBytes();
+    final safeName = picked.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final tempDir = await Directory.systemTemp.createTemp('checklist_upload_cache_image');
+    final outPath = '${tempDir.path}/image-$safeName';
+    final outFile = File(outPath);
+    await outFile.writeAsBytes(bytes, flush: true);
+    return outPath;
   }
 
   @override
@@ -74,7 +141,15 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   // This keeps behavior predictable for users who save while offline.
                   await ref
                       .read(assetRepositoryProvider)
-                      .queueChecklistSubmission(astId: widget.asset.astId, status: _status, remark: _remarksController.text.trim(), items: submitItems);
+                      .queueChecklistSubmission(
+                        astId: widget.asset.astId,
+                        status: _status,
+                        remark: _remarksController.text.trim(),
+                        parameter: _parameterController.text.trim(),
+                        image: '',
+                        imagePath: _imagePath,
+                        items: submitItems,
+                      );
 
                   ref.invalidate(assetChecklistProvider(widget.asset.astId));
 
@@ -146,6 +221,45 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                           title: Text(items[index].title),
                         );
                       }),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _parameterController,
+                        decoration: const InputDecoration(labelText: 'Parameter', hintText: 'Enter checklist parameter', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _captureImageFromCamera,
+                              icon: const Icon(Icons.camera_alt),
+                              label: Text(_imagePath.isNotEmpty ? 'Retake' : 'Camera'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _pickImageFromGallery,
+                              icon: const Icon(Icons.image),
+                              label: Text(_imagePath.isNotEmpty ? 'Change' : 'Attach Image'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_imagePath.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => setState(() => _imagePath = ''),
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          label: const Text('Remove Image', style: TextStyle(color: Colors.red)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            foregroundColor: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text('Image selected', style: Theme.of(context).textTheme.bodySmall),
+                      ],
                       const SizedBox(height: 16),
                       TextField(
                         controller: _remarksController,

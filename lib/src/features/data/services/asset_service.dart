@@ -41,12 +41,16 @@ class AssetService {
 
     String status = 'ACTIVE';
     String remark = '';
+    String parameter = '';
+    String image = '';
     if (data is Map<String, dynamic>) {
       status = (data['status'] ?? 'ACTIVE').toString();
       remark = (data['remark'] ?? '').toString();
+      parameter = (data['parameter'] ?? '').toString();
+      image = (data['image'] ?? '').toString();
     }
 
-    return AssetChecklist(items: items, status: status, remark: remark);
+    return AssetChecklist(items: items, status: status, remark: remark, parameter: parameter, image: image);
   }
 
   Future<List<IdNamePair>> fetchCampLocations() async {
@@ -83,6 +87,8 @@ class AssetService {
     required String astId,
     required String status,
     required String remark,
+    required String parameter,
+    required String image,
     required List<({int featureId, bool response})> items,
   }) async {
     final res = await client.post(
@@ -92,6 +98,8 @@ class AssetService {
         'ast_ID': astId,
         'status': status,
         'remark': remark,
+        'parameter': parameter,
+        'image': image,
         'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
       },
     );

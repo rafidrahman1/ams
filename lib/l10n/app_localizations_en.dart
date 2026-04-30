@@ -161,4 +161,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String syncFailedSuffix(Object failed) {
     return '($failed failed)';
   }
+
+  @override
+  String deviceSyncSuccess(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
+    return 'Successfully synced $_temp0';
+  }
+
+  @override
+  String deviceSyncFailed(Object failedIds, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
+    return 'Failed to sync $_temp0: $failedIds';
+  }
+
+  @override
+  String deviceSyncPartial(Object synced, Object total, Object failedIds) {
+    return 'Synced $synced of $total devices. Failed: $failedIds';
+  }
+
+  @override
+  String astIdAlreadyAssigned(Object astId) {
+    return '$astId has already been assigned';
+  }
+
+  @override
+  String get unknownSyncError => 'Unknown error occurred during sync';
+
+  @override
+  String get noPendingDevices => 'No pending devices to sync';
 }

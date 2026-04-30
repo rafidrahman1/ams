@@ -13,7 +13,12 @@ final assetServiceProvider = Provider<AssetService>((ref) {
 });
 
 final assetRepositoryProvider = Provider<AssetRepository>((ref) {
-  return AssetRepository(ref.read(assetServiceProvider), () => ref.read(tokenStorageProvider).getSessionKey(), ref.read(localDatabaseProvider));
+  return AssetRepository.withCache(
+    ref.read(assetServiceProvider),
+    () => ref.read(tokenStorageProvider).getSessionKey(),
+    ref.read(localDatabaseProvider),
+    ref.read(assetCacheStoreProvider),
+  );
 });
 
 final myAssetsProvider = FutureProvider<List<VolunteerAsset>>((ref) {
@@ -31,7 +36,6 @@ final assetChecklistProvider = FutureProvider.family<AssetChecklist, String>((re
 final campLocationsProvider = FutureProvider<List<IdNamePair>>((ref) {
   return ref.read(assetRepositoryProvider).fetchCampLocations();
 });
-
 
 final blocksProvider = FutureProvider.family<List<IdNamePair>, int>((ref, campId) {
   return ref.read(assetRepositoryProvider).fetchBlocks(campId);
