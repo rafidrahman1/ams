@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'network/api_client.dart';
+import 'storage/asset_cache_store.dart';
 import 'storage/local_database.dart';
 import 'storage/token_storage.dart';
 
@@ -12,4 +13,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final localDatabaseProvider = Provider<LocalDatabase>((ref) {
   return LocalDatabase();
+});
+
+final assetCacheStoreProvider = Provider<AssetCacheStore>((ref) {
+  return AssetCacheStore();
 });

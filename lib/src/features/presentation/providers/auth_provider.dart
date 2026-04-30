@@ -52,6 +52,9 @@ class AuthNotifier extends Notifier<AuthStatus> {
     // prevent showing stale data from the previous session.
     ref.invalidate(myAssetsProvider);
     ref.invalidate(adminAssetsProvider);
+    ref.invalidate(campLocationsProvider);
+    ref.invalidate(assetTypesProvider);
+    ref.invalidate(blocksProvider);
     ref.invalidate(assetChecklistProvider);
     ref.invalidate(assetChecklistAllTrueProvider);
     ref.invalidate(homeBootstrapProvider);

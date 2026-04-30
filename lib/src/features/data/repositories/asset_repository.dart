@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
 import '../models/asset_checklist_item.dart';
@@ -12,8 +13,11 @@ class AssetRepository {
   final AssetService service;
   final Future<String?> Function() getUserKey;
   final LocalDatabase db;
+  final AssetCacheStore cache;
 
-  AssetRepository(this.service, this.getUserKey, this.db);
+  AssetRepository(this.service, this.getUserKey, this.db) : cache = AssetCacheStore();
+
+  AssetRepository.withCache(this.service, this.getUserKey, this.db, this.cache);
 
   Future<String?> _resolvedUserKey() async {
     final key = (await getUserKey())?.trim();
@@ -114,15 +118,45 @@ class AssetRepository {
   }
 
   Future<List<IdNamePair>> fetchCampLocations() async {
-    return service.fetchCampLocations();
+    try {
+      final campLocations = await service.fetchCampLocations();
+      await cache.saveCampLocations(campLocations);
+      return campLocations;
+    } catch (_) {
+      if (await cache.hasCampLocationsCache()) {
+        return cache.loadCampLocations();
+      }
+
+      rethrow;
+    }
   }
 
   Future<List<IdNamePair>> fetchBlocks(int campId) async {
-    return service.fetchBlocks(campId);
+    try {
+      final blocks = await service.fetchBlocks(campId);
+      await cache.saveBlocks(campId, blocks);
+      return blocks;
+    } catch (_) {
+      if (await cache.hasBlocksCache(campId)) {
+        return cache.loadBlocks(campId);
+      }
+
+      rethrow;
+    }
   }
 
   Future<List<IdNamePair>> fetchAssetTypes() async {
-    return service.fetchAssetTypes();
+    try {
+      final assetTypes = await service.fetchAssetTypes();
+      await cache.saveAssetTypes(assetTypes);
+      return assetTypes;
+    } catch (_) {
+      if (await cache.hasAssetTypesCache()) {
+        return cache.loadAssetTypes();
+      }
+
+      rethrow;
+    }
   }
 
   Future<void> prefetchOfflineData(String userKey, {bool isAdmin = false}) async {
@@ -132,7 +166,7 @@ class AssetRepository {
     }
 
     if (isAdmin) {
-      // Admin assets are sourced locally only; there is no remote list API.
+      await _prefetchAdminLookupData();
       return;
     }
 
@@ -158,6 +192,35 @@ class AssetRepository {
       }
     } catch (_) {
       // Best effort: login should still succeed even if the prefetch fails.
+    }
+  }
+
+  Future<void> _prefetchAdminLookupData() async {
+    List<IdNamePair> campLocations = const <IdNamePair>[];
+
+    try {
+      campLocations = await service.fetchCampLocations();
+      await cache.saveCampLocations(campLocations);
+    } catch (_) {
+      if (await cache.hasCampLocationsCache()) {
+        campLocations = await cache.loadCampLocations();
+      }
+    }
+
+    try {
+      final assetTypes = await service.fetchAssetTypes();
+      await cache.saveAssetTypes(assetTypes);
+    } catch (_) {
+      // Keep previously cached asset types if the refresh is unavailable.
+    }
+
+    for (final campLocation in campLocations) {
+      try {
+        final blocks = await service.fetchBlocks(campLocation.id);
+        await cache.saveBlocks(campLocation.id, blocks);
+      } catch (_) {
+        // Best effort: preserve any cached blocks already stored for this camp.
+      }
     }
   }
 
