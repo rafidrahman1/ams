@@ -42,10 +42,14 @@ class AssetChecklist {
   final List<AssetChecklistItem> items;
   final String status;
   final String remark;
+  final String parameter;
+  final String image;
 
   const AssetChecklist({
     required this.items,
     this.status = 'ACTIVE',
     this.remark = '',
+    this.parameter = '',
+    this.image = '',
   });
 }

@@ -224,7 +224,14 @@ class AssetRepository {
     }
   }
 
-  Future<int> queueChecklistSubmission({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+  Future<int> queueChecklistSubmission({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    required List<({int featureId, bool response})> items,
+  }) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
@@ -232,12 +239,21 @@ class AssetRepository {
       'ast_ID': astId,
       'status': status,
       'remark': remark,
+      'parameter': parameter,
+      'image': image,
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
     });
     return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
   }
 
-  Future<void> submitChecklist({required String astId, required String status, required String remark, required List<({int featureId, bool response})> items}) async {
+  Future<void> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    required List<({int featureId, bool response})> items,
+  }) async {
     final userKey = await _resolvedUserKey();
     if (userKey == null) {
       throw Exception('Missing session');
@@ -247,11 +263,20 @@ class AssetRepository {
       'ast_ID': astId,
       'status': status,
       'remark': remark,
+      'parameter': parameter,
+      'image': image,
       'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
     };
 
     try {
-      final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+      final responseBody = await service.submitChecklist(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: image,
+        items: items,
+      );
 
       if (!_isSyncVerified(submission: payload, response: responseBody)) {
         throw Exception('Sync verification failed');
@@ -273,7 +298,14 @@ class AssetRepository {
       }
     } catch (_) {
       // Offline / failure: queue for later sync instead of failing the UI.
-      await queueChecklistSubmission(astId: astId, status: status, remark: remark, items: items);
+      await queueChecklistSubmission(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: image,
+        items: items,
+      );
     }
   }
 
@@ -310,6 +342,8 @@ class AssetRepository {
         final astId = (payload['ast_ID'] ?? queueItem.astId).toString();
         final status = (payload['status'] ?? '').toString();
         final remark = (payload['remark'] ?? '').toString();
+        final parameter = (payload['parameter'] ?? '').toString();
+        final image = (payload['image'] ?? '').toString();
         final itemsRaw = payload['items'] as List<dynamic>? ?? const <dynamic>[];
         final items = <({int featureId, bool response})>[];
         for (final it in itemsRaw.whereType<Map<String, dynamic>>()) {
@@ -318,7 +352,14 @@ class AssetRepository {
           items.add((featureId: featureId, response: _asBool(it['response'])));
         }
 
-        final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, items: items);
+        final responseBody = await service.submitChecklist(
+          astId: astId,
+          status: status,
+          remark: remark,
+          parameter: parameter,
+          image: image,
+          items: items,
+        );
         if (_isSyncVerified(submission: payload, response: responseBody)) {
           syncedCount += 1;
           removableQueueIds.add(queueItem.queueId);

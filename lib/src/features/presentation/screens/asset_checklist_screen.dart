@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../providers/asset_provider.dart';
 import '../widgets/asset_card_builder.dart';
@@ -20,11 +24,14 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   List<bool> _completed = const [];
   String? _loadedAstId;
   final TextEditingController _remarksController = TextEditingController();
+  final TextEditingController _parameterController = TextEditingController();
   String _status = 'ACTIVE';
+  String _imageData = '';
 
   @override
   void dispose() {
     _remarksController.dispose();
+    _parameterController.dispose();
     super.dispose();
   }
 
@@ -40,8 +47,38 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         _completed = data.items.map((item) => item.response).toList();
         _status = data.status;
         _remarksController.text = data.remark;
+        _parameterController.text = data.parameter;
+        _imageData = data.image;
       });
     });
+  }
+
+  Future<void> _captureImageFromCamera() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (picked == null) return;
+
+      final bytes = await File(picked.path).readAsBytes();
+      final extension = picked.path.split('.').last.toLowerCase();
+      final mimeType = switch (extension) {
+        'png' => 'image/png',
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/png',
+      };
+      final encoded = base64Encode(bytes);
+
+      if (!mounted) return;
+      setState(() {
+        _imageData = 'data:$mimeType;base64,$encoded';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Error capturing image: ${error.toString()}')));
+    }
   }
 
   @override
@@ -74,7 +111,14 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                   // This keeps behavior predictable for users who save while offline.
                   await ref
                       .read(assetRepositoryProvider)
-                      .queueChecklistSubmission(astId: widget.asset.astId, status: _status, remark: _remarksController.text.trim(), items: submitItems);
+                      .queueChecklistSubmission(
+                        astId: widget.asset.astId,
+                        status: _status,
+                        remark: _remarksController.text.trim(),
+                        parameter: _parameterController.text.trim(),
+                        image: _imageData,
+                        items: submitItems,
+                      );
 
                   ref.invalidate(assetChecklistProvider(widget.asset.astId));
 
@@ -146,6 +190,28 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                           title: Text(items[index].title),
                         );
                       }),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _parameterController,
+                        decoration: const InputDecoration(
+                          labelText: 'Parameter',
+                          hintText: 'Enter checklist parameter',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: _captureImageFromCamera,
+                        icon: const Icon(Icons.camera_alt),
+                        label: Text(_imageData.isNotEmpty ? 'Retake Image' : 'Capture Image'),
+                      ),
+                      if (_imageData.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Image selected',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextField(
                         controller: _remarksController,
