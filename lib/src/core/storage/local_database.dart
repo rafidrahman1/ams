@@ -16,8 +16,16 @@ class ChecklistSubmissionQueueItem {
   final int queueId;
   final String astId;
   final String payloadJson;
+  final int retryCount;
+  final String? lastError;
 
-  const ChecklistSubmissionQueueItem({required this.queueId, required this.astId, required this.payloadJson});
+  const ChecklistSubmissionQueueItem({
+    required this.queueId,
+    required this.astId,
+    required this.payloadJson,
+    this.retryCount = 0,
+    this.lastError,
+  });
 }
 
 class LocalDatabase {
@@ -43,8 +51,16 @@ class LocalDatabase {
       onCreate: (db, version) async {
         await _createTables(db);
       },
-      //TODO: consider onUpgrade logic if we add new tables or change schema in the future
     );
+  }
+
+  /// Exponential backoff cap for checklist submission retries (5s … 30m).
+  static int backoffMsForAttempt(int attemptNumber) {
+    const baseMs = 5000;
+    const maxMs = 30 * 60 * 1000;
+    final exp = (attemptNumber - 1).clamp(0, 12);
+    final delay = baseMs * (1 << exp);
+    return delay > maxMs ? maxMs : delay;
   }
 
   Future<void> _createTables(Database db) async {
@@ -55,7 +71,8 @@ class LocalDatabase {
         ast_id TEXT NOT NULL,
         feature_id INTEGER NOT NULL,
         target_state INTEGER NOT NULL,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        UNIQUE(user_key, ast_id, feature_id)
       )
     ''');
     await db.execute('''
@@ -65,7 +82,10 @@ class LocalDatabase {
         ast_id TEXT NOT NULL,
         payload_json TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        synced_at INTEGER
+        synced_at INTEGER,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        next_retry_at INTEGER
       )
     ''');
     await db.execute('''
@@ -159,14 +179,23 @@ class LocalDatabase {
     if (toggles.isEmpty) return 0;
 
     final db = await _getDatabase();
-    final batch = db.batch();
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    for (final toggle in toggles) {
-      batch.insert(_togglesTable, {'user_key': userKey, 'ast_id': astId, 'feature_id': toggle.featureId, 'target_state': toggle.targetState ? 1 : 0, 'created_at': now});
-    }
-
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      for (final toggle in toggles) {
+        await txn.insert(
+          _togglesTable,
+          {
+            'user_key': userKey,
+            'ast_id': astId,
+            'feature_id': toggle.featureId,
+            'target_state': toggle.targetState ? 1 : 0,
+            'created_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
     return toggles.length;
   }
 
@@ -202,16 +231,69 @@ class LocalDatabase {
 
     final db = await _getDatabase();
     final now = DateTime.now().millisecondsSinceEpoch;
-    await db.insert(_submissionsTable, {'user_key': userKey, 'ast_id': trimmedAstId, 'payload_json': payloadJson, 'created_at': now, 'synced_at': null});
+    await db.insert(_submissionsTable, {
+      'user_key': userKey,
+      'ast_id': trimmedAstId,
+      'payload_json': payloadJson,
+      'created_at': now,
+      'synced_at': null,
+      'retry_count': 0,
+      'last_error': null,
+      'next_retry_at': null,
+    });
     return 1;
   }
 
   Future<List<ChecklistSubmissionQueueItem>> loadPendingChecklistSubmissions(String userKey) async {
     final db = await _getDatabase();
-    final rows = await db.query(_submissionsTable, where: 'user_key = ? AND synced_at IS NULL', whereArgs: [userKey], orderBy: 'id ASC');
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await db.query(
+      _submissionsTable,
+      where: 'user_key = ? AND synced_at IS NULL AND (next_retry_at IS NULL OR next_retry_at <= ?)',
+      whereArgs: [userKey, now],
+      orderBy: 'id ASC',
+    );
     return rows
-        .map((row) => ChecklistSubmissionQueueItem(queueId: row['id'] as int, astId: row['ast_id'] as String, payloadJson: row['payload_json'] as String))
+        .map(
+          (row) => ChecklistSubmissionQueueItem(
+            queueId: row['id'] as int,
+            astId: row['ast_id'] as String,
+            payloadJson: row['payload_json'] as String,
+            retryCount: (row['retry_count'] as int?) ?? 0,
+            lastError: row['last_error'] as String?,
+          ),
+        )
         .toList(growable: false);
+  }
+
+  /// Records a failed sync attempt and schedules the next retry using [backoffMsForAttempt].
+  Future<void> recordChecklistSubmissionSyncFailure(int queueId, String errorMessage) async {
+    final db = await _getDatabase();
+    final rows = await db.query(_submissionsTable, columns: const ['retry_count'], where: 'id = ?', whereArgs: [queueId], limit: 1);
+    if (rows.isEmpty) return;
+
+    final prev = (rows.first['retry_count'] as int?) ?? 0;
+    final nextAttempt = prev + 1;
+    final delayMs = backoffMsForAttempt(nextAttempt);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var err = errorMessage.trim();
+    if (err.length > 500) {
+      err = '${err.substring(0, 497)}...';
+    }
+    if (err.isEmpty) {
+      err = 'sync failed';
+    }
+
+    await db.update(
+      _submissionsTable,
+      {
+        'retry_count': nextAttempt,
+        'last_error': err,
+        'next_retry_at': now + delayMs,
+      },
+      where: 'id = ?',
+      whereArgs: [queueId],
+    );
   }
 
   Future<String?> loadLatestChecklistSubmissionPayload(String userKey, String astId) async {

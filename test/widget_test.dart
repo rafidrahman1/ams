@@ -129,16 +129,52 @@ class _MemoryLocalDatabase extends LocalDatabase {
 
   @override
   Future<int> enqueueChecklistSubmission(String userKey, String astId, String payloadJson) async {
-    _submissions.add({'id': _nextQueueId++, 'user_key': userKey, 'ast_id': astId, 'payload_json': payloadJson, 'synced_at': null});
+    _submissions.add({
+      'id': _nextQueueId++,
+      'user_key': userKey,
+      'ast_id': astId,
+      'payload_json': payloadJson,
+      'synced_at': null,
+      'retry_count': 0,
+      'last_error': null,
+      'next_retry_at': null,
+    });
     return 1;
   }
 
   @override
   Future<List<ChecklistSubmissionQueueItem>> loadPendingChecklistSubmissions(String userKey) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
     return _submissions
-        .where((s) => s['user_key'] == userKey && s['synced_at'] == null)
-        .map((s) => ChecklistSubmissionQueueItem(queueId: s['id'] as int, astId: s['ast_id'] as String, payloadJson: s['payload_json'] as String))
+        .where((s) {
+          if (s['user_key'] != userKey || s['synced_at'] != null) return false;
+          final next = s['next_retry_at'] as int?;
+          return next == null || next <= now;
+        })
+        .map(
+          (s) => ChecklistSubmissionQueueItem(
+            queueId: s['id'] as int,
+            astId: s['ast_id'] as String,
+            payloadJson: s['payload_json'] as String,
+            retryCount: (s['retry_count'] as int?) ?? 0,
+            lastError: s['last_error'] as String?,
+          ),
+        )
         .toList();
+  }
+
+  @override
+  Future<void> recordChecklistSubmissionSyncFailure(int queueId, String errorMessage) async {
+    for (final s in _submissions) {
+      if (s['id'] == queueId) {
+        final prev = (s['retry_count'] as int?) ?? 0;
+        final next = prev + 1;
+        s['retry_count'] = next;
+        s['last_error'] = errorMessage.length > 500 ? '${errorMessage.substring(0, 497)}...' : errorMessage;
+        s['next_retry_at'] = DateTime.now().millisecondsSinceEpoch + LocalDatabase.backoffMsForAttempt(next);
+        break;
+      }
+    }
   }
 
   @override
