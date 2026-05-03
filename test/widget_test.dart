@@ -84,13 +84,17 @@ class _FakeAssetService extends AssetService {
     required String astId,
     required String status,
     required String remark,
+    required String parameter,
+    required String image,
     required List<({int featureId, bool response})> items,
   }) async {
     return {
       'code': 200,
       'data': {
         'asset_status': status,
-        'remakk': remark,
+        'remark': remark,
+        'parameter': parameter,
+        'image': image,
         'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
       },
     };
@@ -190,13 +194,17 @@ class _SingleChecklistThenOfflineService extends AssetService {
     required String astId,
     required String status,
     required String remark,
+    required String parameter,
+    required String image,
     required List<({int featureId, bool response})> items,
   }) async {
     return {
       'code': 200,
       'data': {
         'asset_status': status,
-        'remakk': remark,
+        'remark': remark,
+        'parameter': parameter,
+        'image': image,
         'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
       },
     };
@@ -220,6 +228,8 @@ class _RecordingAssetService extends AssetService {
     required String astId,
     required String status,
     required String remark,
+    required String parameter,
+    required String image,
     required List<({int featureId, bool response})> items,
   }) async {
     submittedAstIds.add(astId);
@@ -230,7 +240,9 @@ class _RecordingAssetService extends AssetService {
       'code': 200,
       'data': {
         'asset_status': status,
-        'remakk': remark,
+        'remark': remark,
+        'parameter': parameter,
+        'image': image,
         'features': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
       },
     };

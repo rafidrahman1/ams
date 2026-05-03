@@ -39,63 +39,11 @@ class LocalDatabase {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       p.join(dbPath, _databaseName),
-      version: 8,
+      version: 1,
       onCreate: (db, version) async {
         await _createTables(db);
       },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('DROP TABLE IF EXISTS $_togglesTable');
-          await _createTables(db);
-        } else if (oldVersion < 3) {
-          await db.execute('ALTER TABLE $_togglesTable ADD COLUMN ast_id TEXT NOT NULL DEFAULT ""');
-          await db.execute('ALTER TABLE $_togglesTable ADD COLUMN target_state INTEGER NOT NULL DEFAULT 0');
-        }
-        if (oldVersion < 4) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS $_submissionsTable (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_key TEXT NOT NULL,
-              ast_id TEXT NOT NULL,
-              payload_json TEXT NOT NULL,
-              created_at INTEGER NOT NULL,
-              synced_at INTEGER
-            )
-          ''');
-        }
-        if (oldVersion < 5) {
-          // Keep submission history: mark rows as synced instead of deleting them.
-          await db.execute('ALTER TABLE $_submissionsTable ADD COLUMN synced_at INTEGER');
-        }
-        if (oldVersion < 6) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS $_registeredDevicesTable (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT NOT NULL,
-              details TEXT NOT NULL,
-              address_line TEXT NOT NULL,
-              status TEXT,
-              location TEXT,
-              block TEXT,
-              image_path TEXT,
-              created_at INTEGER NOT NULL,
-              synced INTEGER NOT NULL DEFAULT 0
-            )
-          ''');
-        }
-        if (oldVersion < 7) {
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN asset_type TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN warranty_end TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN specification TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN amount TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN purchase_date TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN manufacture_date TEXT');
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN asset_attachment TEXT');
-        }
-        if (oldVersion < 8) {
-          await db.execute('ALTER TABLE $_registeredDevicesTable ADD COLUMN ast_id TEXT');
-        }
-      },
+      //TODO: consider onUpgrade logic if we add new tables or change schema in the future
     );
   }
 
