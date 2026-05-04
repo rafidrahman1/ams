@@ -343,6 +343,7 @@ class AssetRepository {
         final payload = jsonDecode(queueItem.payloadJson);
         if (payload is! Map<String, dynamic>) {
           failedCount += 1;
+          await db.recordChecklistSubmissionSyncFailure(queueItem.queueId, 'Invalid checklist payload');
           continue;
         }
 
@@ -374,9 +375,11 @@ class AssetRepository {
           removableQueueIds.add(queueItem.queueId);
         } else {
           failedCount += 1;
+          await db.recordChecklistSubmissionSyncFailure(queueItem.queueId, 'Sync verification failed');
         }
-      } catch (_) {
+      } catch (e) {
         failedCount += 1;
+        await db.recordChecklistSubmissionSyncFailure(queueItem.queueId, e.toString());
       }
     }
 

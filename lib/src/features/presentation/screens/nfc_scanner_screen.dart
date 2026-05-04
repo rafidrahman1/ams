@@ -4,9 +4,7 @@ import 'package:nfc_manager/nfc_manager.dart';
 import '../utils/nfc_parser.dart';
 
 class NfcScannerScreen extends StatefulWidget {
-  const NfcScannerScreen({super.key, this.testScanValue});
-
-  final String? testScanValue;
+  const NfcScannerScreen({super.key});
 
   @override
   State<NfcScannerScreen> createState() => _NfcScannerScreenState();
@@ -20,13 +18,6 @@ class _NfcScannerScreenState extends State<NfcScannerScreen> {
   @override
   void initState() {
     super.initState();
-
-    if (widget.testScanValue != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _finishWithResult(widget.testScanValue);
-      });
-      return;
-    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startSession();

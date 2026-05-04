@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class QrCodeScannerScreen extends StatefulWidget {
-  const QrCodeScannerScreen({super.key, this.testScanValue});
-
-  final String? testScanValue;
+  const QrCodeScannerScreen({super.key});
 
   @override
   State<QrCodeScannerScreen> createState() => _QrCodeScannerScreenState();
@@ -13,16 +11,6 @@ class QrCodeScannerScreen extends StatefulWidget {
 class _QrCodeScannerScreenState extends State<QrCodeScannerScreen> {
   final MobileScannerController _controller = MobileScannerController();
   bool _returnedResult = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.testScanValue != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _finishWithResult(widget.testScanValue);
-      });
-    }
-  }
 
   @override
   void dispose() {
