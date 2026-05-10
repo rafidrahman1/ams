@@ -1,4 +1,4 @@
-import 'package:asset_management_system/src/features/presentation/widgets/square_action_button.dart';
+import 'package:asset_management_system/src/components/square_action_button.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 

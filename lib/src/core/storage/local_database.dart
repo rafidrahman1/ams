@@ -1,5 +1,5 @@
-import 'package:asset_management_system/src/features/data/models/asset_checklist_item.dart';
-import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
+import 'package:asset_management_system/src/model/asset_checklist_item.dart';
+import 'package:asset_management_system/src/model/volunteer_asset.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 

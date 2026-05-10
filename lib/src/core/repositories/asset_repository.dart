@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:asset_management_system/src/core/storage/asset_cache_store.dart';
 import 'package:asset_management_system/src/core/storage/local_database.dart';
 
-import '../models/asset_checklist_item.dart';
-import '../models/location_models.dart';
-import '../models/volunteer_asset.dart';
-import '../services/asset_service.dart';
+import '../../model/asset_checklist_item.dart';
+import '../../model/location_models.dart';
+import '../../model/volunteer_asset.dart';
+import '../../services/asset_service.dart';
 
 class AssetRepository {
   final AssetService service;
@@ -275,14 +275,7 @@ class AssetRepository {
     final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
 
     try {
-      final responseBody = await service.submitChecklist(
-        astId: astId,
-        status: status,
-        remark: remark,
-        parameter: parameter,
-        image: imagePayload,
-        items: items,
-      );
+      final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, parameter: parameter, image: imagePayload, items: items);
 
       if (!_isSyncVerified(submission: payload, response: responseBody)) {
         throw Exception('Sync verification failed');
@@ -304,15 +297,7 @@ class AssetRepository {
       }
     } catch (_) {
       // Offline / failure: queue for later sync instead of failing the UI.
-      await queueChecklistSubmission(
-        astId: astId,
-        status: status,
-        remark: remark,
-        parameter: parameter,
-        image: image,
-        imagePath: imagePath,
-        items: items,
-      );
+      await queueChecklistSubmission(astId: astId, status: status, remark: remark, parameter: parameter, image: image, imagePath: imagePath, items: items);
     }
   }
 
@@ -362,14 +347,7 @@ class AssetRepository {
         }
 
         final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
-        final responseBody = await service.submitChecklist(
-          astId: astId,
-          status: status,
-          remark: remark,
-          parameter: parameter,
-          image: imagePayload,
-          items: items,
-        );
+        final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, parameter: parameter, image: imagePayload, items: items);
         if (_isSyncVerified(submission: payload, response: responseBody)) {
           syncedCount += 1;
           removableQueueIds.add(queueItem.queueId);

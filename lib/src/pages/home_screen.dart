@@ -1,14 +1,14 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
+import 'package:asset_management_system/src/components/language_toggle.dart';
 import 'package:asset_management_system/src/core/storage/local_database.dart';
-import 'package:asset_management_system/src/features/presentation/utils/nfc_parser.dart';
-import 'package:asset_management_system/src/features/presentation/widgets/language_toggle.dart';
+import 'package:asset_management_system/src/core/utils/nfc_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
-import '../providers/asset_provider.dart';
-import '../providers/auth_provider.dart';
-import '../providers/locale_provider.dart';
+import '../provider/asset_provider.dart';
+import '../provider/auth_provider.dart';
+import '../provider/locale_provider.dart';
 import 'home/home_screen_actions.dart';
 import 'home/widgets/home_action_buttons_row.dart';
 import 'home/widgets/home_assets_filter_card.dart';

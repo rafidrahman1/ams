@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/presentation/providers/auth_provider.dart';
-import '../features/presentation/providers/locale_provider.dart';
-import '../features/presentation/screens/home_screen.dart';
-import '../features/presentation/screens/login_screen.dart';
-import '../features/presentation/screens/splash_screen.dart';
+import '../pages/home_screen.dart';
+import '../pages/login_screen.dart';
+import '../pages/splash_screen.dart';
+import '../provider/auth_provider.dart';
+import '../provider/locale_provider.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 

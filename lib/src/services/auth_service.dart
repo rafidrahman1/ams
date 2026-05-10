@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:asset_management_system/src/core/network/api_client.dart';
 import 'package:asset_management_system/src/core/network/endpoints.dart';
 
-import '../models/login_response.dart';
+import '../model/login_response.dart';
 
 class AuthService {
   final ApiClient client;

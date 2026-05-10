@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
-import '../utils/nfc_parser.dart';
+import '../core/utils/nfc_parser.dart';
 
 class NfcScannerScreen extends StatefulWidget {
   const NfcScannerScreen({super.key});

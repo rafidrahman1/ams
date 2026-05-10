@@ -3,11 +3,11 @@ import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/nfc_scanner_provider.dart';
-import '../providers/qr_scanner_provider.dart';
-import '../utils/ast_id_parser.dart';
-import '../widgets/asset_card_builder.dart';
-import '../widgets/square_action_button.dart';
+import '../components/asset_card_builder.dart';
+import '../components/square_action_button.dart';
+import '../core/utils/ast_id_parser.dart';
+import '../provider/nfc_scanner_provider.dart';
+import '../provider/qr_scanner_provider.dart';
 import 'asset_checklist_screen.dart';
 
 class QrNfcScreen extends ConsumerWidget {
@@ -19,10 +19,7 @@ class QrNfcScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
-    Future<void> openChecklistAfterScan({
-      required Future<String?> Function(BuildContext context) scanLauncher,
-      required String mismatchMessage,
-    }) async {
+    Future<void> openChecklistAfterScan({required Future<String?> Function(BuildContext context) scanLauncher, required String mismatchMessage}) async {
       final scannedValue = await scanLauncher(context);
       final scannedAstId = normalizeAstId(scannedValue);
       final expectedAstId = normalizeAstId(asset.astId);
@@ -30,15 +27,11 @@ class QrNfcScreen extends ConsumerWidget {
       if (!context.mounted || scannedAstId == null) return;
 
       if (scannedAstId == expectedAstId) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)),
-        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(mismatchMessage)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mismatchMessage)));
     }
 
     return Scaffold(
@@ -52,20 +45,14 @@ class QrNfcScreen extends ConsumerWidget {
               SquareActionButton(
                 label: l10n.qrCode,
                 icon: Icons.qr_code,
-                onPressed: () => openChecklistAfterScan(
-                  scanLauncher: ref.read(qrScannerLauncherProvider),
-                  mismatchMessage: l10n.qrScanMismatch,
-                ),
+                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),
               SquareActionButton(
                 label: l10n.nfc,
                 icon: Icons.nfc,
-                onPressed: () => openChecklistAfterScan(
-                  scanLauncher: ref.read(nfcScannerLauncherProvider),
-                  mismatchMessage: l10n.nfcTagMismatch,
-                ),
+                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch),
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),

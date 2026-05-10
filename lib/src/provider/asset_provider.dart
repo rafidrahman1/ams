@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
-import '../../../core/storage/local_database.dart';
-import '../../data/models/asset_checklist_item.dart';
-import '../../data/models/location_models.dart';
-import '../../data/models/volunteer_asset.dart';
-import '../../data/repositories/asset_repository.dart';
-import '../../data/services/asset_service.dart';
+import '../core/providers.dart';
+import '../core/storage/local_database.dart';
+import '../model/asset_checklist_item.dart';
+import '../model/location_models.dart';
+import '../model/volunteer_asset.dart';
+import '../core/repositories/asset_repository.dart';
+import '../services/asset_service.dart';
 
 final assetServiceProvider = Provider<AssetService>((ref) {
   return AssetService(ref.read(apiClientProvider));

@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
-import '../../data/repositories/auth_repository.dart';
-import '../../data/services/auth_service.dart';
-import 'asset_provider.dart';
+import '../core/providers.dart';
+import '../core/repositories/auth_repository.dart';
+import '../provider/asset_provider.dart';
+import '../services/auth_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.read(apiClientProvider));

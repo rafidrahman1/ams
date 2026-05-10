@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/border_radius.dart';
-import '../../../theme/colors.dart';
-import '../../../theme/padding.dart';
-import '../../../theme/text_styles.dart';
+import '../theme/border_radius.dart';
+import '../theme/colors.dart';
+import '../theme/padding.dart';
+import '../theme/text_styles.dart';
 
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;

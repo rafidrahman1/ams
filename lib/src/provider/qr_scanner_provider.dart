@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../screens/nfc_scanner_screen.dart';
+import '../pages/qr_code_scanner_screen.dart';
 
-final nfcScannerLauncherProvider =
+final qrScannerLauncherProvider =
     Provider<Future<String?> Function(BuildContext context)>((ref) {
       return (context) async {
         return Navigator.of(context).push<String?>(
-          MaterialPageRoute(builder: (_) => const NfcScannerScreen()),
+          MaterialPageRoute(builder: (_) => const QrCodeScannerScreen()),
         );
       };
     });

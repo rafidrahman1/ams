@@ -6,9 +6,9 @@ import 'package:asset_management_system/src/theme/padding.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/auth_provider.dart';
-import '../widgets/app_text_field.dart';
-import '../widgets/square_action_button.dart';
+import '../components/app_text_field.dart';
+import '../components/square_action_button.dart';
+import '../provider/auth_provider.dart';
 import 'admin_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

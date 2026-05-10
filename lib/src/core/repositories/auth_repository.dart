@@ -1,7 +1,7 @@
 import 'package:asset_management_system/src/core/storage/token_storage.dart';
-import 'package:asset_management_system/src/features/data/models/login_response.dart';
+import 'package:asset_management_system/src/model/login_response.dart';
 
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
 import 'asset_repository.dart';
 
 class AuthRepository {

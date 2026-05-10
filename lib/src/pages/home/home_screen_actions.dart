@@ -2,11 +2,11 @@ import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/asset_provider.dart';
-import '../../providers/nfc_scanner_provider.dart';
-import '../../providers/qr_scanner_provider.dart';
-import '../../utils/ast_id_parser.dart';
-import '../../widgets/asset_card_builder.dart';
+import '../../components/asset_card_builder.dart';
+import '../../core/utils/ast_id_parser.dart';
+import '../../provider/asset_provider.dart';
+import '../../provider/nfc_scanner_provider.dart';
+import '../../provider/qr_scanner_provider.dart';
 import '../asset_checklist_screen.dart';
 import 'register_device_screen.dart';
 
@@ -46,12 +46,7 @@ class HomeScreenActions {
     await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch);
   }
 
-  static Future<void> openAssetChecklist({
-    required BuildContext context,
-    required WidgetRef ref,
-    required String scannedValue,
-    required String mismatchMessage,
-  }) async {
+  static Future<void> openAssetChecklist({required BuildContext context, required WidgetRef ref, required String scannedValue, required String mismatchMessage}) async {
     final scannedAstId = normalizeAstId(scannedValue);
     if (scannedAstId == null) {
       return;

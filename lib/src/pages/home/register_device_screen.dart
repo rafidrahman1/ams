@@ -1,13 +1,13 @@
 import 'package:asset_management_system/l10n/app_localizations.dart';
-import 'package:asset_management_system/src/features/presentation/utils/ast_id_parser.dart';
-import 'package:asset_management_system/src/features/presentation/widgets/asset_card_builder.dart';
-import 'package:asset_management_system/src/features/presentation/widgets/square_action_button.dart';
+import 'package:asset_management_system/src/components/asset_card_builder.dart';
+import 'package:asset_management_system/src/components/square_action_button.dart';
+import 'package:asset_management_system/src/core/utils/ast_id_parser.dart';
 import 'package:asset_management_system/src/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/nfc_scanner_provider.dart';
-import '../../providers/qr_scanner_provider.dart';
+import '../../provider/nfc_scanner_provider.dart';
+import '../../provider/qr_scanner_provider.dart';
 import 'asset_create_screen.dart';
 
 class RegisterDeviceScreen extends ConsumerWidget {
@@ -36,9 +36,7 @@ class RegisterDeviceScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Device registered for ${asset!.title}')));
       Navigator.of(context).pop(normalizedScannedAstId);
     } else {
-      final created = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)),
-      );
+      final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
       if (!context.mounted) return;
       if (created == true) {
         // Asset was created (saved locally). Go back to Home so syncing happens there.

@@ -1,12 +1,12 @@
 import 'package:asset_management_system/src/core/storage/local_database.dart';
-import 'package:asset_management_system/src/features/data/models/volunteer_asset.dart';
-import 'package:asset_management_system/src/features/presentation/providers/asset_provider.dart';
-import 'package:asset_management_system/src/features/presentation/screens/qr_nfc_screen.dart';
+import 'package:asset_management_system/src/model/volunteer_asset.dart';
+import 'package:asset_management_system/src/pages/qr_nfc_screen.dart';
+import 'package:asset_management_system/src/provider/asset_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../widgets/asset_card_builder.dart';
-import '../../../widgets/asset_list_skeleton.dart';
+import '../../../components/asset_card_builder.dart';
+import '../../../components/asset_list_skeleton.dart';
 import '../register_device_screen.dart';
 
 class HomeAssetsListSection extends ConsumerWidget {
