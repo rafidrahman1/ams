@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
+import '../components/home/home_action_buttons_row.dart';
+import '../components/home/home_assets_filter_card.dart';
+import '../components/home/home_assets_list_section.dart';
+import '../components/home/home_screen_actions.dart';
 import '../provider/asset_provider.dart';
 import '../provider/auth_provider.dart';
 import '../provider/locale_provider.dart';
-import 'home/home_screen_actions.dart';
-import 'home/widgets/home_action_buttons_row.dart';
-import 'home/widgets/home_assets_filter_card.dart';
-import 'home/widgets/home_assets_list_section.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.isAdmin = false});
