@@ -7,6 +7,7 @@ import 'package:asset_management_system/src/theme/padding.dart';
 import 'package:asset_management_system/src/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -296,7 +297,15 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                       error: (err, stack) => Text('Error loading types: $err', style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
                   ),
-                  _buildFieldContainer('Amount', _buildTextField(controller: _amountController, hint: 'Enter asset amount', keyboardType: TextInputType.number)),
+                  _buildFieldContainer(
+                    'Amount',
+                    _buildTextField(
+                      controller: _amountController,
+                      hint: 'Enter asset amount',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
                 ]),
                 Gap.y4,
                 _buildResponsiveRow([
@@ -521,12 +530,20 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType? keyboardType, int maxLines = 1, bool readOnly = false}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    bool readOnly = false,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       readOnly: readOnly,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: ThemeTextStyles.hint,
