@@ -77,6 +77,7 @@ class HomeAssetsListSection extends ConsumerWidget {
 
           if (isAdmin) {
             final combinedCount = assets.length + unsyncedDevices.length;
+            onFilteredCountChanged(combinedCount);
             final visibleUnsyncedCount = unsyncedDevices.length.clamp(0, visibleAssetCount);
             final visibleAssetsCount = (visibleAssetCount - visibleUnsyncedCount).clamp(0, assets.length);
 
