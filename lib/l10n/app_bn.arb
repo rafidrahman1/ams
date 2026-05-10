@@ -92,6 +92,116 @@
       "astId": {}
     }
   },
+  "assetCreateTitle": "অ্যাসেট তৈরি",
+  "assetCreateNotice": "* আবশ্যক: অ্যাসেট আইডি, নাম, ঠিকানা, ধরন, ক্যাম্প, ব্লক",
+  "assetCreateImportantNotice": "• গুরুত্বপূর্ণ: উপলভ্য ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন",
+  "assetIdLabel": "অ্যাসেট আইডি *",
+  "assetIdHint": "QR/NFC স্ক্যান করুন অথবা আইডি লিখুন",
+  "nameLabel": "নাম *",
+  "nameHint": "অ্যাসেটের নাম লিখুন",
+  "typeLabel": "ধরন",
+  "amountLabel": "পরিমাণ",
+  "amountHint": "অ্যাসেটের পরিমাণ লিখুন",
+  "statusLabel": "অবস্থা",
+  "campLabel": "ক্যাম্প",
+  "blockLabel": "ব্লক",
+  "addressLineLabel": "ঠিকানার লাইন",
+  "addressLineHint": "ঠিকানার লাইন লিখুন",
+  "purchaseDateLabel": "ক্রয়ের তারিখ",
+  "manufactureDateLabel": "উৎপাদনের তারিখ",
+  "warrantyEndLabel": "ওয়ারেন্টি শেষ",
+  "itemsHeading": "আইটেমসমূহ",
+  "itemColumn": "আইটেম",
+  "descriptionColumn": "বিবরণ",
+  "actionColumn": "অ্যাকশন",
+  "enterItemHint": "আইটেম লিখুন",
+  "enterDescriptionHint": "বিবরণ লিখুন",
+  "deleteItem": "মুছুন",
+  "addItem": "আইটেম যোগ করুন",
+  "assetPhotoLabel": "অ্যাসেটের ছবি",
+  "chooseImage": "ছবি নির্বাচন করুন",
+  "takePhoto": "ছবি তুলুন",
+  "noImageChosen": "কোনো ছবি নির্বাচিত হয়নি",
+  "assetAttachmentLabel": "সংযুক্তি আপলোড",
+  "chooseAttachment": "ফাইল নির্বাচন করুন",
+  "noAttachmentChosen": "কোনো সংযুক্তি নির্বাচিত হয়নি",
+  "remove": "অপসারণ",
+  "assetDetailsLabel": "অ্যাসেটের বিস্তারিত",
+  "assetDetailsHint": "অ্যাসেটের বিস্তারিত লিখুন",
+  "createAsset": "তৈরি করুন",
+  "saving": "সংরক্ষণ হচ্ছে...",
+  "goBack": "ফিরে যান",
+  "assetSavedLocally": "অ্যাসেট লোকালভাবে সংরক্ষিত হয়েছে। হোম স্ক্রিন থেকে সিঙ্ক করুন।",
+  "assetIdRequired": "অ্যাসেট আইডি আবশ্যক (QR/NFC স্ক্যান করুন)",
+  "nameAndAddressRequired": "নাম এবং ঠিকানা আবশ্যক",
+  "typeCampBlockRequired": "ধরন, ক্যাম্প, এবং ব্লক আবশ্যক। উপলভ্য ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন।",
+  "errorPrefix": "ত্রুটি: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorLoadingTypes": "ধরন লোড করতে সমস্যা হয়েছে: {error}",
+  "@errorLoadingTypes": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorLoadingCamps": "ক্যাম্প লোড করতে সমস্যা হয়েছে",
+  "errorLoadingBlocks": "ব্লক লোড করতে সমস্যা হয়েছে:\n{error}",
+  "@errorLoadingBlocks": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noBlocksAvailableForCamp": "এই ক্যাম্পের জন্য কোনো ব্লক নেই - ক্যাম্প/লোকেশন আছে কি না এবং সেখানে ব্লক আছে কি না যাচাই করুন",
+  "errorCapturingImage": "ছবি ধারণ করতে সমস্যা হয়েছে: {error}",
+  "@errorCapturingImage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorPickingImage": "ছবি নির্বাচন করতে সমস্যা হয়েছে: {error}",
+  "@errorPickingImage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "registerDevice": "ডিভাইস নিবন্ধন করুন",
+  "invalidScanData": "স্ক্যান ডেটা সঠিক নয়",
+  "deviceRegisteredFor": "{assetTitle}-এর জন্য ডিভাইস নিবন্ধিত হয়েছে",
+  "@deviceRegisteredFor": {
+    "placeholders": {
+      "assetTitle": {}
+    }
+  },
+  "noChecklistItemsFound": "কোনো চেকলিস্ট আইটেম পাওয়া যায়নি",
+  "statusActive": "ACTIVE",
+  "statusUnderMaintenance": "UNDER MAINTENANCE",
+  "statusApprovalPending": "APPROVAL PENDING",
+  "statusInactive": "INACTIVE",
+  "deviceDetailsTitle": "ডিভাইসের বিবরণ",
+  "deviceNotFound": "ডিভাইস পাওয়া যায়নি",
+  "recordIdLabel": "রেকর্ড আইডি",
+  "detailsLabel": "বিবরণ",
+  "locationLabel": "লোকেশন",
+  "imagePathLabel": "ছবির পথ",
+  "attachmentPathLabel": "সংযুক্তির পথ",
+  "specificationLabel": "স্পেসিফিকেশন",
+  "createdAtLabel": "তৈরি হয়েছে",
+  "syncedLabel": "সিঙ্ক হয়েছে",
+  "yesLabel": "হ্যাঁ",
+  "noLabel": "না",
+  "pendingSync": "(সিঙ্ক অপেক্ষমাণ)",
+  "closeLabel": "বন্ধ করুন",
+  "parameterLabel": "প্যারামিটার",
+  "parameterHint": "চেকলিস্টের প্যারামিটার লিখুন",
+  "retakePhoto": "আবার তুলুন",
+  "camera": "ক্যামেরা",
+  "changeImage": "পরিবর্তন করুন",
+  "attachImage": "ছবি যুক্ত করুন",
+  "removeImage": "ছবি অপসারণ করুন",
+  "imageSelected": "ছবি নির্বাচিত হয়েছে",
   "unknownSyncError": "সিঙ্ক করার সময় অজানা ত্রুটি ঘটেছে",
   "noPendingDevices": "সিঙ্ক করার জন্য কোনো অপেক্ষমাণ ডিভাইস নেই"
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/theme/colors.dart';
 import 'package:asset_management_system/theme/gap.dart';
 import 'package:asset_management_system/theme/padding.dart';
@@ -113,6 +114,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
   Future<void> _submitForm() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final name = _nameController.text.trim();
     final astId = normalizeAstId(_astIdController.text);
@@ -120,21 +122,19 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final details = _assetDetailsController.text.trim();
 
     if (astId == null || astId.isEmpty) {
-      messenger.showSnackBar(const SnackBar(content: Text('Asset ID is required (Scan QR/NFC)')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.assetIdRequired)));
       return;
     }
 
     _astIdController.text = astId;
 
     if (name.isEmpty || address.isEmpty) {
-      messenger.showSnackBar(const SnackBar(content: Text('Name and address are required')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.nameAndAddressRequired)));
       return;
     }
 
     if ((_selectedType ?? '').trim().isEmpty || (_selectedCamp ?? '').trim().isEmpty || (_selectedBlock ?? '').trim().isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Type, camp, and block are required. Ensure camp is selected first to load available blocks.'), duration: Duration(seconds: 3)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(l10n.typeCampBlockRequired), duration: const Duration(seconds: 3)));
       return;
     }
 
@@ -177,12 +177,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
       if (!mounted) return;
 
-      messenger.showSnackBar(const SnackBar(content: Text('Asset saved locally. Sync from Home screen.')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.assetSavedLocally)));
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
 
-      messenger.showSnackBar(SnackBar(content: Text('Error: ${error.toString()}')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPrefix(error.toString()))));
     } finally {
       if (mounted) {
         setState(() {
@@ -238,13 +238,15 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error capturing image: ${e.toString()}')));
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(e.toString()))));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final campLocationsAsync = ref.watch(campLocationsProvider);
     final assetTypesAsync = ref.watch(assetTypesProvider);
 
@@ -255,7 +257,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
 
     return Scaffold(
       backgroundColor: ThemeColor.backGroundColor,
-      appBar: AppBar(title: const Text('Asset Create'), backgroundColor: ThemeColor.white, foregroundColor: ThemeColor.black, elevation: 0),
+      appBar: AppBar(title: Text(l10n.assetCreateTitle), backgroundColor: ThemeColor.white, foregroundColor: ThemeColor.black, elevation: 0),
       body: SingleChildScrollView(
         padding: ThemePadding.p4,
         child: Container(
@@ -273,21 +275,17 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: Colors.blue, width: 0.5),
                   ),
-                  child: const Text(
-                    '* Required: Asset ID, Name, Address, Type, Camp, Block\n'
-                    '• Important: Select Camp FIRST to load available Blocks',
-                    style: TextStyle(fontSize: 11, color: Colors.blue),
-                  ),
+                  child: Text('${l10n.assetCreateNotice}\n${l10n.assetCreateImportantNotice}', style: const TextStyle(fontSize: 11, color: Colors.blue)),
                 ),
                 Gap.y4,
                 _buildResponsiveRow([
-                  _buildFieldContainer('Asset ID *', _buildTextField(controller: _astIdController, hint: 'Scan QR/NFC or enter ID', readOnly: true)),
-                  _buildFieldContainer('Name *', _buildTextField(controller: _nameController, hint: 'Enter asset name')),
+                  _buildFieldContainer(l10n.assetIdLabel, _buildTextField(controller: _astIdController, hint: l10n.assetIdHint, readOnly: true)),
+                  _buildFieldContainer(l10n.nameLabel, _buildTextField(controller: _nameController, hint: l10n.nameHint)),
                 ]),
                 Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer(
-                    'Type',
+                    l10n.typeLabel,
                     assetTypesAsync.when(
                       data: (items) => _buildDropdown(
                         value: items.any((i) => i.id.toString() == _selectedType) ? _selectedType : null,
@@ -302,14 +300,14 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         onChanged: (v) => setState(() => _selectedType = v),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => Text('Error loading types: $err', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      error: (err, stack) => Text(l10n.errorLoadingTypes(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
                   ),
                   _buildFieldContainer(
-                    'Amount',
+                    l10n.amountLabel,
                     _buildTextField(
                       controller: _amountController,
-                      hint: 'Enter asset amount',
+                      hint: l10n.amountHint,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
@@ -318,14 +316,14 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                 Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer(
-                    'Status',
+                    l10n.statusLabel,
                     _buildDropdown(
                       value: _selectedStatus,
                       items: _statusOptions
                           .map(
                             (e) => DropdownMenuItem(
                               value: e,
-                              child: Text(e, style: ThemeTextStyles.values),
+                              child: Text(_statusLabel(l10n, e), style: ThemeTextStyles.values),
                             ),
                           )
                           .toList(),
@@ -333,7 +331,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                     ),
                   ),
                   _buildFieldContainer(
-                    'Camp',
+                    l10n.campLabel,
                     campLocationsAsync.when(
                       data: (items) => _buildDropdown(
                         value: items.any((i) => i.id.toString() == _selectedCamp) ? _selectedCamp : null,
@@ -352,18 +350,18 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         }),
                       ),
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => const Text('Error loading camps'),
+                      error: (err, stack) => Text(l10n.errorLoadingCamps),
                     ),
                   ),
                 ]),
                 Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer(
-                    'Block',
+                    l10n.blockLabel,
                     blocksAsync.when(
                       data: (List<IdNamePair> items) {
                         if (items.isEmpty) {
-                          return const Text('No blocks available for this camp - check if camp/location exists and has blocks', style: TextStyle(color: Colors.orange));
+                          return Text(l10n.noBlocksAvailableForCamp, style: const TextStyle(color: Colors.orange));
                         }
                         return _buildDropdown(
                           value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
@@ -379,22 +377,22 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         );
                       },
                       loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => Text('Error loading blocks:\n$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
+                      error: (err, stack) => Text(l10n.errorLoadingBlocks(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 11)),
                     ),
                   ),
-                  _buildFieldContainer('Address Line', _buildTextField(controller: _addressLineController, hint: 'Enter address line')),
+                  _buildFieldContainer(l10n.addressLineLabel, _buildTextField(controller: _addressLineController, hint: l10n.addressLineHint)),
                 ]),
                 Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer(
-                    'Purchase Date',
+                    l10n.purchaseDateLabel,
                     _buildDatePicker(
                       date: _purchaseDate,
                       onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _purchaseDate = d)),
                     ),
                   ),
                   _buildFieldContainer(
-                    'Manufacture Date',
+                    l10n.manufactureDateLabel,
                     _buildDatePicker(
                       date: _manufactureDate,
                       onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _manufactureDate = d)),
@@ -404,7 +402,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                 Gap.y4,
                 _buildResponsiveRow([
                   _buildFieldContainer(
-                    'Warranty End',
+                    l10n.warrantyEndLabel,
                     _buildDatePicker(
                       date: _warrantyEndDate,
                       onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _warrantyEndDate = d)),
@@ -414,7 +412,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                 ]),
 
                 Gap.y8,
-                Text('Items', style: ThemeTextStyles.heading),
+                Text(l10n.itemsHeading, style: ThemeTextStyles.heading),
                 Gap.y2,
                 Table(
                   columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(2), 2: IntrinsicColumnWidth()},
@@ -423,15 +421,15 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                       children: [
                         Padding(
                           padding: ThemePadding.p2,
-                          child: Text('Item', style: ThemeTextStyles.label),
+                          child: Text(l10n.itemColumn, style: ThemeTextStyles.label),
                         ),
                         Padding(
                           padding: ThemePadding.p2,
-                          child: Text('Description', style: ThemeTextStyles.label),
+                          child: Text(l10n.descriptionColumn, style: ThemeTextStyles.label),
                         ),
                         Padding(
                           padding: ThemePadding.p2,
-                          child: Text('Action', style: ThemeTextStyles.label),
+                          child: Text(l10n.actionColumn, style: ThemeTextStyles.label),
                         ),
                       ],
                     ),
@@ -442,18 +440,18 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                         children: [
                           Padding(
                             padding: ThemePadding.p1,
-                            child: _buildTextField(controller: controllers['item']!, hint: 'Enter item'),
+                            child: _buildTextField(controller: controllers['item']!, hint: l10n.enterItemHint),
                           ),
                           Padding(
                             padding: ThemePadding.p1,
-                            child: _buildTextField(controller: controllers['description']!, hint: 'Enter description'),
+                            child: _buildTextField(controller: controllers['description']!, hint: l10n.enterDescriptionHint),
                           ),
                           Padding(
                             padding: ThemePadding.p1,
                             child: ElevatedButton(
                               onPressed: () => _removeItem(idx),
                               style: ElevatedButton.styleFrom(backgroundColor: ThemeColor.black, padding: EdgeInsets.zero),
-                              child: const Text('Delete', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              child: Text(l10n.deleteItem, style: const TextStyle(color: Colors.white, fontSize: 12)),
                             ),
                           ),
                         ],
@@ -467,16 +465,16 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   child: ElevatedButton(
                     onPressed: _addItem,
                     style: ElevatedButton.styleFrom(backgroundColor: ThemeColor.black),
-                    child: const Text('Add Item', style: TextStyle(color: Colors.white)),
+                    child: Text(l10n.addItem, style: const TextStyle(color: Colors.white)),
                   ),
                 ),
 
                 Gap.y8,
-                _buildFieldContainer('Asset Photo', _buildFilePicker(isImage: true)),
+                _buildFieldContainer(l10n.assetPhotoLabel, _buildFilePicker(isImage: true)),
                 Gap.y4,
-                _buildFieldContainer('Upload Attachment', _buildFilePicker(isImage: false)),
+                _buildFieldContainer(l10n.assetAttachmentLabel, _buildFilePicker(isImage: false)),
                 Gap.y4,
-                _buildFieldContainer('Asset Details', _buildTextField(controller: _assetDetailsController, hint: 'Enter asset details', maxLines: 3)),
+                _buildFieldContainer(l10n.assetDetailsLabel, _buildTextField(controller: _assetDetailsController, hint: l10n.assetDetailsHint, maxLines: 3)),
 
                 Gap.y8,
                 Wrap(
@@ -487,12 +485,12 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                     ElevatedButton(
                       onPressed: _isSubmitting ? null : _submitForm,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: ThemePadding.px6),
-                      child: Text(_isSubmitting ? 'Saving...' : 'Create', style: const TextStyle(color: Colors.white)),
+                      child: Text(_isSubmitting ? l10n.saving : l10n.createAsset, style: const TextStyle(color: Colors.white)),
                     ),
                     ElevatedButton(
                       onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: ThemePadding.px6),
-                      child: const Text('Go Back', style: TextStyle(color: Colors.white)),
+                      child: Text(l10n.goBack, style: const TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -591,6 +589,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   }
 
   Widget _buildFilePicker({required bool isImage}) {
+    final l10n = AppLocalizations.of(context)!;
     final isSelected = isImage ? _selectedImageName != null : _selectedAttachmentName != null;
 
     return LayoutBuilder(
@@ -605,7 +604,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             elevation: 0,
             side: const BorderSide(color: Colors.grey),
           ),
-          child: Text(isImage ? 'Choose Image' : 'Choose Attachment', style: const TextStyle(fontSize: 12)),
+          child: Text(isImage ? l10n.chooseImage : l10n.chooseAttachment, style: const TextStyle(fontSize: 12)),
         );
 
         final cameraButton = Padding(
@@ -613,7 +612,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
           child: ElevatedButton.icon(
             onPressed: _isSubmitting ? null : _captureImageFromCamera,
             icon: const Icon(Icons.camera_alt, size: 16),
-            label: const Text('Take Photo', style: TextStyle(fontSize: 12)),
+            label: Text(l10n.takePhoto, style: const TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[200],
               foregroundColor: Colors.black,
@@ -641,11 +640,11 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
-          child: const Text('Remove', style: TextStyle(fontSize: 11)),
+          child: Text(l10n.remove, style: const TextStyle(fontSize: 11)),
         );
 
         final fileName = Text(
-          (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? 'No image chosen' : 'No attachment chosen'),
+          (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? l10n.noImageChosen : l10n.noAttachmentChosen),
           style: const TextStyle(fontSize: 12, color: Colors.grey),
           overflow: TextOverflow.ellipsis,
         );
@@ -682,6 +681,16 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final month = value.month.toString().padLeft(2, '0');
     final day = value.day.toString().padLeft(2, '0');
     return '${value.year}-$month-$day';
+  }
+
+  String _statusLabel(AppLocalizations l10n, String status) {
+    return switch (status) {
+      'ACTIVE' => l10n.statusActive,
+      'UNDER MAINTENANCE' => l10n.statusUnderMaintenance,
+      'APPROVAL PENDING' => l10n.statusApprovalPending,
+      'INACTIVE' => l10n.statusInactive,
+      _ => status,
+    };
   }
 
   Future<String?> _resolveCachedUploadPath(PlatformFile picked, {required String prefix}) async {

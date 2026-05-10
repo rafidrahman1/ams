@@ -23,7 +23,8 @@ class RegisterDeviceScreen extends ConsumerWidget {
 
     final normalizedScannedAstId = normalizeAstId(scannedValue);
     if (normalizedScannedAstId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid scan data')));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidScanData)));
       return;
     }
 
@@ -33,7 +34,8 @@ class RegisterDeviceScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mismatchMessage)));
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Device registered for ${asset!.title}')));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.deviceRegisteredFor(asset!.title))));
       Navigator.of(context).pop(normalizedScannedAstId);
     } else {
       final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
@@ -50,7 +52,7 @@ class RegisterDeviceScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Register device')),
+      appBar: AppBar(title: Text(l10n.registerDevice)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

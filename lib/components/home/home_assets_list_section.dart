@@ -1,5 +1,6 @@
 import 'package:asset_management_system/core/storage/local_database.dart';
 import 'package:asset_management_system/data/models/volunteer_asset.dart';
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/pages/qr_nfc_screen.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,8 @@ class HomeAssetsListSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (forceLoading) {
       return Padding(
         padding: const EdgeInsets.all(12),
@@ -115,7 +118,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                           color: failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
                           child: ListTile(
                             title: Text(device.name),
-                            subtitle: Text('${device.details}\n(Pending Sync)'),
+                            subtitle: Text('${device.details}\n${l10n.pendingSync}'),
                             isThreeLine: true,
                             trailing: failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
                             onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
@@ -154,7 +157,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                                   : () {
                                       Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
                                     },
-                              child: const Text('Register device'),
+                              child: Text(l10n.registerDevice),
                             ),
                           ),
                         ),
@@ -250,6 +253,7 @@ extension on HomeAssetsListSection {
       builder: (sheetContext) {
         return Consumer(
           builder: (context, sheetRef, _) {
+            final l10n = AppLocalizations.of(context)!;
             final deviceAsync = sheetRef.watch(registeredDeviceProvider(deviceId));
 
             return SafeArea(
@@ -260,7 +264,7 @@ extension on HomeAssetsListSection {
                   error: (error, _) => SizedBox(height: 220, child: Center(child: Text(error.toString()))),
                   data: (device) {
                     if (device == null) {
-                      return const SizedBox(height: 220, child: Center(child: Text('Device not found')));
+                      return SizedBox(height: 220, child: Center(child: Text(l10n.deviceNotFound)));
                     }
 
                     return SingleChildScrollView(
@@ -271,34 +275,34 @@ extension on HomeAssetsListSection {
                           Row(
                             children: [
                               Expanded(
-                                child: Text('Device Details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                                child: Text(l10n.deviceDetailsTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                               ),
                               IconButton(onPressed: () => Navigator.of(sheetContext).pop(), icon: const Icon(Icons.close)),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          _buildDetailRow('Record ID', device.id?.toString() ?? '-'),
-                          _buildDetailRow('Asset ID', device.astId ?? '-'),
-                          _buildDetailRow('Name', device.name),
-                          _buildDetailRow('Details', device.details),
-                          _buildDetailRow('Address Line', device.addressLine),
-                          _buildDetailRow('Status', device.status),
-                          _buildDetailRow('Asset Type', device.assetType),
-                          _buildDetailRow('Location', device.location),
-                          _buildDetailRow('Block', device.block),
-                          _buildDetailRow('Amount', device.amount),
-                          _buildDetailRow('Purchase Date', device.purchaseDate),
-                          _buildDetailRow('Manufacture Date', device.manufactureDate),
-                          _buildDetailRow('Warranty End', device.warrantyEnd),
-                          _buildDetailRow('Image Path', device.imagePath),
-                          _buildDetailRow('Attachment Path', device.assetAttachment),
-                          _buildDetailRow('Specification', device.specification),
-                          _buildDetailRow('Created At', device.createdAt.toIso8601String()),
-                          _buildDetailRow('Synced', device.synced ? 'Yes' : 'No'),
+                          _buildDetailRow(l10n.recordIdLabel, device.id?.toString() ?? '-'),
+                          _buildDetailRow(l10n.assetIdLabel, device.astId ?? '-'),
+                          _buildDetailRow(l10n.nameLabel, device.name),
+                          _buildDetailRow(l10n.detailsLabel, device.details),
+                          _buildDetailRow(l10n.addressLineLabel, device.addressLine),
+                          _buildDetailRow(l10n.statusLabel, device.status),
+                          _buildDetailRow(l10n.typeLabel, device.assetType),
+                          _buildDetailRow(l10n.locationLabel, device.location),
+                          _buildDetailRow(l10n.blockLabel, device.block),
+                          _buildDetailRow(l10n.amountLabel, device.amount),
+                          _buildDetailRow(l10n.purchaseDateLabel, device.purchaseDate),
+                          _buildDetailRow(l10n.manufactureDateLabel, device.manufactureDate),
+                          _buildDetailRow(l10n.warrantyEndLabel, device.warrantyEnd),
+                          _buildDetailRow(l10n.imagePathLabel, device.imagePath),
+                          _buildDetailRow(l10n.attachmentPathLabel, device.assetAttachment),
+                          _buildDetailRow(l10n.specificationLabel, device.specification),
+                          _buildDetailRow(l10n.createdAtLabel, device.createdAt.toIso8601String()),
+                          _buildDetailRow(l10n.syncedLabel, device.synced ? l10n.yesLabel : l10n.noLabel),
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.centerRight,
-                            child: TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Close')),
+                            child: TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: Text(l10n.closeLabel)),
                           ),
                         ],
                       ),

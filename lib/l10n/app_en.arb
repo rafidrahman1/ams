@@ -92,6 +92,116 @@
       "astId": {}
     }
   },
+  "assetCreateTitle": "Asset Create",
+  "assetCreateNotice": "* Required: Asset ID, Name, Address, Type, Camp, Block",
+  "assetCreateImportantNotice": "• Important: Select Camp FIRST to load available Blocks",
+  "assetIdLabel": "Asset ID *",
+  "assetIdHint": "Scan QR/NFC or enter ID",
+  "nameLabel": "Name *",
+  "nameHint": "Enter asset name",
+  "typeLabel": "Type",
+  "amountLabel": "Amount",
+  "amountHint": "Enter asset amount",
+  "statusLabel": "Status",
+  "campLabel": "Camp",
+  "blockLabel": "Block",
+  "addressLineLabel": "Address Line",
+  "addressLineHint": "Enter address line",
+  "purchaseDateLabel": "Purchase Date",
+  "manufactureDateLabel": "Manufacture Date",
+  "warrantyEndLabel": "Warranty End",
+  "itemsHeading": "Items",
+  "itemColumn": "Item",
+  "descriptionColumn": "Description",
+  "actionColumn": "Action",
+  "enterItemHint": "Enter item",
+  "enterDescriptionHint": "Enter description",
+  "deleteItem": "Delete",
+  "addItem": "Add Item",
+  "assetPhotoLabel": "Asset Photo",
+  "chooseImage": "Choose Image",
+  "takePhoto": "Take Photo",
+  "noImageChosen": "No image chosen",
+  "assetAttachmentLabel": "Upload Attachment",
+  "chooseAttachment": "Choose Attachment",
+  "noAttachmentChosen": "No attachment chosen",
+  "remove": "Remove",
+  "assetDetailsLabel": "Asset Details",
+  "assetDetailsHint": "Enter asset details",
+  "createAsset": "Create",
+  "saving": "Saving...",
+  "goBack": "Go Back",
+  "assetSavedLocally": "Asset saved locally. Sync from Home screen.",
+  "assetIdRequired": "Asset ID is required (Scan QR/NFC)",
+  "nameAndAddressRequired": "Name and address are required",
+  "typeCampBlockRequired": "Type, camp, and block are required. Ensure camp is selected first to load available blocks.",
+  "errorPrefix": "Error: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorLoadingTypes": "Error loading types: {error}",
+  "@errorLoadingTypes": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorLoadingCamps": "Error loading camps",
+  "errorLoadingBlocks": "Error loading blocks:\n{error}",
+  "@errorLoadingBlocks": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noBlocksAvailableForCamp": "No blocks available for this camp - check if camp/location exists and has blocks",
+  "errorCapturingImage": "Error capturing image: {error}",
+  "@errorCapturingImage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorPickingImage": "Error picking image: {error}",
+  "@errorPickingImage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "registerDevice": "Register device",
+  "invalidScanData": "Invalid scan data",
+  "deviceRegisteredFor": "Device registered for {assetTitle}",
+  "@deviceRegisteredFor": {
+    "placeholders": {
+      "assetTitle": {}
+    }
+  },
+  "noChecklistItemsFound": "No checklist items found",
+  "statusActive": "ACTIVE",
+  "statusUnderMaintenance": "UNDER MAINTENANCE",
+  "statusApprovalPending": "APPROVAL PENDING",
+  "statusInactive": "INACTIVE",
+  "deviceDetailsTitle": "Device Details",
+  "deviceNotFound": "Device not found",
+  "recordIdLabel": "Record ID",
+  "detailsLabel": "Details",
+  "locationLabel": "Location",
+  "imagePathLabel": "Image Path",
+  "attachmentPathLabel": "Attachment Path",
+  "specificationLabel": "Specification",
+  "createdAtLabel": "Created At",
+  "syncedLabel": "Synced",
+  "yesLabel": "Yes",
+  "noLabel": "No",
+  "pendingSync": "(Pending Sync)",
+  "closeLabel": "Close",
+  "parameterLabel": "Parameter",
+  "parameterHint": "Enter checklist parameter",
+  "retakePhoto": "Retake",
+  "camera": "Camera",
+  "changeImage": "Change",
+  "attachImage": "Attach Image",
+  "removeImage": "Remove Image",
+  "imageSelected": "Image selected",
   "unknownSyncError": "Unknown error occurred during sync",
   "noPendingDevices": "No pending devices to sync"
 }

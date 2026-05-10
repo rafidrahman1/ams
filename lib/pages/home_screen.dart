@@ -290,7 +290,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Column(
         children: [
           HomeActionButtonsRow(
-            primaryLabel: widget.isAdmin ? 'Register device' : l10n.scan,
+            primaryLabel: widget.isAdmin ? l10n.registerDevice : l10n.scan,
             primaryIcon: widget.isAdmin ? Icons.app_registration : Icons.document_scanner,
             secondaryLabel: l10n.sync,
             isSyncing: isBusy,

@@ -54,6 +54,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
 
   Future<void> _captureImageFromCamera() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final picker = ImagePicker();
       final XFile? picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
@@ -67,12 +68,13 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Error capturing image: ${error.toString()}')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(error.toString()))));
     }
   }
 
   Future<void> _pickImageFromGallery() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final picker = ImagePicker();
       final XFile? picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
@@ -86,7 +88,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Error picking image: ${error.toString()}')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPickingImage(error.toString()))));
     }
   }
 
@@ -176,7 +178,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
             final items = data.items;
 
             if (items.isEmpty) {
-              return const Center(child: Text('No checklist items found'));
+              return Center(child: Text(l10n.noChecklistItemsFound));
             }
 
             return Column(
@@ -194,12 +196,12 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _status,
-                        decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Status'),
-                        items: const [
-                          DropdownMenuItem(value: 'APPROVAL PENDING', child: Text('APPROVAL PENDING')),
-                          DropdownMenuItem(value: 'UNDER MAINTENANCE', child: Text('UNDER MAINTENANCE')),
-                          DropdownMenuItem(value: 'ACTIVE', child: Text('ACTIVE')),
-                          DropdownMenuItem(value: 'INACTIVE', child: Text('INACTIVE')),
+                        decoration: InputDecoration(border: const OutlineInputBorder(), labelText: l10n.statusLabel),
+                        items: [
+                          DropdownMenuItem(value: 'APPROVAL PENDING', child: Text(l10n.statusApprovalPending)),
+                          DropdownMenuItem(value: 'UNDER MAINTENANCE', child: Text(l10n.statusUnderMaintenance)),
+                          DropdownMenuItem(value: 'ACTIVE', child: Text(l10n.statusActive)),
+                          DropdownMenuItem(value: 'INACTIVE', child: Text(l10n.statusInactive)),
                         ],
                         onChanged: (value) {
                           if (value == null) return;
@@ -224,7 +226,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _parameterController,
-                        decoration: const InputDecoration(labelText: 'Parameter', hintText: 'Enter checklist parameter', border: OutlineInputBorder()),
+                        decoration: InputDecoration(labelText: l10n.parameterLabel, hintText: l10n.parameterHint, border: const OutlineInputBorder()),
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -233,7 +235,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _captureImageFromCamera,
                               icon: const Icon(Icons.camera_alt),
-                              label: Text(_imagePath.isNotEmpty ? 'Retake' : 'Camera'),
+                              label: Text(_imagePath.isNotEmpty ? l10n.retakePhoto : l10n.camera),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -241,7 +243,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _pickImageFromGallery,
                               icon: const Icon(Icons.image),
-                              label: Text(_imagePath.isNotEmpty ? 'Change' : 'Attach Image'),
+                              label: Text(_imagePath.isNotEmpty ? l10n.changeImage : l10n.attachImage),
                             ),
                           ),
                         ],
@@ -251,14 +253,14 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
                         OutlinedButton.icon(
                           onPressed: () => setState(() => _imagePath = ''),
                           icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          label: const Text('Remove Image', style: TextStyle(color: Colors.red)),
+                          label: Text(l10n.removeImage, style: const TextStyle(color: Colors.red)),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.red),
                             foregroundColor: Colors.red,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Text('Image selected', style: Theme.of(context).textTheme.bodySmall),
+                        Text(l10n.imageSelected, style: Theme.of(context).textTheme.bodySmall),
                       ],
                       const SizedBox(height: 16),
                       TextField(

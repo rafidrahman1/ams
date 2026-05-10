@@ -416,6 +416,486 @@ abstract class AppLocalizations {
   /// **'{astId} has already been assigned'**
   String astIdAlreadyAssigned(Object astId);
 
+  /// No description provided for @assetCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Create'**
+  String get assetCreateTitle;
+
+  /// No description provided for @assetCreateNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'* Required: Asset ID, Name, Address, Type, Camp, Block'**
+  String get assetCreateNotice;
+
+  /// No description provided for @assetCreateImportantNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'• Important: Select Camp FIRST to load available Blocks'**
+  String get assetCreateImportantNotice;
+
+  /// No description provided for @assetIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset ID *'**
+  String get assetIdLabel;
+
+  /// No description provided for @assetIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR/NFC or enter ID'**
+  String get assetIdHint;
+
+  /// No description provided for @nameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name *'**
+  String get nameLabel;
+
+  /// No description provided for @nameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter asset name'**
+  String get nameHint;
+
+  /// No description provided for @typeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get typeLabel;
+
+  /// No description provided for @amountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get amountLabel;
+
+  /// No description provided for @amountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter asset amount'**
+  String get amountHint;
+
+  /// No description provided for @statusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusLabel;
+
+  /// No description provided for @campLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Camp'**
+  String get campLabel;
+
+  /// No description provided for @blockLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get blockLabel;
+
+  /// No description provided for @addressLineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address Line'**
+  String get addressLineLabel;
+
+  /// No description provided for @addressLineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter address line'**
+  String get addressLineHint;
+
+  /// No description provided for @purchaseDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase Date'**
+  String get purchaseDateLabel;
+
+  /// No description provided for @manufactureDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Manufacture Date'**
+  String get manufactureDateLabel;
+
+  /// No description provided for @warrantyEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Warranty End'**
+  String get warrantyEndLabel;
+
+  /// No description provided for @itemsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemsHeading;
+
+  /// No description provided for @itemColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get itemColumn;
+
+  /// No description provided for @descriptionColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionColumn;
+
+  /// No description provided for @actionColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get actionColumn;
+
+  /// No description provided for @enterItemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter item'**
+  String get enterItemHint;
+
+  /// No description provided for @enterDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter description'**
+  String get enterDescriptionHint;
+
+  /// No description provided for @deleteItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteItem;
+
+  /// No description provided for @addItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Item'**
+  String get addItem;
+
+  /// No description provided for @assetPhotoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Photo'**
+  String get assetPhotoLabel;
+
+  /// No description provided for @chooseImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Image'**
+  String get chooseImage;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Photo'**
+  String get takePhoto;
+
+  /// No description provided for @noImageChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'No image chosen'**
+  String get noImageChosen;
+
+  /// No description provided for @assetAttachmentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Attachment'**
+  String get assetAttachmentLabel;
+
+  /// No description provided for @chooseAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Attachment'**
+  String get chooseAttachment;
+
+  /// No description provided for @noAttachmentChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachment chosen'**
+  String get noAttachmentChosen;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// No description provided for @assetDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Details'**
+  String get assetDetailsLabel;
+
+  /// No description provided for @assetDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter asset details'**
+  String get assetDetailsHint;
+
+  /// No description provided for @createAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get createAsset;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get saving;
+
+  /// No description provided for @goBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Back'**
+  String get goBack;
+
+  /// No description provided for @assetSavedLocally.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset saved locally. Sync from Home screen.'**
+  String get assetSavedLocally;
+
+  /// No description provided for @assetIdRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset ID is required (Scan QR/NFC)'**
+  String get assetIdRequired;
+
+  /// No description provided for @nameAndAddressRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and address are required'**
+  String get nameAndAddressRequired;
+
+  /// No description provided for @typeCampBlockRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Type, camp, and block are required. Ensure camp is selected first to load available blocks.'**
+  String get typeCampBlockRequired;
+
+  /// No description provided for @errorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String errorPrefix(Object error);
+
+  /// No description provided for @errorLoadingTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading types: {error}'**
+  String errorLoadingTypes(Object error);
+
+  /// No description provided for @errorLoadingCamps.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading camps'**
+  String get errorLoadingCamps;
+
+  /// No description provided for @errorLoadingBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading blocks:\n{error}'**
+  String errorLoadingBlocks(Object error);
+
+  /// No description provided for @noBlocksAvailableForCamp.
+  ///
+  /// In en, this message translates to:
+  /// **'No blocks available for this camp - check if camp/location exists and has blocks'**
+  String get noBlocksAvailableForCamp;
+
+  /// No description provided for @errorCapturingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error capturing image: {error}'**
+  String errorCapturingImage(Object error);
+
+  /// No description provided for @errorPickingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error picking image: {error}'**
+  String errorPickingImage(Object error);
+
+  /// No description provided for @registerDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Register device'**
+  String get registerDevice;
+
+  /// No description provided for @invalidScanData.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid scan data'**
+  String get invalidScanData;
+
+  /// No description provided for @deviceRegisteredFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Device registered for {assetTitle}'**
+  String deviceRegisteredFor(Object assetTitle);
+
+  /// No description provided for @noChecklistItemsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No checklist items found'**
+  String get noChecklistItemsFound;
+
+  /// No description provided for @statusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'ACTIVE'**
+  String get statusActive;
+
+  /// No description provided for @statusUnderMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'UNDER MAINTENANCE'**
+  String get statusUnderMaintenance;
+
+  /// No description provided for @statusApprovalPending.
+  ///
+  /// In en, this message translates to:
+  /// **'APPROVAL PENDING'**
+  String get statusApprovalPending;
+
+  /// No description provided for @statusInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'INACTIVE'**
+  String get statusInactive;
+
+  /// No description provided for @deviceDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Details'**
+  String get deviceDetailsTitle;
+
+  /// No description provided for @deviceNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Device not found'**
+  String get deviceNotFound;
+
+  /// No description provided for @recordIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Record ID'**
+  String get recordIdLabel;
+
+  /// No description provided for @detailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get detailsLabel;
+
+  /// No description provided for @locationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// No description provided for @imagePathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Image Path'**
+  String get imagePathLabel;
+
+  /// No description provided for @attachmentPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment Path'**
+  String get attachmentPathLabel;
+
+  /// No description provided for @specificationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Specification'**
+  String get specificationLabel;
+
+  /// No description provided for @createdAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Created At'**
+  String get createdAtLabel;
+
+  /// No description provided for @syncedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get syncedLabel;
+
+  /// No description provided for @yesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yesLabel;
+
+  /// No description provided for @noLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get noLabel;
+
+  /// No description provided for @pendingSync.
+  ///
+  /// In en, this message translates to:
+  /// **'(Pending Sync)'**
+  String get pendingSync;
+
+  /// No description provided for @closeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get closeLabel;
+
+  /// No description provided for @parameterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameter'**
+  String get parameterLabel;
+
+  /// No description provided for @parameterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter checklist parameter'**
+  String get parameterHint;
+
+  /// No description provided for @retakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get retakePhoto;
+
+  /// No description provided for @camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get camera;
+
+  /// No description provided for @changeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changeImage;
+
+  /// No description provided for @attachImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach Image'**
+  String get attachImage;
+
+  /// No description provided for @removeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Image'**
+  String get removeImage;
+
+  /// No description provided for @imageSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Image selected'**
+  String get imageSelected;
+
   /// No description provided for @unknownSyncError.
   ///
   /// In en, this message translates to:

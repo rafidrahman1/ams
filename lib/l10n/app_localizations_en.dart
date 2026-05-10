@@ -195,6 +195,262 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get assetCreateTitle => 'Asset Create';
+
+  @override
+  String get assetCreateNotice =>
+      '* Required: Asset ID, Name, Address, Type, Camp, Block';
+
+  @override
+  String get assetCreateImportantNotice =>
+      '• Important: Select Camp FIRST to load available Blocks';
+
+  @override
+  String get assetIdLabel => 'Asset ID *';
+
+  @override
+  String get assetIdHint => 'Scan QR/NFC or enter ID';
+
+  @override
+  String get nameLabel => 'Name *';
+
+  @override
+  String get nameHint => 'Enter asset name';
+
+  @override
+  String get typeLabel => 'Type';
+
+  @override
+  String get amountLabel => 'Amount';
+
+  @override
+  String get amountHint => 'Enter asset amount';
+
+  @override
+  String get statusLabel => 'Status';
+
+  @override
+  String get campLabel => 'Camp';
+
+  @override
+  String get blockLabel => 'Block';
+
+  @override
+  String get addressLineLabel => 'Address Line';
+
+  @override
+  String get addressLineHint => 'Enter address line';
+
+  @override
+  String get purchaseDateLabel => 'Purchase Date';
+
+  @override
+  String get manufactureDateLabel => 'Manufacture Date';
+
+  @override
+  String get warrantyEndLabel => 'Warranty End';
+
+  @override
+  String get itemsHeading => 'Items';
+
+  @override
+  String get itemColumn => 'Item';
+
+  @override
+  String get descriptionColumn => 'Description';
+
+  @override
+  String get actionColumn => 'Action';
+
+  @override
+  String get enterItemHint => 'Enter item';
+
+  @override
+  String get enterDescriptionHint => 'Enter description';
+
+  @override
+  String get deleteItem => 'Delete';
+
+  @override
+  String get addItem => 'Add Item';
+
+  @override
+  String get assetPhotoLabel => 'Asset Photo';
+
+  @override
+  String get chooseImage => 'Choose Image';
+
+  @override
+  String get takePhoto => 'Take Photo';
+
+  @override
+  String get noImageChosen => 'No image chosen';
+
+  @override
+  String get assetAttachmentLabel => 'Upload Attachment';
+
+  @override
+  String get chooseAttachment => 'Choose Attachment';
+
+  @override
+  String get noAttachmentChosen => 'No attachment chosen';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get assetDetailsLabel => 'Asset Details';
+
+  @override
+  String get assetDetailsHint => 'Enter asset details';
+
+  @override
+  String get createAsset => 'Create';
+
+  @override
+  String get saving => 'Saving...';
+
+  @override
+  String get goBack => 'Go Back';
+
+  @override
+  String get assetSavedLocally => 'Asset saved locally. Sync from Home screen.';
+
+  @override
+  String get assetIdRequired => 'Asset ID is required (Scan QR/NFC)';
+
+  @override
+  String get nameAndAddressRequired => 'Name and address are required';
+
+  @override
+  String get typeCampBlockRequired =>
+      'Type, camp, and block are required. Ensure camp is selected first to load available blocks.';
+
+  @override
+  String errorPrefix(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String errorLoadingTypes(Object error) {
+    return 'Error loading types: $error';
+  }
+
+  @override
+  String get errorLoadingCamps => 'Error loading camps';
+
+  @override
+  String errorLoadingBlocks(Object error) {
+    return 'Error loading blocks:\n$error';
+  }
+
+  @override
+  String get noBlocksAvailableForCamp =>
+      'No blocks available for this camp - check if camp/location exists and has blocks';
+
+  @override
+  String errorCapturingImage(Object error) {
+    return 'Error capturing image: $error';
+  }
+
+  @override
+  String errorPickingImage(Object error) {
+    return 'Error picking image: $error';
+  }
+
+  @override
+  String get registerDevice => 'Register device';
+
+  @override
+  String get invalidScanData => 'Invalid scan data';
+
+  @override
+  String deviceRegisteredFor(Object assetTitle) {
+    return 'Device registered for $assetTitle';
+  }
+
+  @override
+  String get noChecklistItemsFound => 'No checklist items found';
+
+  @override
+  String get statusActive => 'ACTIVE';
+
+  @override
+  String get statusUnderMaintenance => 'UNDER MAINTENANCE';
+
+  @override
+  String get statusApprovalPending => 'APPROVAL PENDING';
+
+  @override
+  String get statusInactive => 'INACTIVE';
+
+  @override
+  String get deviceDetailsTitle => 'Device Details';
+
+  @override
+  String get deviceNotFound => 'Device not found';
+
+  @override
+  String get recordIdLabel => 'Record ID';
+
+  @override
+  String get detailsLabel => 'Details';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get imagePathLabel => 'Image Path';
+
+  @override
+  String get attachmentPathLabel => 'Attachment Path';
+
+  @override
+  String get specificationLabel => 'Specification';
+
+  @override
+  String get createdAtLabel => 'Created At';
+
+  @override
+  String get syncedLabel => 'Synced';
+
+  @override
+  String get yesLabel => 'Yes';
+
+  @override
+  String get noLabel => 'No';
+
+  @override
+  String get pendingSync => '(Pending Sync)';
+
+  @override
+  String get closeLabel => 'Close';
+
+  @override
+  String get parameterLabel => 'Parameter';
+
+  @override
+  String get parameterHint => 'Enter checklist parameter';
+
+  @override
+  String get retakePhoto => 'Retake';
+
+  @override
+  String get camera => 'Camera';
+
+  @override
+  String get changeImage => 'Change';
+
+  @override
+  String get attachImage => 'Attach Image';
+
+  @override
+  String get removeImage => 'Remove Image';
+
+  @override
+  String get imageSelected => 'Image selected';
+
+  @override
   String get unknownSyncError => 'Unknown error occurred during sync';
 
   @override
