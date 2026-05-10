@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:asset_management_system/core/storage/asset_cache_store.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
 
-import '../../model/asset_checklist_item.dart';
-import '../../model/location_models.dart';
-import '../../model/volunteer_asset.dart';
-import '../../services/asset_service.dart';
+import '../models/asset_checklist_item.dart';
+import '../models/location_models.dart';
+import '../models/volunteer_asset.dart';
+import '../services/asset_service.dart';
 
 class AssetRepository {
   final AssetService service;

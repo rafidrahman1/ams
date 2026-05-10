@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../provider/locale_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme/colors.dart';
 
 class LanguageToggle extends ConsumerWidget {

@@ -1,7 +1,7 @@
 import 'package:asset_management_system/core/storage/local_database.dart';
-import 'package:asset_management_system/model/volunteer_asset.dart';
+import 'package:asset_management_system/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/pages/qr_nfc_screen.dart';
-import 'package:asset_management_system/provider/asset_provider.dart';
+import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

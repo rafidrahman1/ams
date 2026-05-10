@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/app_text_field.dart';
 import '../components/square_action_button.dart';
-import '../provider/auth_provider.dart';
+import '../providers/auth_provider.dart';
 import 'admin_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

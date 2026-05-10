@@ -6,8 +6,8 @@ import 'package:asset_management_system/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../provider/nfc_scanner_provider.dart';
-import '../provider/qr_scanner_provider.dart';
+import '../providers/nfc_scanner_provider.dart';
+import '../providers/qr_scanner_provider.dart';
 import 'asset_create_screen.dart';
 
 class RegisterDeviceScreen extends ConsumerWidget {

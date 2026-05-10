@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../pages/home_screen.dart';
 import '../pages/login_screen.dart';
 import '../pages/splash_screen.dart';
-import '../provider/auth_provider.dart';
-import '../provider/locale_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 

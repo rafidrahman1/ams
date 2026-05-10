@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../components/asset_card_builder.dart';
-import '../../model/asset_checklist_item.dart';
-import '../../provider/asset_provider.dart';
+import '../../data/models/asset_checklist_item.dart';
+import '../../providers/asset_provider.dart';
 
 class AssetChecklistScreen extends ConsumerStatefulWidget {
   const AssetChecklistScreen({super.key, required this.asset});

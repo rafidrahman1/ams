@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:asset_management_system/model/asset_checklist_item.dart';
-import 'package:asset_management_system/model/location_models.dart';
-import 'package:asset_management_system/model/volunteer_asset.dart';
+import 'package:asset_management_system/data/models/asset_checklist_item.dart';
+import 'package:asset_management_system/data/models/location_models.dart';
+import 'package:asset_management_system/data/models/volunteer_asset.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AssetCacheStore {

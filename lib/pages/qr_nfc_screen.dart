@@ -7,8 +7,8 @@ import '../components/asset_card_builder.dart';
 import '../components/square_action_button.dart';
 import '../core/utils/ast_id_parser.dart';
 import '../pages/asset_checklist_screen.dart';
-import '../provider/nfc_scanner_provider.dart';
-import '../provider/qr_scanner_provider.dart';
+import '../providers/nfc_scanner_provider.dart';
+import '../providers/qr_scanner_provider.dart';
 
 class QrNfcScreen extends ConsumerWidget {
   const QrNfcScreen({super.key, required this.asset});

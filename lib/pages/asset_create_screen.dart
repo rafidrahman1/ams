@@ -12,8 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/utils/ast_id_parser.dart';
-import '../model/location_models.dart';
-import '../provider/asset_provider.dart';
+import '../data/models/location_models.dart';
+import '../providers/asset_provider.dart';
 
 class AssetCreateScreen extends ConsumerStatefulWidget {
   final String? scannedId;

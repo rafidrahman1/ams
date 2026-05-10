@@ -1,8 +1,8 @@
 import 'package:asset_management_system/core/storage/token_storage.dart';
-import 'package:asset_management_system/model/login_response.dart';
+import 'package:asset_management_system/data/models/login_response.dart';
 
-import '../../core/repositories/asset_repository.dart';
-import '../../services/auth_service.dart';
+import '../../data/repositories/asset_repository.dart';
+import '../services/auth_service.dart';
 
 class AuthRepository {
   final AuthService service;

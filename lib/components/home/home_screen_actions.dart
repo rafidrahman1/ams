@@ -6,9 +6,9 @@ import '../../components/asset_card_builder.dart';
 import '../../core/utils/ast_id_parser.dart';
 import '../../pages/asset_checklist_screen.dart';
 import '../../pages/register_device_screen.dart';
-import '../../provider/asset_provider.dart';
-import '../../provider/nfc_scanner_provider.dart';
-import '../../provider/qr_scanner_provider.dart';
+import '../../providers/asset_provider.dart';
+import '../../providers/nfc_scanner_provider.dart';
+import '../../providers/qr_scanner_provider.dart';
 
 class HomeScreenActions {
   const HomeScreenActions._();
