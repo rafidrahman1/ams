@@ -4,9 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'src/app/app.dart';
-import 'src/core/logging/app_log.dart';
-import 'src/core/logging/riverpod_observer.dart';
+import 'app/app.dart';
+import 'core/logging/app_log.dart';
+import 'core/logging/riverpod_observer.dart';
 
 void main() {
   runZonedGuarded(
