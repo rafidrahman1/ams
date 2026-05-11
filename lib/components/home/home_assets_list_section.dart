@@ -110,8 +110,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                         ),
                         onDismissed: (_) async {
                           if (device.id != null) {
-                            await ref.read(assetRepositoryProvider).deleteRegisteredDevice(device.id!);
-                            ref.invalidate(unsyncedRegisteredDevicesProvider);
+                            await _confirmAndDeleteDevice(context, ref, device.id!);
                           }
                         },
                         child: Card(
@@ -143,8 +142,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         onDismissed: (_) async {
-                          await ref.read(assetRepositoryProvider).deleteAsset(apiAsset.astId);
-                          ref.invalidate(isAdmin ? adminAssetsProvider : myAssetsProvider);
+                          await _confirmAndDeleteAsset(context, ref, apiAsset.astId);
                         },
                         child: Card(
                           color: Colors.white,
@@ -204,30 +202,13 @@ class HomeAssetsListSection extends ConsumerWidget {
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 3),
-                    child: Dismissible(
-                      key: Key('asset-${apiAsset.astId}'),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        color: Colors.red,
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      onDismissed: (_) async {
-                        await ref.read(assetRepositoryProvider).deleteAsset(apiAsset.astId);
-                        ref.invalidate(isAdmin ? adminAssetsProvider : myAssetsProvider);
-                        if (!isAdmin) {
-                          ref.invalidate(filteredAssetsProvider);
-                        }
-                      },
-                      child: AssetCardBuilder(
-                        asset: asset,
-                        onSync: isSyncing
-                            ? null
-                            : () {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrNfcScreen(asset: asset)));
-                              },
-                      ),
+                    child: AssetCardBuilder(
+                      asset: asset,
+                      onSync: isSyncing
+                          ? null
+                          : () {
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrNfcScreen(asset: asset)));
+                            },
                     ),
                   );
                 }),
@@ -246,6 +227,52 @@ class HomeAssetsListSection extends ConsumerWidget {
 }
 
 extension on HomeAssetsListSection {
+  Future<void> _confirmAndDeleteDevice(BuildContext context, WidgetRef ref, int deviceId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this device?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(assetRepositoryProvider).deleteRegisteredDevice(deviceId);
+      ref.invalidate(unsyncedRegisteredDevicesProvider);
+    }
+  }
+
+  Future<void> _confirmAndDeleteAsset(BuildContext context, WidgetRef ref, String astId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this asset?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(assetRepositoryProvider).deleteAsset(astId);
+      ref.invalidate(adminAssetsProvider);
+    }
+  }
+
   Future<void> _showRegisteredDeviceDetails(BuildContext context, int deviceId) async {
     await showModalBottomSheet<void>(
       context: context,

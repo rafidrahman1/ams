@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:asset_management_system/components/asset_checklist/asset_checklist_components.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/theme/colors.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,57 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
     _remarksController.dispose();
     _parameterController.dispose();
     super.dispose();
+  }
+
+  List<bool> _effectiveCompleted(List<AssetChecklistItem> items) {
+    if (_completed.length == items.length) {
+      return List<bool>.from(_completed);
+    }
+    return items.map((item) => item.response).toList(growable: false);
+  }
+
+  void _toggleCompleted(List<AssetChecklistItem> items, int index, bool value) {
+    setState(() {
+      if (_completed.length != items.length) {
+        _completed = _effectiveCompleted(items);
+      }
+      _completed[index] = value;
+    });
+  }
+
+  Future<void> _saveChecklist(List<AssetChecklistItem> items) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final completed = _effectiveCompleted(items);
+      final submitItems = <({int featureId, bool response})>[];
+      for (var index = 0; index < items.length; index++) {
+        submitItems.add((featureId: items[index].featureId, response: completed[index]));
+      }
+
+      // Always queue the submission so Home -> Sync can submit later.
+      // This keeps behavior predictable for users who save while offline.
+      await ref
+          .read(assetRepositoryProvider)
+          .queueChecklistSubmission(
+            astId: widget.asset.astId,
+            status: _status,
+            remark: _remarksController.text.trim(),
+            parameter: _parameterController.text.trim(),
+            image: '',
+            imagePath: _imagePath,
+            items: submitItems,
+          );
+
+      ref.invalidate(assetChecklistProvider(widget.asset.astId));
+
+      if (!mounted) return;
+      navigator.pop(completed);
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 
   void _syncState(String astId, AssetChecklist data) {
@@ -117,52 +169,22 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final checklistAsync = ref.watch(assetChecklistProvider(widget.asset.astId));
+    final saveButtonPressed = checklistAsync.maybeWhen(
+      data: (data) =>
+          () => _saveChecklist(data.items),
+      orElse: () => null,
+    );
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.checklistForAsset(widget.asset.title), style: const TextStyle(color: Colors.white)),
         backgroundColor: ThemeColor.primary,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: checklistAsync.hasValue
-            ? () async {
-                final navigator = Navigator.of(context);
-                final messenger = ScaffoldMessenger.of(context);
-                try {
-                  final data = await ref.read(assetChecklistProvider(widget.asset.astId).future);
-                  final items = data.items;
-                  final completed = _completed.length == items.length ? List<bool>.from(_completed) : items.map((item) => item.response).toList();
-
-                  final submitItems = <({int featureId, bool response})>[];
-                  for (var index = 0; index < items.length; index++) {
-                    submitItems.add((featureId: items[index].featureId, response: completed[index]));
-                  }
-
-                  // Always queue the submission so Home -> Sync can submit later.
-                  // This keeps behavior predictable for users who save while offline.
-                  await ref
-                      .read(assetRepositoryProvider)
-                      .queueChecklistSubmission(
-                        astId: widget.asset.astId,
-                        status: _status,
-                        remark: _remarksController.text.trim(),
-                        parameter: _parameterController.text.trim(),
-                        image: '',
-                        imagePath: _imagePath,
-                        items: submitItems,
-                      );
-
-                  ref.invalidate(assetChecklistProvider(widget.asset.astId));
-
-                  if (!mounted) return;
-                  navigator.pop(completed);
-                } catch (error) {
-                  if (!mounted) return;
-                  messenger.showSnackBar(SnackBar(content: Text(error.toString())));
-                }
-              }
-            : null,
+        onPressed: saveButtonPressed,
         backgroundColor: ThemeColor.primary,
         foregroundColor: ThemeColor.backGroundColor,
         icon: const Icon(Icons.save),
@@ -184,90 +206,29 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.asset.title, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text(widget.asset.description),
-                const SizedBox(height: 8),
-                Text(widget.asset.astId, style: Theme.of(context).textTheme.bodyMedium),
+                AssetChecklistHeader(title: widget.asset.title, description: widget.asset.description, assetId: widget.asset.astId),
                 const SizedBox(height: 24),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(bottom: 96),
+                    padding: const EdgeInsets.only(bottom: 96, top: 10),
                     children: [
-                      DropdownButtonFormField<String>(
-                        initialValue: _status,
-                        decoration: InputDecoration(border: const OutlineInputBorder(), labelText: l10n.statusLabel),
-                        items: [
-                          DropdownMenuItem(value: 'APPROVAL PENDING', child: Text(l10n.statusApprovalPending)),
-                          DropdownMenuItem(value: 'UNDER MAINTENANCE', child: Text(l10n.statusUnderMaintenance)),
-                          DropdownMenuItem(value: 'ACTIVE', child: Text(l10n.statusActive)),
-                          DropdownMenuItem(value: 'INACTIVE', child: Text(l10n.statusInactive)),
-                        ],
+                      AssetChecklistStatusDropdown(
+                        value: _status,
                         onChanged: (value) {
                           if (value == null) return;
                           setState(() => _status = value);
                         },
                       ),
                       const SizedBox(height: 16),
-                      ...List.generate(items.length, (index) {
-                        return CheckboxListTile(
-                          value: index < _completed.length ? _completed[index] : items[index].response,
-                          onChanged: (value) {
-                            setState(() {
-                              if (_completed.length != items.length) {
-                                _completed = items.map((item) => item.response).toList();
-                              }
-                              _completed[index] = value ?? false;
-                            });
-                          },
-                          title: Text(items[index].title),
-                        );
-                      }),
+                      AssetChecklistItemsList(items: items, completed: _effectiveCompleted(items), onChanged: (index, value) => _toggleCompleted(items, index, value)),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: _parameterController,
-                        decoration: InputDecoration(labelText: l10n.parameterLabel, hintText: l10n.parameterHint, border: const OutlineInputBorder()),
-                      ),
+                      AssetChecklistFieldGroup(parameterController: _parameterController, remarksController: _remarksController),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _captureImageFromCamera,
-                              icon: const Icon(Icons.camera_alt),
-                              label: Text(_imagePath.isNotEmpty ? l10n.retakePhoto : l10n.camera),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _pickImageFromGallery,
-                              icon: const Icon(Icons.image),
-                              label: Text(_imagePath.isNotEmpty ? l10n.changeImage : l10n.attachImage),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_imagePath.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => setState(() => _imagePath = ''),
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          label: Text(l10n.removeImage, style: const TextStyle(color: Colors.red)),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            foregroundColor: Colors.red,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(l10n.imageSelected, style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _remarksController,
-                        minLines: 3,
-                        maxLines: 5,
-                        decoration: InputDecoration(labelText: l10n.remarks, hintText: l10n.remarksHint, border: const OutlineInputBorder()),
+                      AssetChecklistImageSection(
+                        imagePath: _imagePath,
+                        onCameraPressed: _captureImageFromCamera,
+                        onGalleryPressed: _pickImageFromGallery,
+                        onRemovePressed: () => setState(() => _imagePath = ''),
                       ),
                     ],
                   ),
