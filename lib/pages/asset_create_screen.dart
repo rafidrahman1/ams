@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:asset_management_system/components/asset_create/asset_create_components.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/theme/colors.dart';
 import 'package:asset_management_system/theme/gap.dart';
 import 'package:asset_management_system/theme/padding.dart';
-import 'package:asset_management_system/theme/text_styles.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -99,11 +99,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
       firstDate: DateTime(_defaultDatePickerStartYear),
       lastDate: DateTime(_defaultDatePickerEndYear),
       builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(),
-          child: Center(
-            child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 600), child: child),
-          ),
+        return Center(
+          child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 600), child: child),
         );
       },
     );
@@ -133,7 +130,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
       return;
     }
 
-    if ((_selectedType ?? '').trim().isEmpty || (_selectedCamp ?? '').trim().isEmpty || (_selectedBlock ?? '').trim().isEmpty) {
+    if ((_selectedType ?? '').isEmpty || (_selectedCamp ?? '').isEmpty || (_selectedBlock ?? '').isEmpty) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.typeCampBlockRequired), duration: const Duration(seconds: 3)));
       return;
     }
@@ -193,33 +190,18 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   }
 
   Future<void> _pickFile({required bool isImage}) async {
-    // file_picker API changed in recent versions; use static pickFiles which is available
-    final result = await FilePicker.pickFiles(
-      type: isImage ? FileType.image : FileType.any,
-      // Cache bytes immediately so Sync can upload later even if the original path becomes inaccessible.
-      withData: true,
-    );
+    final result = await FilePicker.pickFiles(type: isImage ? FileType.image : FileType.any, withData: true);
     if (result != null && result.files.isNotEmpty) {
       final picked = result.files.first;
-      setState(() {
-        if (isImage) {
-          _selectedImagePath = picked.path;
-          _selectedImageName = picked.name;
-        } else {
-          _selectedAttachmentPath = picked.path;
-          _selectedAttachmentName = picked.name;
-        }
-      });
-
-      // If we needed to cache bytes, update the stored path after writing temp file.
-      // This runs after the UI state update so the user immediately sees the picked filename.
       final cachedPath = await _resolveCachedUploadPath(picked, prefix: isImage ? 'image' : 'asset_attachment');
       if (!mounted) return;
       setState(() {
         if (isImage) {
           _selectedImagePath = cachedPath;
+          _selectedImageName = picked.name;
         } else {
           _selectedAttachmentPath = cachedPath;
+          _selectedAttachmentName = picked.name;
         }
       });
     }
@@ -250,10 +232,9 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final campLocationsAsync = ref.watch(campLocationsProvider);
     final assetTypesAsync = ref.watch(assetTypesProvider);
 
-    // Only fetch blocks if a camp is selected
-    final blocksAsync = _selectedCamp != null && _selectedCamp!.isNotEmpty
-        ? ref.watch(blocksProvider(int.parse(_selectedCamp!)))
-        : const AsyncValue<List<IdNamePair>>.data(<IdNamePair>[]);
+    final blocksAsync = _selectedCamp == null || _selectedCamp!.isEmpty
+        ? const AsyncValue<List<IdNamePair>>.data(<IdNamePair>[])
+        : ref.watch(blocksProvider(int.parse(_selectedCamp!)));
 
     return Scaffold(
       backgroundColor: ThemeColor.backGroundColor,
@@ -268,411 +249,233 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blue, width: 0.5),
-                  ),
-                  child: Text('${l10n.assetCreateNotice}\n${l10n.assetCreateImportantNotice}', style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                AssetCreateNoticeBanner(noticeText: l10n.assetCreateNotice, importantNoticeText: l10n.assetCreateImportantNotice),
+                Gap.y4,
+                AssetCreateResponsiveRow(
+                  children: [
+                    AssetCreateFieldSection(
+                      label: l10n.assetIdLabel,
+                      child: AssetCreateInputField(controller: _astIdController, hintText: l10n.assetIdHint, readOnly: true),
+                    ),
+                    AssetCreateFieldSection(
+                      label: l10n.nameLabel,
+                      child: AssetCreateInputField(controller: _nameController, hintText: l10n.nameHint),
+                    ),
+                  ],
                 ),
                 Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(l10n.assetIdLabel, _buildTextField(controller: _astIdController, hint: l10n.assetIdHint, readOnly: true)),
-                  _buildFieldContainer(l10n.nameLabel, _buildTextField(controller: _nameController, hint: l10n.nameHint)),
-                ]),
-                Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(
-                    l10n.typeLabel,
-                    assetTypesAsync.when(
-                      data: (items) => _buildDropdown(
-                        value: items.any((i) => i.id.toString() == _selectedType) ? _selectedType : null,
-                        items: items
-                            .map(
-                              (i) => DropdownMenuItem(
-                                value: i.id.toString(),
-                                child: Text(i.name, style: ThemeTextStyles.values),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedType = v),
-                      ),
-                      loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => Text(l10n.errorLoadingTypes(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 12)),
-                    ),
-                  ),
-                  _buildFieldContainer(
-                    l10n.amountLabel,
-                    _buildTextField(
-                      controller: _amountController,
-                      hint: l10n.amountHint,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                ]),
-                Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(
-                    l10n.statusLabel,
-                    _buildDropdown(
-                      value: _selectedStatus,
-                      items: _statusOptions
-                          .map(
-                            (e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(_statusLabel(l10n, e), style: ThemeTextStyles.values),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _isSubmitting ? null : (v) => setState(() => _selectedStatus = v ?? 'ACTIVE'),
-                    ),
-                  ),
-                  _buildFieldContainer(
-                    l10n.campLabel,
-                    campLocationsAsync.when(
-                      data: (items) => _buildDropdown(
-                        value: items.any((i) => i.id.toString() == _selectedCamp) ? _selectedCamp : null,
-                        items: items
-                            .map(
-                              (i) => DropdownMenuItem(
-                                value: i.id.toString(),
-                                child: Text(i.name, style: ThemeTextStyles.values),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() {
-                          _selectedCamp = v;
-                          // Prevent stale block id from a previous camp selection.
-                          _selectedBlock = null;
-                        }),
-                      ),
-                      loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => Text(l10n.errorLoadingCamps),
-                    ),
-                  ),
-                ]),
-                Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(
-                    l10n.blockLabel,
-                    blocksAsync.when(
-                      data: (List<IdNamePair> items) {
-                        if (items.isEmpty) {
-                          return Text(l10n.noBlocksAvailableForCamp, style: const TextStyle(color: Colors.orange));
-                        }
-                        return _buildDropdown(
-                          value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
+                AssetCreateResponsiveRow(
+                  children: [
+                    AssetCreateFieldSection(
+                      label: l10n.typeLabel,
+                      child: assetTypesAsync.when(
+                        data: (items) => AssetCreateDropdownField(
+                          value: items.any((i) => i.id.toString() == _selectedType) ? _selectedType : null,
                           items: items
                               .map(
                                 (i) => DropdownMenuItem(
                                   value: i.id.toString(),
-                                  child: Text(i.name, style: ThemeTextStyles.values),
+                                  child: Text(i.name, style: Theme.of(context).textTheme.bodyMedium),
                                 ),
                               )
-                              .toList(),
-                          onChanged: (v) => setState(() => _selectedBlock = v),
-                        );
-                      },
-                      loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                      error: (err, stack) => Text(l10n.errorLoadingBlocks(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 11)),
+                              .toList(growable: false),
+                          onChanged: (v) => setState(() => _selectedType = v),
+                        ),
+                        loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                        error: (err, stack) => Text(l10n.errorLoadingTypes(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
                     ),
-                  ),
-                  _buildFieldContainer(l10n.addressLineLabel, _buildTextField(controller: _addressLineController, hint: l10n.addressLineHint)),
-                ]),
+                    AssetCreateFieldSection(
+                      label: l10n.amountLabel,
+                      child: AssetCreateInputField(
+                        controller: _amountController,
+                        hintText: l10n.amountHint,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      ),
+                    ),
+                  ],
+                ),
                 Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(
-                    l10n.purchaseDateLabel,
-                    _buildDatePicker(
-                      date: _purchaseDate,
-                      onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _purchaseDate = d)),
-                    ),
-                  ),
-                  _buildFieldContainer(
-                    l10n.manufactureDateLabel,
-                    _buildDatePicker(
-                      date: _manufactureDate,
-                      onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _manufactureDate = d)),
-                    ),
-                  ),
-                ]),
-                Gap.y4,
-                _buildResponsiveRow([
-                  _buildFieldContainer(
-                    l10n.warrantyEndLabel,
-                    _buildDatePicker(
-                      date: _warrantyEndDate,
-                      onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _warrantyEndDate = d)),
-                    ),
-                  ),
-                  const SizedBox.shrink(),
-                ]),
-
-                Gap.y8,
-                Text(l10n.itemsHeading, style: ThemeTextStyles.heading),
-                Gap.y2,
-                Table(
-                  columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(2), 2: IntrinsicColumnWidth()},
+                AssetCreateResponsiveRow(
                   children: [
-                    TableRow(
-                      children: [
-                        Padding(
-                          padding: ThemePadding.p2,
-                          child: Text(l10n.itemColumn, style: ThemeTextStyles.label),
-                        ),
-                        Padding(
-                          padding: ThemePadding.p2,
-                          child: Text(l10n.descriptionColumn, style: ThemeTextStyles.label),
-                        ),
-                        Padding(
-                          padding: ThemePadding.p2,
-                          child: Text(l10n.actionColumn, style: ThemeTextStyles.label),
-                        ),
-                      ],
+                    AssetCreateFieldSection(
+                      label: l10n.statusLabel,
+                      child: AssetCreateDropdownField(
+                        value: _selectedStatus,
+                        items: _statusOptions
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Text(_statusLabel(l10n, e), style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                            )
+                            .toList(growable: false),
+                        onChanged: _isSubmitting ? null : (v) => setState(() => _selectedStatus = v ?? 'ACTIVE'),
+                      ),
                     ),
-                    ..._items.asMap().entries.map((entry) {
-                      int idx = entry.key;
-                      var controllers = entry.value;
-                      return TableRow(
-                        children: [
-                          Padding(
-                            padding: ThemePadding.p1,
-                            child: _buildTextField(controller: controllers['item']!, hint: l10n.enterItemHint),
-                          ),
-                          Padding(
-                            padding: ThemePadding.p1,
-                            child: _buildTextField(controller: controllers['description']!, hint: l10n.enterDescriptionHint),
-                          ),
-                          Padding(
-                            padding: ThemePadding.p1,
-                            child: ElevatedButton(
-                              onPressed: () => _removeItem(idx),
-                              style: ElevatedButton.styleFrom(backgroundColor: ThemeColor.black, padding: EdgeInsets.zero),
-                              child: Text(l10n.deleteItem, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                            ),
-                          ),
-                        ],
-                      );
+                    AssetCreateFieldSection(
+                      label: l10n.campLabel,
+                      child: campLocationsAsync.when(
+                        data: (items) => AssetCreateDropdownField(
+                          value: items.any((i) => i.id.toString() == _selectedCamp) ? _selectedCamp : null,
+                          items: items
+                              .map(
+                                (i) => DropdownMenuItem(
+                                  value: i.id.toString(),
+                                  child: Text(i.name, style: Theme.of(context).textTheme.bodyMedium),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (v) => setState(() {
+                            _selectedCamp = v;
+                            _selectedBlock = null;
+                          }),
+                        ),
+                        loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                        error: (err, stack) => Text(l10n.errorLoadingCamps),
+                      ),
+                    ),
+                  ],
+                ),
+                Gap.y4,
+                AssetCreateResponsiveRow(
+                  children: [
+                    AssetCreateFieldSection(
+                      label: l10n.blockLabel,
+                      child: blocksAsync.when(
+                        data: (List<IdNamePair> items) {
+                          if (items.isEmpty) {
+                            return Text(l10n.noBlocksAvailableForCamp, style: const TextStyle(color: Colors.orange));
+                          }
+                          return AssetCreateDropdownField(
+                            value: items.any((i) => i.id.toString() == _selectedBlock) ? _selectedBlock : null,
+                            items: items
+                                .map(
+                                  (i) => DropdownMenuItem(
+                                    value: i.id.toString(),
+                                    child: Text(i.name, style: Theme.of(context).textTheme.bodyMedium),
+                                  ),
+                                )
+                                .toList(growable: false),
+                            onChanged: (v) => setState(() => _selectedBlock = v),
+                          );
+                        },
+                        loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                        error: (err, stack) => Text(l10n.errorLoadingBlocks(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 11)),
+                      ),
+                    ),
+                    AssetCreateFieldSection(
+                      label: l10n.addressLineLabel,
+                      child: AssetCreateInputField(controller: _addressLineController, hintText: l10n.addressLineHint),
+                    ),
+                  ],
+                ),
+                Gap.y4,
+                AssetCreateResponsiveRow(
+                  children: [
+                    AssetCreateFieldSection(
+                      label: l10n.purchaseDateLabel,
+                      child: AssetCreateDateField(
+                        date: _purchaseDate,
+                        placeholderText: 'Select a date',
+                        onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _purchaseDate = d)),
+                      ),
+                    ),
+                    AssetCreateFieldSection(
+                      label: l10n.manufactureDateLabel,
+                      child: AssetCreateDateField(
+                        date: _manufactureDate,
+                        placeholderText: 'Select a date',
+                        onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _manufactureDate = d)),
+                      ),
+                    ),
+                  ],
+                ),
+                Gap.y4,
+                AssetCreateResponsiveRow(
+                  children: [
+                    AssetCreateFieldSection(
+                      label: l10n.warrantyEndLabel,
+                      child: AssetCreateDateField(
+                        date: _warrantyEndDate,
+                        placeholderText: 'Select a date',
+                        onTap: () => _selectDate(context, onDateSelected: (d) => setState(() => _warrantyEndDate = d)),
+                      ),
+                    ),
+                    const SizedBox.shrink(),
+                  ],
+                ),
+                Gap.y8,
+                AssetCreateItemsSection(
+                  items: _items,
+                  itemsHeading: l10n.itemsHeading,
+                  itemColumnLabel: l10n.itemColumn,
+                  descriptionColumnLabel: l10n.descriptionColumn,
+                  actionColumnLabel: l10n.actionColumn,
+                  enterItemHint: l10n.enterItemHint,
+                  enterDescriptionHint: l10n.enterDescriptionHint,
+                  deleteItemLabel: l10n.deleteItem,
+                  addItemLabel: l10n.addItem,
+                  onAddItem: _addItem,
+                  onRemoveItem: _removeItem,
+                ),
+                Gap.y8,
+                AssetCreateFieldSection(
+                  label: l10n.assetPhotoLabel,
+                  child: AssetCreateFilePickerField(
+                    isImage: true,
+                    isSubmitting: _isSubmitting,
+                    selectedName: _selectedImageName,
+                    chooseLabel: l10n.chooseImage,
+                    takePhotoLabel: l10n.takePhoto,
+                    removeLabel: l10n.remove,
+                    noneSelectedLabel: l10n.noImageChosen,
+                    onChoosePressed: () => _pickFile(isImage: true),
+                    onTakePhotoPressed: _captureImageFromCamera,
+                    onRemovePressed: () => setState(() {
+                      _selectedImagePath = null;
+                      _selectedImageName = null;
                     }),
-                  ],
-                ),
-                Gap.y4,
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ElevatedButton(
-                    onPressed: _addItem,
-                    style: ElevatedButton.styleFrom(backgroundColor: ThemeColor.black),
-                    child: Text(l10n.addItem, style: const TextStyle(color: Colors.white)),
                   ),
                 ),
-
-                Gap.y8,
-                _buildFieldContainer(l10n.assetPhotoLabel, _buildFilePicker(isImage: true)),
                 Gap.y4,
-                _buildFieldContainer(l10n.assetAttachmentLabel, _buildFilePicker(isImage: false)),
+                AssetCreateFieldSection(
+                  label: l10n.assetAttachmentLabel,
+                  child: AssetCreateFilePickerField(
+                    isImage: false,
+                    isSubmitting: _isSubmitting,
+                    selectedName: _selectedAttachmentName,
+                    chooseLabel: l10n.chooseAttachment,
+                    takePhotoLabel: l10n.takePhoto,
+                    removeLabel: l10n.remove,
+                    noneSelectedLabel: l10n.noAttachmentChosen,
+                    onChoosePressed: () => _pickFile(isImage: false),
+                    onRemovePressed: () => setState(() {
+                      _selectedAttachmentPath = null;
+                      _selectedAttachmentName = null;
+                    }),
+                  ),
+                ),
                 Gap.y4,
-                _buildFieldContainer(l10n.assetDetailsLabel, _buildTextField(controller: _assetDetailsController, hint: l10n.assetDetailsHint, maxLines: 3)),
-
+                AssetCreateFieldSection(
+                  label: l10n.assetDetailsLabel,
+                  child: AssetCreateInputField(controller: _assetDetailsController, hintText: l10n.assetDetailsHint, maxLines: 3),
+                ),
                 Gap.y8,
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.start,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitForm,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: ThemePadding.px6),
-                      child: Text(_isSubmitting ? l10n.saving : l10n.createAsset, style: const TextStyle(color: Colors.white)),
-                    ),
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: ThemePadding.px6),
-                      child: Text(l10n.goBack, style: const TextStyle(color: Colors.white)),
-                    ),
-                  ],
+                AssetCreateActionButtons(
+                  isSubmitting: _isSubmitting,
+                  createLabel: l10n.createAsset,
+                  savingLabel: l10n.saving,
+                  goBackLabel: l10n.goBack,
+                  onCreatePressed: _submitForm,
+                  onGoBackPressed: () => Navigator.of(context).pop(false),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildResponsiveRow(List<Widget> children) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 600) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children
-                .map(
-                  (c) => Expanded(
-                    child: Padding(padding: ThemePadding.px2, child: c),
-                  ),
-                )
-                .toList(),
-          );
-        } else {
-          return Column(
-            children: children.map((c) => Padding(padding: ThemePadding.py1, child: c)).toList(),
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildFieldContainer(String label, Widget child) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: ThemeTextStyles.label),
-        Gap.y2,
-        child,
-      ],
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-    bool readOnly = false,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      readOnly: readOnly,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: ThemeTextStyles.hint,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({required String? value, required List<DropdownMenuItem<String>> items, required Function(String?)? onChanged}) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      items: items,
-      onChanged: onChanged,
-      decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-    );
-  }
-
-  Widget _buildDatePicker({required DateTime? date, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(date == null ? 'Select a date' : '${date.day}/${date.month}/${date.year}', style: ThemeTextStyles.values),
-            const Icon(Icons.calendar_today, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilePicker({required bool isImage}) {
-    final l10n = AppLocalizations.of(context)!;
-    final isSelected = isImage ? _selectedImageName != null : _selectedAttachmentName != null;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 520;
-
-        final chooseButton = ElevatedButton(
-          onPressed: _isSubmitting ? null : () => _pickFile(isImage: isImage),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[200],
-            foregroundColor: Colors.black,
-            elevation: 0,
-            side: const BorderSide(color: Colors.grey),
-          ),
-          child: Text(isImage ? l10n.chooseImage : l10n.chooseAttachment, style: const TextStyle(fontSize: 12)),
-        );
-
-        final cameraButton = Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: ElevatedButton.icon(
-            onPressed: _isSubmitting ? null : _captureImageFromCamera,
-            icon: const Icon(Icons.camera_alt, size: 16),
-            label: Text(l10n.takePhoto, style: const TextStyle(fontSize: 12)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[200],
-              foregroundColor: Colors.black,
-              elevation: 0,
-              side: const BorderSide(color: Colors.blue),
-            ),
-          ),
-        );
-
-        final removeButton = ElevatedButton(
-          onPressed: _isSubmitting
-              ? null
-              : () => setState(() {
-                  if (isImage) {
-                    _selectedImagePath = null;
-                    _selectedImageName = null;
-                  } else {
-                    _selectedAttachmentPath = null;
-                    _selectedAttachmentName = null;
-                  }
-                }),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red[300],
-            foregroundColor: Colors.white,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          child: Text(l10n.remove, style: const TextStyle(fontSize: 11)),
-        );
-
-        final fileName = Text(
-          (isImage ? _selectedImageName : _selectedAttachmentName) ?? (isImage ? l10n.noImageChosen : l10n.noAttachmentChosen),
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-          overflow: TextOverflow.ellipsis,
-        );
-
-        if (!isNarrow) {
-          return Row(
-            children: [
-              chooseButton,
-              if (isImage) cameraButton,
-              Gap.x2,
-              Expanded(child: fileName),
-              if (isSelected) removeButton,
-            ],
-          );
-        }
-
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            chooseButton,
-            if (isImage) cameraButton,
-            SizedBox(width: constraints.maxWidth, child: fileName),
-            if (isSelected) removeButton,
-          ],
-        );
-      },
     );
   }
 

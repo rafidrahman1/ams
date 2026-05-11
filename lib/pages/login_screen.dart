@@ -134,11 +134,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.admin_panel_settings, size: 48, color: ThemeColor.red),
+                                Icon(Icons.admin_panel_settings, size: 48, color: ThemeColor.primary),
                                 Gap.x2,
                                 Text(
                                   l10n.adminLogin,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700, color: ThemeColor.red),
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700, color: ThemeColor.primary),
                                 ),
                               ],
                             ),

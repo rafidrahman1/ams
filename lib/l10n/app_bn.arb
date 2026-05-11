@@ -94,7 +94,7 @@
   },
   "assetCreateTitle": "অ্যাসেট তৈরি",
   "assetCreateNotice": "* আবশ্যক: অ্যাসেট আইডি, নাম, ঠিকানা, ধরন, ক্যাম্প, ব্লক",
-  "assetCreateImportantNotice": "• গুরুত্বপূর্ণ: উপলভ্য ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন",
+  "assetCreateImportantNotice": "• গুরুত্বপূর্ণ: ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন",
   "assetIdLabel": "অ্যাসেট আইডি *",
   "assetIdHint": "QR/NFC স্ক্যান করুন অথবা আইডি লিখুন",
   "nameLabel": "নাম *",

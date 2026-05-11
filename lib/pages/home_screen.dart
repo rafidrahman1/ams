@@ -289,20 +289,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: Column(
         children: [
-          HomeActionButtonsRow(
-            primaryLabel: widget.isAdmin ? l10n.registerDevice : l10n.scan,
-            primaryIcon: widget.isAdmin ? Icons.app_registration : Icons.document_scanner,
-            secondaryLabel: l10n.sync,
-            isSyncing: isBusy,
-            onPrimaryPressed: widget.isAdmin
-                ? () async {
-                    await HomeScreenActions.openRegisterDevice(context: context);
-                    if (mounted) {
-                      ref.invalidate(unsyncedRegisteredDevicesProvider);
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: HomeActionButtonsRow(
+              primaryLabel: widget.isAdmin ? l10n.registerDevice : l10n.scan,
+              primaryIcon: widget.isAdmin ? Icons.app_registration : Icons.document_scanner,
+              secondaryLabel: l10n.sync,
+              isSyncing: isBusy,
+              onPrimaryPressed: widget.isAdmin
+                  ? () async {
+                      await HomeScreenActions.openRegisterDevice(context: context);
+                      if (mounted) {
+                        ref.invalidate(unsyncedRegisteredDevicesProvider);
+                      }
                     }
-                  }
-                : () => HomeScreenActions.showScanOptions(context: context, ref: ref),
-            onSecondaryPressed: widget.isAdmin ? () => _syncRegisteredDevices(context) : () => _syncChecklistToggles(context),
+                  : () => HomeScreenActions.showScanOptions(context: context, ref: ref),
+              onSecondaryPressed: widget.isAdmin ? () => _syncRegisteredDevices(context) : () => _syncChecklistToggles(context),
+            ),
           ),
           if (!widget.isAdmin) ...[
             const SizedBox(height: 16),

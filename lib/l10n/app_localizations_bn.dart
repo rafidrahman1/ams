@@ -205,7 +205,7 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get assetCreateImportantNotice =>
-      '• গুরুত্বপূর্ণ: উপলভ্য ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন';
+      '• গুরুত্বপূর্ণ: ব্লক লোড করতে প্রথমে ক্যাম্প নির্বাচন করুন';
 
   @override
   String get assetIdLabel => 'অ্যাসেট আইডি *';
