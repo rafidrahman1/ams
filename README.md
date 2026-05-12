@@ -92,21 +92,27 @@ Use this flow to quickly understand how a typical user interacts with AMS:
 
 ### Login, Dashboard, and Navigation
 
-![Login Screen](screenshots/Screenshot_20260512_110700.jpg)
-![Home Dashboard](screenshots/Screenshot_20260512_111541.jpg)
-![Menu / Navigation](screenshots/Screenshot_20260512_111602.jpg)
+<p>
+  <img src="screenshots/Screenshot_20260512_110700.jpg" alt="Login Screen" width="32%" />
+  <img src="screenshots/Screenshot_20260512_111541.jpg" alt="Home Dashboard" width="32%" />
+  <img src="screenshots/Screenshot_20260512_111602.jpg" alt="Menu / Navigation" width="32%" />
+</p>
 
 ### Asset and Checklist Workflow
 
-![Asset Details](screenshots/Screenshot_20260512_111718.jpg)
-![Checklist View](screenshots/Screenshot_20260512_111836.jpg)
-![Checklist Progress](screenshots/Screenshot_20260512_112058.jpg)
+<p>
+  <img src="screenshots/Screenshot_20260512_111718.jpg" alt="Asset Details" width="32%" />
+  <img src="screenshots/Screenshot_20260512_111836.jpg" alt="Checklist View" width="32%" />
+  <img src="screenshots/Screenshot_20260512_112058.jpg" alt="Checklist Progress" width="32%" />
+</p>
 
 ### Additional Screens
 
-![Asset Lookup / Search](screenshots/Screenshot_20260512_112109.jpg)
-![Checklist Item Entry](screenshots/Screenshot_20260512_112119.jpg)
-![Checklist Completion / Summary](screenshots/Screenshot_20260512_112129.jpg)
+<p>
+  <img src="screenshots/Screenshot_20260512_112109.jpg" alt="Asset Lookup / Search" width="32%" />
+  <img src="screenshots/Screenshot_20260512_112119.jpg" alt="Checklist Item Entry" width="32%" />
+  <img src="screenshots/Screenshot_20260512_112129.jpg" alt="Checklist Completion / Summary" width="32%" />
+</p>
 
 ## License
 
