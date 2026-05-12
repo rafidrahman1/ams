@@ -301,8 +301,7 @@ class AssetCreateItemsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(itemsHeading, style: ThemeTextStyles.heading),
-        Gap.y2,
+        // Text(itemsHeading, style: ThemeTextStyles.heading),
         Table(
           columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(2), 2: IntrinsicColumnWidth()},
           children: [

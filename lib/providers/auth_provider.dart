@@ -32,6 +32,12 @@ class AuthNotifier extends Notifier<AuthStatus> {
 
   void _startAutoLogoutCheck() {
     _autoLogoutTimer?.cancel();
+    _autoLogoutTimer = null;
+
+    if (state != AuthStatus.authenticatedVolunteer) {
+      return;
+    }
+
     unawaited(_performAutoLogoutCheck());
     _autoLogoutTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       unawaited(_performAutoLogoutCheck());
@@ -39,6 +45,10 @@ class AuthNotifier extends Notifier<AuthStatus> {
   }
 
   Future<void> _performAutoLogoutCheck() async {
+    if (state != AuthStatus.authenticatedVolunteer) {
+      return;
+    }
+
     final now = DateTime.now();
     if (now.hour == 23 && now.minute == 59) {
       await ref.read(localDatabaseProvider).clearAll();
