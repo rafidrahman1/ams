@@ -8,6 +8,7 @@ import '../pages/login_screen.dart';
 import '../pages/splash_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/qr_scanner_provider.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 
@@ -16,6 +17,9 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize scanner service listener
+    ref.watch(scannerServiceProvider);
+
     final auth = ref.watch(authProvider);
     final locale = ref.watch(localeProvider);
 
