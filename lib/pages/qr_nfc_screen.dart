@@ -7,7 +7,6 @@ import '../components/asset_card_builder.dart';
 import '../components/square_action_button.dart';
 import '../core/utils/ast_id_parser.dart';
 import '../pages/asset_checklist_screen.dart';
-import '../providers/nfc_scanner_provider.dart';
 import '../providers/qr_scanner_provider.dart';
 
 class QrNfcScreen extends ConsumerWidget {
@@ -40,8 +39,9 @@ class QrNfcScreen extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const SizedBox(width: 16),
               SquareActionButton(
                 label: l10n.qrCode,
                 icon: Icons.qr_code,
@@ -49,13 +49,7 @@ class QrNfcScreen extends ConsumerWidget {
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),
-              SquareActionButton(
-                label: l10n.nfc,
-                icon: Icons.nfc,
-                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch),
-                backgroundColor: ThemeColor.primary,
-                foregroundColor: ThemeColor.backGroundColor,
-              ),
+              const SizedBox(width: 16),
             ],
           ),
         ],

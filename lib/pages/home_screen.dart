@@ -1,10 +1,8 @@
 import 'package:asset_management_system/components/language_toggle.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
-import 'package:asset_management_system/core/utils/nfc_parser.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:nfc_manager/nfc_manager.dart';
 
 import '../components/home/home_action_buttons_row.dart';
 import '../components/home/home_assets_filter_card.dart';
@@ -38,32 +36,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _assetListScrollController.addListener(_onAssetListScroll);
-    _startGlobalNfcSession();
   }
 
   @override
   void dispose() {
     _assetListScrollController.removeListener(_onAssetListScroll);
     _assetListScrollController.dispose();
-    try {
-      NfcManager.instance.stopSession();
-    } catch (_) {}
     super.dispose();
-  }
-
-  Future<void> _startGlobalNfcSession() async {
-    final isAvailable = await NfcManager.instance.isAvailable();
-    if (!isAvailable) return;
-
-    NfcManager.instance.startSession(
-      onDiscovered: (tag) async {
-        final scannedValue = await NfcParser.extractTagValue(tag);
-        if (scannedValue != null && mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          HomeScreenActions.openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, mismatchMessage: l10n.nfcTagMismatch);
-        }
-      },
-    );
   }
 
   void _onAssetListScroll() {

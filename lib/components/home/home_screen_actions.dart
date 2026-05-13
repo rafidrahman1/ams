@@ -7,7 +7,6 @@ import '../../core/utils/ast_id_parser.dart';
 import '../../pages/asset_checklist_screen.dart';
 import '../../pages/register_device_screen.dart';
 import '../../providers/asset_provider.dart';
-import '../../providers/nfc_scanner_provider.dart';
 import '../../providers/qr_scanner_provider.dart';
 
 class HomeScreenActions {
@@ -19,31 +18,9 @@ class HomeScreenActions {
 
   static Future<void> showScanOptions({required BuildContext context, required WidgetRef ref}) async {
     final l10n = AppLocalizations.of(context)!;
-    final selectedOption = await showModalBottomSheet<String>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(leading: const Icon(Icons.qr_code), title: Text(l10n.qrCode), onTap: () => Navigator.of(sheetContext).pop('qr')),
-              ListTile(leading: const Icon(Icons.nfc), title: Text(l10n.nfc), onTap: () => Navigator.of(sheetContext).pop('nfc')),
-            ],
-          ),
-        );
-      },
-    );
 
-    if (!context.mounted || selectedOption == null) {
-      return;
-    }
-
-    if (selectedOption == 'qr') {
-      await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch);
-      return;
-    }
-
-    await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch);
+    // Directly open QR scanner instead of showing modal
+    await _openChecklistFromScan(context: context, ref: ref, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch);
   }
 
   static Future<void> openAssetChecklist({required BuildContext context, required WidgetRef ref, required String scannedValue, required String mismatchMessage}) async {

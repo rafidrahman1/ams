@@ -71,11 +71,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _loginWithNfc(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.nfcLoginNotConnected)));
-  }
-
   void _showEmailLoginForm() {
     setState(() {
       _showEmailForm = true;
@@ -160,15 +155,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         Gap.x4,
-                        Expanded(
-                          child: SquareActionButton(
-                            label: l10n.loginWithNfc,
-                            icon: Icons.contactless,
-                            onPressed: isLoading || isSubmitting ? null : () => _loginWithNfc(context),
-                            backgroundColor: ThemeColor.primary.withValues(alpha: 0.35),
-                            foregroundColor: ThemeColor.black,
-                          ),
-                        ),
                       ],
                     ),
                     if (_showEmailForm) ...[

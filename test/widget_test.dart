@@ -15,7 +15,6 @@ import 'package:asset_management_system/pages/qr_nfc_screen.dart';
 import 'package:asset_management_system/pages/splash_screen.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:asset_management_system/providers/auth_provider.dart';
-import 'package:asset_management_system/providers/nfc_scanner_provider.dart';
 import 'package:asset_management_system/providers/qr_scanner_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -398,40 +397,7 @@ void main() {
     await tester.tap(find.text('Scan'));
     await tester.pumpAndSettle();
 
-    expect(find.text('QR Code'), findsOneWidget);
-    expect(find.text('NFC'), findsOneWidget);
-
     await tester.tap(find.text('QR Code'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AssetChecklistScreen), findsOneWidget);
-    expect(find.text('Checklist for Asset 2'), findsOneWidget);
-    expect(find.text('Battery Condition'), findsOneWidget);
-  });
-
-  testWidgets('home scan opens checklist for matching nfc_ast_id', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          nfcScannerLauncherProvider.overrideWithValue((context) async => '{"astId":"AST-000002"}'),
-          myAssetsProvider.overrideWith(
-            (ref) async => const [
-              VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001'),
-              VolunteerAsset(name: 'Asset 2', details: 'Description of Asset 2', astId: 'AST-000002'),
-            ],
-          ),
-          assetChecklistProvider.overrideWith(
-            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 6, title: 'Battery Condition', response: false)]),
-          ),
-        ],
-        child: _localizedApp(const HomeScreen()),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Scan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('NFC'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AssetChecklistScreen), findsOneWidget);
@@ -586,52 +552,6 @@ void main() {
     expect(find.byType(QrNfcScreen), findsOneWidget);
     expect(find.textContaining('does not match'), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
-  });
-
-  testWidgets('matching nfc scan opens checklist from qr_nfc_screen', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          nfcScannerLauncherProvider.overrideWithValue((context) async => 'AST-000001'),
-          assetChecklistProvider.overrideWith(
-            (ref, astId) async => const AssetChecklist(items: [AssetChecklistItem(featureId: 1, title: 'Battery Condition', response: false)]),
-          ),
-        ],
-        child: _localizedApp(
-          const QrNfcScreen(
-            asset: AssetCardData(title: 'Asset 1', description: 'Description of Asset 1', astId: 'AST-000001'),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('NFC'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AssetChecklistScreen), findsOneWidget);
-    expect(find.text('Checklist for Asset 1'), findsOneWidget);
-  });
-
-  testWidgets('mismatched nfc scan keeps user on qr_nfc_screen', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [nfcScannerLauncherProvider.overrideWithValue((context) async => 'WRONG-000999')],
-        child: _localizedApp(
-          const QrNfcScreen(
-            asset: AssetCardData(title: 'Asset 1', description: 'Description of Asset 1', astId: 'AST-000001'),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('NFC'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(QrNfcScreen), findsOneWidget);
-    expect(find.byType(AssetChecklistScreen), findsNothing);
-    expect(find.textContaining('does not match'), findsOneWidget);
   });
 
   test('asset repository falls back to cached assets and checklist data', () async {

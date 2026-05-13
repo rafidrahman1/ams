@@ -61,13 +61,10 @@ class AppLocalizationsBn extends AppLocalizations {
   String get checkList => 'চেকলিস্ট';
 
   @override
-  String get qrNfcScannerTitle => 'QR/NFC স্ক্যানার';
+  String get qrNfcScannerTitle => 'QR স্ক্যানার';
 
   @override
   String get qrCode => 'QR কোড';
-
-  @override
-  String get nfc => 'NFC';
 
   @override
   String checklistForAsset(Object assetTitle) {
@@ -102,16 +99,10 @@ class AppLocalizationsBn extends AppLocalizations {
   String get invalidEmailOrPassword => 'ইমেইল বা পাসওয়ার্ড ভুল';
 
   @override
-  String get nfcLoginNotConnected => 'NFC লগইন এখনও সংযুক্ত করা হয়নি';
-
-  @override
   String get loading => 'লোড হচ্ছে...';
 
   @override
-  String get loginWithEmail => 'ইমেইল দিয়ে\nলগইন';
-
-  @override
-  String get loginWithNfc => 'NFC দিয়ে\nলগইন';
+  String get loginWithEmail => 'ইমেইল দিয়ে\nলগইন';
 
   @override
   String get email => 'ইমেইল';
@@ -133,9 +124,6 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get qrScanMismatch => 'QR কোড অ্যাসেট লেবেলের সাথে মেলে না';
-
-  @override
-  String get nfcTagMismatch => 'NFC ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না';
 
   @override
   String get allChecked => 'সবগুলো সম্পন্ন';
@@ -211,7 +199,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get assetIdLabel => 'অ্যাসেট আইডি *';
 
   @override
-  String get assetIdHint => 'QR/NFC স্ক্যান করুন অথবা আইডি লিখুন';
+  String get assetIdHint => 'QR কোড স্ক্যান করুন অথবা আইডি লিখুন';
 
   @override
   String get nameLabel => 'নাম *';
@@ -320,7 +308,7 @@ class AppLocalizationsBn extends AppLocalizations {
       'অ্যাসেট লোকালভাবে সংরক্ষিত হয়েছে। হোম স্ক্রিন থেকে সিঙ্ক করুন।';
 
   @override
-  String get assetIdRequired => 'অ্যাসেট আইডি আবশ্যক (QR/NFC স্ক্যান করুন)';
+  String get assetIdRequired => 'অ্যাসেট আইডি আবশ্যক (QR কোড স্ক্যান করুন)';
 
   @override
   String get nameAndAddressRequired => 'নাম এবং ঠিকানা আবশ্যক';

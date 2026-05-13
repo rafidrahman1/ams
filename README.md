@@ -5,13 +5,13 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-A Flutter-based mobile app for tracking physical assets, verifying them on-site, and completing maintenance/inspection checklists with fast QR/NFC identification.
+A Flutter-based mobile app for tracking physical assets, verifying them on-site, and completing maintenance/inspection checklists with fast QR identification.
 
 ## What This Project Does
 
 The Asset Management System helps field teams and operations staff manage assets from one app:
 
-- Scan an asset using **QR** or **NFC**.
+- Scan an asset using **QR** code.
 - Open the asset profile with relevant details and current status.
 - Run and submit checklist tasks for inspection/maintenance.
 - Continue working with cached/local data when connectivity is limited.
@@ -19,7 +19,7 @@ The Asset Management System helps field teams and operations staff manage assets
 
 ## Core Features
 
-- **Multi-modal asset lookup** with `mobile_scanner` and `nfc_manager`.
+- **QR-based asset lookup** with `mobile_scanner`.
 - **Asset profiles and status tracking** for day-to-day operations.
 - **Checklist-driven workflows** for verification and maintenance.
 - **Offline-friendly behavior** using `sqflite` local storage and caching.
@@ -32,7 +32,7 @@ The Asset Management System helps field teams and operations staff manage assets
 - **Framework**: [Flutter](https://flutter.dev)
 - **State management**: [Riverpod](https://riverpod.dev)
 - **Database/cache**: [sqflite](https://pub.dev/packages/sqflite)
-- **Scanning**: [mobile_scanner](https://pub.dev/packages/mobile_scanner), [nfc_manager](https://pub.dev/packages/nfc_manager)
+- **Scanning**: [mobile_scanner](https://pub.dev/packages/mobile_scanner)
 - **Secure/local storage**: [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage), [shared_preferences](https://pub.dev/packages/shared_preferences)
 - **Networking**: [http](https://pub.dev/packages/http)
 
@@ -83,7 +83,7 @@ lib/
 Use this flow to quickly understand how a typical user interacts with AMS:
 
 1. **Sign in** and open the dashboard.
-2. **Identify an asset** by scanning QR or NFC.
+2. **Identify an asset** by scanning QR code.
 3. **Review asset details** including status and context.
 4. **Start checklist tasks** and complete required checks.
 5. **Submit updates** and continue with the next assigned asset.
