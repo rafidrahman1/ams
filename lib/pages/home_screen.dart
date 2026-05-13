@@ -4,6 +4,9 @@ import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../pages/asset_create_screen.dart';
+import '../providers/qr_scanner_provider.dart';
+import '../core/utils/ast_id_parser.dart';
 import '../components/home/home_action_buttons_row.dart';
 import '../components/home/home_assets_filter_card.dart';
 import '../components/home/home_assets_list_section.dart';
@@ -277,8 +280,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               isSyncing: isBusy,
               onPrimaryPressed: widget.isAdmin
                   ? () async {
-                      await HomeScreenActions.openRegisterDevice(context: context);
+                      // For admin: directly open the hardware scanner and start the register flow
+                      final scanLauncher = ref.read(qrScannerLauncherProvider);
+                      final scannedValue = await scanLauncher(context);
+                      if (!mounted || scannedValue == null) return;
+
+                      final normalizedScannedAstId = normalizeAstId(scannedValue);
+                      if (normalizedScannedAstId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidScanData)));
+                        return;
+                      }
+
+                      // Open asset creation screen with the scanned ID
+                      await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
+
                       if (mounted) {
+                        // Refresh unsynced devices list in case a device was registered
                         ref.invalidate(unsyncedRegisteredDevicesProvider);
                       }
                     }

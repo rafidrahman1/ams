@@ -13,9 +13,13 @@ import io.flutter.plugin.common.MethodChannel
 @Suppress("unused")
 class MainActivity : FlutterActivity() {
     private val channelName = "com.catchbangladesh.ams/scanner"
-    private val triggerAction = "com.java.scan.open"
 
-    private val scanActions = setOf("orgaiot.intent.action.scan", "com.kte.scan.result")
+    // Actions that emit barcode data
+    private val scanActions = setOf(
+        "orgaiot.intent.action.scan", 
+        "com.kte.scan.result",
+        "com.android.scanner.service_settings"
+    )
     private val scanDataKey = "data"
 
     private var scannerReceiver: BroadcastReceiver? = null
@@ -29,11 +33,16 @@ class MainActivity : FlutterActivity() {
 
         // 2. Set up the MethodCallHandler
         methodChannel?.setMethodCallHandler { call: MethodCall, result: MethodChannel.Result ->
-            if (call.method == "triggerHardwareScan") {
-                sendBroadcast(Intent(triggerAction))
-                result.success(null)
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "startHardwareScan" -> {
+                    sendBroadcast(Intent("com.java.scan.open"))
+                    result.success(true)
+                }
+                "stopHardwareScan" -> {
+                    sendBroadcast(Intent("com.java.scan.close"))
+                    result.success(true)
+                }
+                else -> result.notImplemented()
             }
         }
 
@@ -59,8 +68,6 @@ class MainActivity : FlutterActivity() {
         } else {
             registerReceiver(scannerReceiver, intentFilter)
         }
-        
-        Log.d(tag, "Scanner service registered with filter: ${scanActions.joinToString()}")
     }
 
     override fun onDestroy() {
@@ -69,5 +76,4 @@ class MainActivity : FlutterActivity() {
         methodChannel = null
         super.onDestroy()
     }
-
 }

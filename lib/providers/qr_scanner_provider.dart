@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 1. The Notifier that the UI will "watch"
+// Scanner result state manager
 class ScannerResultNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -12,7 +12,7 @@ class ScannerResultNotifier extends Notifier<String?> {
 
 final scannerResultProvider = NotifierProvider<ScannerResultNotifier, String?>(ScannerResultNotifier.new);
 
-// 2. The Service that listens to the Native Bridge
+// Scanner service that bridges Flutter and native
 final scannerServiceProvider = Provider((ref) {
   return ScannerService(ref);
 });
@@ -29,31 +29,33 @@ class ScannerService {
     _channel.setMethodCallHandler((MethodCall call) async {
       if (call.method == "onScanReceived") {
         final String barcode = call.arguments;
-        // Update the state so the UI reacts
         _ref.read(scannerResultProvider.notifier).update(barcode);
       }
     });
   }
 
-  Future<void> triggerHardwareScan() async {
+  Future<void> wakeUpScanner() async {
     try {
-      await _channel.invokeMethod('triggerHardwareScan');
-    } catch (e) {
-      debugPrint('Error triggering hardware scan: $e');
+      await _channel.invokeMethod('startHardwareScan');
+    } on PlatformException {
+      // Scanner wake-up failed silently
+    }
+  }
+
+  Future<void> stopScanner() async {
+    try {
+      await _channel.invokeMethod('stopHardwareScan');
+    } on PlatformException {
+      // Scanner stop failed silently
     }
   }
 }
 
-// Updated launcher to use the hardware scanner
+// QR scanner dialog launcher
 final qrScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
   return (context) async {
-    // Ensure the service is initialized
     ref.read(scannerServiceProvider);
-
-    // Reset any previous result
     ref.read(scannerResultProvider.notifier).update(null);
-
-    // Show a dialog that waits for a scan
     return showDialog<String>(context: context, barrierDismissible: true, builder: (context) => const _HardwareScannerDialog());
   };
 });
@@ -66,18 +68,25 @@ class _HardwareScannerDialog extends ConsumerStatefulWidget {
 }
 
 class _HardwareScannerDialogState extends ConsumerState<_HardwareScannerDialog> {
+  late ScannerService _scannerService;
+
   @override
   void initState() {
     super.initState();
-    // Automatically trigger the laser when dialog opens
+    _scannerService = ref.read(scannerServiceProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(scannerServiceProvider).triggerHardwareScan();
+      _scannerService.wakeUpScanner();
     });
   }
 
   @override
+  void dispose() {
+    _scannerService.stopScanner();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Listen for scan results and pop the dialog when a barcode is received
     ref.listen<String?>(scannerResultProvider, (previous, next) {
       if (next != null) {
         Navigator.of(context).pop(next);
