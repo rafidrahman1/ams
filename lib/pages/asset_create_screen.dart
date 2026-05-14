@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:asset_management_system/components/asset_create/asset_create_components.dart';
+import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/theme/colors.dart';
 import 'package:asset_management_system/theme/gap.dart';
@@ -179,7 +180,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPrefix(error.toString()))));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPrefix(offlineAwareErrorMessage(l10n.noInternetConnection, error)))));
     } finally {
       if (mounted) {
         setState(() {
@@ -221,7 +222,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     } catch (e) {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(e.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(offlineAwareErrorMessage(l10n.noInternetConnection, e)))));
       }
     }
   }
@@ -282,7 +283,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                           onChanged: (v) => setState(() => _selectedType = v),
                         ),
                         loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                        error: (err, stack) => Text(l10n.errorLoadingTypes(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        error: (err, stack) =>
+                            Text(l10n.errorLoadingTypes(offlineAwareErrorMessage(l10n.noInternetConnection, err)), style: const TextStyle(color: Colors.red, fontSize: 12)),
                       ),
                     ),
                     AssetCreateFieldSection(
@@ -333,7 +335,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                           }),
                         ),
                         loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                        error: (err, stack) => Text(l10n.errorLoadingCamps),
+                        error: (err, stack) => Text(offlineAwareErrorMessage(l10n.noInternetConnection, err, fallback: l10n.errorLoadingCamps)),
                       ),
                     ),
                   ],
@@ -362,7 +364,8 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                           );
                         },
                         loading: () => const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-                        error: (err, stack) => Text(l10n.errorLoadingBlocks(err.toString()), style: const TextStyle(color: Colors.red, fontSize: 11)),
+                        error: (err, stack) =>
+                            Text(l10n.errorLoadingBlocks(offlineAwareErrorMessage(l10n.noInternetConnection, err)), style: const TextStyle(color: Colors.red, fontSize: 11)),
                       ),
                     ),
                     AssetCreateFieldSection(

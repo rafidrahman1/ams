@@ -98,10 +98,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidEmailOrPassword => 'Invalid email or password';
 
   @override
+  String get noInternetConnection =>
+      'No internet connection. Please check your network and try again.';
+
+  @override
   String get loading => 'Loading...';
 
   @override
-  String get loginWithEmail => 'Login with\nEmail';
+  String get loginWithEmail => 'Volunteer\nLogin';
 
   @override
   String get email => 'Email';

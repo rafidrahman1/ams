@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/app_text_field.dart';
 import '../components/square_action_button.dart';
+import '../core/utils/network_error_utils.dart';
 import '../providers/auth_provider.dart';
 import 'admin_screen.dart';
 
@@ -61,13 +62,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     final authState = ref.read(authProvider);
+    final authError = ref.read(authProvider.notifier).lastError;
 
     setState(() {
       _isLoggingIn = false;
     });
 
     if (authState == AuthStatus.unauthenticated) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
+      messenger.showSnackBar(SnackBar(content: Text(authFailureMessage(l10n.noInternetConnection, l10n.invalidEmailOrPassword, authError))));
     }
   }
 
@@ -114,35 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ],
                     ),
                     Gap.y8,
-                    SizedBox(
-                      width: double.infinity,
-                      child: Material(
-                        color: ThemeColor.primary.withValues(alpha: 0.35),
-                        borderRadius: ThemeBorderRadius.r2,
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AdminScreen()));
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.admin_panel_settings, size: 48, color: ThemeColor.primary),
-                                Gap.x2,
-                                Text(
-                                  l10n.adminLogin,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.w700, color: ThemeColor.primary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
 
-                    Gap.y8,
                     Row(
                       children: [
                         Expanded(
@@ -155,6 +129,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         Gap.x4,
+                        Expanded(
+                          child: SquareActionButton(
+                            label: isLoading || isSubmitting ? l10n.loading : l10n.adminLogin,
+                            icon: Icons.mail_outline,
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AdminScreen()));
+                            },
+                            backgroundColor: ThemeColor.secondary,
+                            foregroundColor: ThemeColor.primary,
+                          ),
+                        ),
                       ],
                     ),
                     if (_showEmailForm) ...[

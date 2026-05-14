@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/app_text_field.dart';
+import '../core/utils/network_error_utils.dart';
 import '../providers/auth_provider.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
@@ -123,13 +124,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                 }
 
                                 final authState = ref.read(authProvider);
+                                final authError = ref.read(authProvider.notifier).lastError;
 
                                 setState(() {
                                   _isLoggingIn = false;
                                 });
 
                                 if (authState == AuthStatus.unauthenticated) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidEmailOrPassword)));
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(SnackBar(content: Text(authFailureMessage(l10n.noInternetConnection, l10n.invalidEmailOrPassword, authError))));
                                 } else if (authState == AuthStatus.authenticatedAdmin || authState == AuthStatus.authenticatedVolunteer) {
                                   Navigator.of(context).pop();
                                 }

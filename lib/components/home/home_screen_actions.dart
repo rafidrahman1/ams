@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../components/asset_card_builder.dart';
 import '../../core/utils/ast_id_parser.dart';
+import '../../core/utils/network_error_utils.dart';
 import '../../pages/asset_checklist_screen.dart';
 import '../../pages/register_device_screen.dart';
 import '../../providers/asset_provider.dart';
@@ -50,7 +51,8 @@ class HomeScreenActions {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
     }
   }
 

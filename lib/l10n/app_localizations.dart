@@ -272,6 +272,12 @@ abstract class AppLocalizations {
   /// **'Invalid email or password'**
   String get invalidEmailOrPassword;
 
+  /// No description provided for @noInternetConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Please check your network and try again.'**
+  String get noInternetConnection;
+
   /// No description provided for @loading.
   ///
   /// In en, this message translates to:
@@ -281,7 +287,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Login with\nEmail'**
+  /// **'Volunteer\nLogin'**
   String get loginWithEmail;
 
   /// No description provided for @email.

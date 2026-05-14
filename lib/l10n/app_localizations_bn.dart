@@ -99,10 +99,14 @@ class AppLocalizationsBn extends AppLocalizations {
   String get invalidEmailOrPassword => 'ইমেইল বা পাসওয়ার্ড ভুল';
 
   @override
+  String get noInternetConnection =>
+      'ইন্টারনেট সংযোগ নেই। অনুগ্রহ করে নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।';
+
+  @override
   String get loading => 'লোড হচ্ছে...';
 
   @override
-  String get loginWithEmail => 'ইমেইল দিয়ে\nলগইন';
+  String get loginWithEmail => 'ভলান্টিয়ার\nলগইন';
 
   @override
   String get email => 'ইমেইল';

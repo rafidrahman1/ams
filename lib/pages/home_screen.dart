@@ -1,19 +1,20 @@
 import 'package:asset_management_system/components/language_toggle.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
+import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../pages/asset_create_screen.dart';
-import '../providers/qr_scanner_provider.dart';
-import '../core/utils/ast_id_parser.dart';
 import '../components/home/home_action_buttons_row.dart';
 import '../components/home/home_assets_filter_card.dart';
 import '../components/home/home_assets_list_section.dart';
 import '../components/home/home_screen_actions.dart';
+import '../core/utils/ast_id_parser.dart';
+import '../pages/asset_create_screen.dart';
 import '../providers/asset_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/qr_scanner_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.isAdmin = false});
@@ -145,6 +146,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           await ref.read(assetRepositoryProvider).syncRegisteredDevice(device.id!);
           syncedCount++;
         } catch (error) {
+          if (isNoInternetError(error)) {
+            rethrow;
+          }
+
           if (device.id != null) {
             failedDeviceIdsList.add(device.id!);
           }
@@ -188,7 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (error) {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.unknownSyncError)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error, fallback: l10n.unknownSyncError))));
     } finally {
       if (mounted) {
         setState(() {
@@ -219,7 +224,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
     } finally {
       if (mounted) {
         setState(() {

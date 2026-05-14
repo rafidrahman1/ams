@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:asset_management_system/components/asset_checklist/asset_checklist_components.dart';
+import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/theme/colors.dart';
 import 'package:flutter/material.dart';
@@ -82,7 +83,8 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       navigator.pop(completed);
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(error.toString())));
+      final l10n = AppLocalizations.of(context)!;
+      messenger.showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
     }
   }
 
@@ -120,7 +122,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(error.toString()))));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorCapturingImage(offlineAwareErrorMessage(l10n.noInternetConnection, error)))));
     }
   }
 
@@ -140,7 +142,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPickingImage(error.toString()))));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorPickingImage(offlineAwareErrorMessage(l10n.noInternetConnection, error)))));
     }
   }
 
@@ -194,7 +196,7 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         child: checklistAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text(error.toString())),
+          error: (error, _) => Center(child: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))),
           data: (data) {
             _syncState(widget.asset.astId, data);
             final items = data.items;
