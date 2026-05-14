@@ -200,5 +200,7 @@
   "removeImage": "Remove Image",
   "imageSelected": "Image selected",
   "unknownSyncError": "Unknown error occurred during sync",
-  "noPendingDevices": "No pending devices to sync"
+  "noPendingDevices": "No pending devices to sync",
+  "hardwareScannerActive": "Hardware Scanner Active",
+  "hardwareScannerInstructions": "Please use the hardware scanner to scan the QR code."
 }

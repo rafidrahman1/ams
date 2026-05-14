@@ -447,4 +447,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPendingDevices => 'No pending devices to sync';
+
+  @override
+  String get hardwareScannerActive => 'Hardware Scanner Active';
+
+  @override
+  String get hardwareScannerInstructions =>
+      'Please use the hardware scanner to scan the QR code.';
 }

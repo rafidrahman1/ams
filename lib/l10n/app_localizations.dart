@@ -889,6 +889,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No pending devices to sync'**
   String get noPendingDevices;
+
+  /// No description provided for @hardwareScannerActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware Scanner Active'**
+  String get hardwareScannerActive;
+
+  /// No description provided for @hardwareScannerInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Please use the hardware scanner to scan the QR code.'**
+  String get hardwareScannerInstructions;
 }
 
 class _AppLocalizationsDelegate

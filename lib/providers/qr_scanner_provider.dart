@@ -1,3 +1,4 @@
+import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,6 +88,7 @@ class _HardwareScannerDialogState extends ConsumerState<_HardwareScannerDialog> 
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     ref.listen<String?>(scannerResultProvider, (previous, next) {
       if (next != null) {
         Navigator.of(context).pop(next);
@@ -94,16 +96,16 @@ class _HardwareScannerDialogState extends ConsumerState<_HardwareScannerDialog> 
     });
 
     return AlertDialog(
-      title: const Text('Hardware Scanner Active'),
-      content: const Column(
+      title: Text(l10n.hardwareScannerActive),
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.qr_code_scanner, size: 64, color: Colors.blue),
-          SizedBox(height: 16),
-          Text('Please use the hardware scanner to scan the QR code.'),
+          const Icon(Icons.qr_code_scanner, size: 64, color: Colors.blue),
+          const SizedBox(height: 16),
+          Text(l10n.hardwareScannerInstructions),
         ],
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))],
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel))],
     );
   }
 }

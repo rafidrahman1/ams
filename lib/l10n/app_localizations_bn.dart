@@ -450,4 +450,11 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get noPendingDevices => 'সিঙ্ক করার জন্য কোনো অপেক্ষমাণ ডিভাইস নেই';
+
+  @override
+  String get hardwareScannerActive => 'হার্ডওয়্যার স্ক্যানার সক্রিয়';
+
+  @override
+  String get hardwareScannerInstructions =>
+      'কিউআর (QR) কোডটি স্ক্যান করতে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।';
 }
