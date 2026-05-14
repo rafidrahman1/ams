@@ -15,6 +15,11 @@ class AssetRepository {
   final LocalDatabase db;
   final AssetCacheStore cache;
 
+  // In-memory cache for assets with timestamp to prevent rapid re-fetches
+  List<VolunteerAsset>? _cachedAssets;
+  DateTime? _assetsCacheTime;
+  static const Duration _assetsCacheDuration = Duration(minutes: 5);
+
   AssetRepository(this.service, this.getUserKey, this.db) : cache = AssetCacheStore();
 
   AssetRepository.withCache(this.service, this.getUserKey, this.db, this.cache);
@@ -27,16 +32,28 @@ class AssetRepository {
   Future<List<VolunteerAsset>> fetchMyAssets() async {
     final userKey = await _resolvedUserKey();
 
+    // Check if we have a fresh in-memory cache
+    final now = DateTime.now();
+    if (_cachedAssets != null && _assetsCacheTime != null && now.difference(_assetsCacheTime!).inSeconds < _assetsCacheDuration.inSeconds) {
+      return _cachedAssets!;
+    }
+
     try {
       final assets = await service.fetchMyAssets();
       if (userKey != null) {
         await db.saveAssets(userKey, assets);
       }
+      // Update in-memory cache
+      _cachedAssets = assets;
+      _assetsCacheTime = DateTime.now();
       return assets;
     } catch (_) {
       if (userKey != null) {
         final cachedAssets = await db.loadAssets(userKey);
         if (cachedAssets.isNotEmpty) {
+          // Update in-memory cache with local database data
+          _cachedAssets = cachedAssets;
+          _assetsCacheTime = DateTime.now();
           return cachedAssets;
         }
       }

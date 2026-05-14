@@ -31,7 +31,11 @@ class HomeScreenActions {
     }
 
     try {
-      final assets = await ref.read(myAssetsProvider.future);
+      // Use ref.watch() which properly caches the data via Riverpod's built-in memoization
+      // This avoids unnecessary network requests if the data was already loaded
+      final assetsAsync = ref.watch(myAssetsProvider);
+
+      final assets = await assetsAsync.maybeWhen(data: (data) => Future.value(data), orElse: () => ref.read(myAssetsProvider.future));
 
       if (!context.mounted) {
         return;
