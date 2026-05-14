@@ -6,7 +6,6 @@ import 'package:asset_management_system/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/nfc_scanner_provider.dart';
 import '../providers/qr_scanner_provider.dart';
 import 'asset_create_screen.dart';
 
@@ -67,8 +66,9 @@ class RegisterDeviceScreen extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const SizedBox(width: 16),
                 SquareActionButton(
                   label: l10n.qrCode,
                   icon: Icons.qr_code,
@@ -76,13 +76,7 @@ class RegisterDeviceScreen extends ConsumerWidget {
                   backgroundColor: ThemeColor.primary,
                   foregroundColor: ThemeColor.backGroundColor,
                 ),
-                SquareActionButton(
-                  label: l10n.nfc,
-                  icon: Icons.nfc,
-                  onPressed: () => _scanAndRegister(context: context, scanLauncher: ref.read(nfcScannerLauncherProvider), mismatchMessage: l10n.nfcTagMismatch),
-                  backgroundColor: ThemeColor.primary,
-                  foregroundColor: ThemeColor.backGroundColor,
-                ),
+                const SizedBox(width: 16),
               ],
             ),
           ],

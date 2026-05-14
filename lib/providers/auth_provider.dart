@@ -20,8 +20,11 @@ enum AuthStatus { loading, authenticatedVolunteer, authenticatedAdmin, unauthent
 class AuthNotifier extends Notifier<AuthStatus> {
   static const _minimumStartupSplash = Duration(seconds: 2);
   Timer? _autoLogoutTimer;
+  Object? _lastError;
 
   AuthRepository get repo => ref.read(authRepositoryProvider);
+
+  Object? get lastError => _lastError;
 
   @override
   AuthStatus build() {
@@ -72,6 +75,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
   }
 
   Future<void> checkLogin() async {
+    _lastError = null;
     final loggedInFuture = repo.isLoggedIn();
     final delayFuture = Future<void>.delayed(_minimumStartupSplash);
 
@@ -100,11 +104,13 @@ class AuthNotifier extends Notifier<AuthStatus> {
     }
 
     try {
+      _lastError = null;
       await repo.login(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticatedVolunteer;
       _invalidateSessionScopedProviders();
       _startAutoLogoutCheck();
-    } catch (_) {
+    } catch (error) {
+      _lastError = error;
       state = AuthStatus.unauthenticated;
     }
   }
@@ -119,17 +125,20 @@ class AuthNotifier extends Notifier<AuthStatus> {
     }
 
     try {
+      _lastError = null;
       await repo.adminLogin(cleanedEmail, cleanedPassword);
       state = AuthStatus.authenticatedAdmin;
       _invalidateSessionScopedProviders();
       _startAutoLogoutCheck();
-    } catch (_) {
+    } catch (error) {
+      _lastError = error;
       state = AuthStatus.unauthenticated;
     }
   }
 
   Future<void> logout() async {
     _autoLogoutTimer?.cancel();
+    _lastError = null;
     await repo.logout();
     state = AuthStatus.unauthenticated;
     _invalidateSessionScopedProviders();

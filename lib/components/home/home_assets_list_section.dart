@@ -1,7 +1,8 @@
 import 'package:asset_management_system/core/storage/local_database.dart';
+import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
-import 'package:asset_management_system/pages/qr_nfc_screen.dart';
+import 'package:asset_management_system/pages/qr_scanner_screen.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,7 +64,7 @@ class HomeAssetsListSection extends ConsumerWidget {
       padding: const EdgeInsets.all(12),
       child: assetsAsync.when(
         loading: () => AssetListSkeleton(itemCount: skeletonItemCount),
-        error: (error, _) => Center(child: Text(error.toString())),
+        error: (error, _) => Center(child: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))),
         data: (assets) {
           final unsyncedDevices = unsyncedDevicesAsync.maybeWhen(data: (d) => d, orElse: () => <RegisteredDeviceData>[]);
 
@@ -207,7 +208,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                       onSync: isSyncing
                           ? null
                           : () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrNfcScreen(asset: asset)));
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
                             },
                     ),
                   );
@@ -245,7 +246,16 @@ extension on HomeAssetsListSection {
     );
 
     if (confirmed == true) {
-      await ref.read(assetRepositoryProvider).deleteRegisteredDevice(deviceId);
+      try {
+        await ref.read(assetRepositoryProvider).deleteRegisteredDevice(deviceId);
+      } catch (error) {
+        if (context.mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
+        }
+        return;
+      }
+
       ref.invalidate(unsyncedRegisteredDevicesProvider);
     }
   }
@@ -268,7 +278,16 @@ extension on HomeAssetsListSection {
     );
 
     if (confirmed == true) {
-      await ref.read(assetRepositoryProvider).deleteAsset(astId);
+      try {
+        await ref.read(assetRepositoryProvider).deleteAsset(astId);
+      } catch (error) {
+        if (context.mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
+        }
+        return;
+      }
+
       ref.invalidate(adminAssetsProvider);
     }
   }
@@ -288,7 +307,7 @@ extension on HomeAssetsListSection {
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
                 child: deviceAsync.when(
                   loading: () => const SizedBox(height: 220, child: Center(child: CircularProgressIndicator())),
-                  error: (error, _) => SizedBox(height: 220, child: Center(child: Text(error.toString()))),
+                  error: (error, _) => SizedBox(height: 220, child: Center(child: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error)))),
                   data: (device) {
                     if (device == null) {
                       return SizedBox(height: 220, child: Center(child: Text(l10n.deviceNotFound)));

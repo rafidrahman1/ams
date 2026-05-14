@@ -200,23 +200,17 @@ abstract class AppLocalizations {
   /// **'Check List'**
   String get checkList;
 
-  /// No description provided for @qrNfcScannerTitle.
+  /// No description provided for @qrScannerTitle.
   ///
   /// In en, this message translates to:
-  /// **'QR/NFC Scanner'**
-  String get qrNfcScannerTitle;
+  /// **'QR Scanner'**
+  String get qrScannerTitle;
 
   /// No description provided for @qrCode.
   ///
   /// In en, this message translates to:
   /// **'QR Code'**
   String get qrCode;
-
-  /// No description provided for @nfc.
-  ///
-  /// In en, this message translates to:
-  /// **'NFC'**
-  String get nfc;
 
   /// No description provided for @checklistForAsset.
   ///
@@ -278,11 +272,11 @@ abstract class AppLocalizations {
   /// **'Invalid email or password'**
   String get invalidEmailOrPassword;
 
-  /// No description provided for @nfcLoginNotConnected.
+  /// No description provided for @noInternetConnection.
   ///
   /// In en, this message translates to:
-  /// **'NFC login is not connected yet'**
-  String get nfcLoginNotConnected;
+  /// **'No internet connection. Please check your network and try again.'**
+  String get noInternetConnection;
 
   /// No description provided for @loading.
   ///
@@ -293,14 +287,8 @@ abstract class AppLocalizations {
   /// No description provided for @loginWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Login with\nEmail'**
+  /// **'Volunteer\nLogin'**
   String get loginWithEmail;
-
-  /// No description provided for @loginWithNfc.
-  ///
-  /// In en, this message translates to:
-  /// **'Login with\nNFC'**
-  String get loginWithNfc;
 
   /// No description provided for @email.
   ///
@@ -343,12 +331,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'QR code does not match the asset label'**
   String get qrScanMismatch;
-
-  /// No description provided for @nfcTagMismatch.
-  ///
-  /// In en, this message translates to:
-  /// **'NFC tag does not match the asset label'**
-  String get nfcTagMismatch;
 
   /// No description provided for @allChecked.
   ///
@@ -443,7 +425,7 @@ abstract class AppLocalizations {
   /// No description provided for @assetIdHint.
   ///
   /// In en, this message translates to:
-  /// **'Scan QR/NFC or enter ID'**
+  /// **'Scan QR code or enter ID'**
   String get assetIdHint;
 
   /// No description provided for @nameLabel.
@@ -659,7 +641,7 @@ abstract class AppLocalizations {
   /// No description provided for @assetIdRequired.
   ///
   /// In en, this message translates to:
-  /// **'Asset ID is required (Scan QR/NFC)'**
+  /// **'Asset ID is required (Scan QR code)'**
   String get assetIdRequired;
 
   /// No description provided for @nameAndAddressRequired.
@@ -907,6 +889,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No pending devices to sync'**
   String get noPendingDevices;
+
+  /// No description provided for @hardwareScannerActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware Scanner Active'**
+  String get hardwareScannerActive;
+
+  /// No description provided for @hardwareScannerInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Please use the hardware scanner to scan the QR code.'**
+  String get hardwareScannerInstructions;
 }
 
 class _AppLocalizationsDelegate

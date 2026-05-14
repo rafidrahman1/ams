@@ -60,13 +60,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkList => 'Check List';
 
   @override
-  String get qrNfcScannerTitle => 'QR/NFC Scanner';
+  String get qrScannerTitle => 'QR Scanner';
 
   @override
   String get qrCode => 'QR Code';
-
-  @override
-  String get nfc => 'NFC';
 
   @override
   String checklistForAsset(Object assetTitle) {
@@ -101,16 +98,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidEmailOrPassword => 'Invalid email or password';
 
   @override
-  String get nfcLoginNotConnected => 'NFC login is not connected yet';
+  String get noInternetConnection =>
+      'No internet connection. Please check your network and try again.';
 
   @override
   String get loading => 'Loading...';
 
   @override
-  String get loginWithEmail => 'Login with\nEmail';
-
-  @override
-  String get loginWithNfc => 'Login with\nNFC';
+  String get loginWithEmail => 'Volunteer\nLogin';
 
   @override
   String get email => 'Email';
@@ -132,9 +127,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qrScanMismatch => 'QR code does not match the asset label';
-
-  @override
-  String get nfcTagMismatch => 'NFC tag does not match the asset label';
 
   @override
   String get allChecked => 'All Checked';
@@ -209,7 +201,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assetIdLabel => 'Asset ID *';
 
   @override
-  String get assetIdHint => 'Scan QR/NFC or enter ID';
+  String get assetIdHint => 'Scan QR code or enter ID';
 
   @override
   String get nameLabel => 'Name *';
@@ -317,7 +309,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assetSavedLocally => 'Asset saved locally. Sync from Home screen.';
 
   @override
-  String get assetIdRequired => 'Asset ID is required (Scan QR/NFC)';
+  String get assetIdRequired => 'Asset ID is required (Scan QR code)';
 
   @override
   String get nameAndAddressRequired => 'Name and address are required';
@@ -455,4 +447,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPendingDevices => 'No pending devices to sync';
+
+  @override
+  String get hardwareScannerActive => 'Hardware Scanner Active';
+
+  @override
+  String get hardwareScannerInstructions =>
+      'Please use the hardware scanner to scan the QR code.';
 }
