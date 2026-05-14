@@ -100,6 +100,19 @@ class _FakeAssetService extends AssetService {
   }
 }
 
+class _CountingAssetService extends AssetService {
+  _CountingAssetService(this.assetsProvider) : super(ApiClient(TokenStorage()));
+
+  final List<VolunteerAsset> Function() assetsProvider;
+  int fetchMyAssetsCount = 0;
+
+  @override
+  Future<List<VolunteerAsset>> fetchMyAssets() async {
+    fetchMyAssetsCount += 1;
+    return assetsProvider();
+  }
+}
+
 class _MemoryLocalDatabase extends LocalDatabase {
   final Map<String, List<VolunteerAsset>> _assets = {};
   final Map<String, List<AssetChecklistItem>> _checklists = {};
@@ -483,6 +496,33 @@ void main() {
     expect(fetchCount, greaterThanOrEqualTo(2));
   });
 
+  testWidgets('admin home pull down refresh does not reload assets', (WidgetTester tester) async {
+    var fetchCount = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminAssetsProvider.overrideWith((ref) async {
+            fetchCount += 1;
+            return const [VolunteerAsset(name: 'Asset A', details: 'Description of Asset A', astId: 'AST-000101')];
+          }),
+          unsyncedRegisteredDevicesProvider.overrideWith((ref) async => const <RegisteredDeviceData>[]),
+        ],
+        child: _localizedApp(const HomeScreen(isAdmin: true)),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(fetchCount, 1);
+
+    await tester.fling(find.byType(ListView).first, const Offset(0, 300), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(fetchCount, 1);
+  });
+
   testWidgets('admin home device card opens stored db details', (WidgetTester tester) async {
     final device = RegisteredDeviceData(
       id: 1,
@@ -580,6 +620,27 @@ void main() {
     expect(cachedChecklist.items, hasLength(1));
     expect(cachedChecklist.items.first.title, 'Battery Condition');
     expect(cachedChecklist.items.first.response, isTrue);
+  });
+
+  test('asset repository clears its in-memory asset cache before refresh', () async {
+    const userKey = 'user@example.com';
+    final db = _MemoryLocalDatabase();
+    var currentAssets = const [VolunteerAsset(name: 'Asset 1', details: 'Description of Asset 1', astId: 'AST-000001')];
+    final service = _CountingAssetService(() => currentAssets);
+    final repository = AssetRepository(service, () async => userKey, db);
+
+    final firstFetch = await repository.fetchMyAssets();
+    expect(firstFetch, hasLength(1));
+    expect(firstFetch.first.astId, 'AST-000001');
+    expect(service.fetchMyAssetsCount, 1);
+
+    currentAssets = const [VolunteerAsset(name: 'Asset 2', details: 'Description of Asset 2', astId: 'AST-000002')];
+    repository.clearMyAssetsCache();
+
+    final refreshedFetch = await repository.fetchMyAssets();
+    expect(refreshedFetch, hasLength(1));
+    expect(refreshedFetch.first.astId, 'AST-000002');
+    expect(service.fetchMyAssetsCount, 2);
   });
 
   test('asset repository keeps the last toggled checklist state when offline sync is pending', () async {

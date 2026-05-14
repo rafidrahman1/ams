@@ -443,24 +443,24 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   ),
                 ),
                 Gap.y4,
-                AssetCreateFieldSection(
-                  label: l10n.assetAttachmentLabel,
-                  child: AssetCreateFilePickerField(
-                    isImage: false,
-                    isSubmitting: _isSubmitting,
-                    selectedName: _selectedAttachmentName,
-                    chooseLabel: l10n.chooseAttachment,
-                    takePhotoLabel: l10n.takePhoto,
-                    removeLabel: l10n.remove,
-                    noneSelectedLabel: l10n.noAttachmentChosen,
-                    onChoosePressed: () => _pickFile(isImage: false),
-                    onRemovePressed: () => setState(() {
-                      _selectedAttachmentPath = null;
-                      _selectedAttachmentName = null;
-                    }),
-                  ),
-                ),
-                Gap.y4,
+                // AssetCreateFieldSection(
+                //   label: l10n.assetAttachmentLabel,
+                //   child: AssetCreateFilePickerField(
+                //     isImage: false,
+                //     isSubmitting: _isSubmitting,
+                //     selectedName: _selectedAttachmentName,
+                //     chooseLabel: l10n.chooseAttachment,
+                //     takePhotoLabel: l10n.takePhoto,
+                //     removeLabel: l10n.remove,
+                //     noneSelectedLabel: l10n.noAttachmentChosen,
+                //     onChoosePressed: () => _pickFile(isImage: false),
+                //     onRemovePressed: () => setState(() {
+                //       _selectedAttachmentPath = null;
+                //       _selectedAttachmentName = null;
+                //     }),
+                //   ),
+                // ),
+                // Gap.y4,
                 AssetCreateFieldSection(
                   label: l10n.assetDetailsLabel,
                   child: AssetCreateInputField(controller: _assetDetailsController, hintText: l10n.assetDetailsHint, maxLines: 3),

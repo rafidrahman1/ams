@@ -69,13 +69,9 @@ class HomeAssetsListSection extends ConsumerWidget {
           final unsyncedDevices = unsyncedDevicesAsync.maybeWhen(data: (d) => d, orElse: () => <RegisteredDeviceData>[]);
 
           if (assets.isEmpty && unsyncedDevices.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: onRefresh,
-              child: ListView(
-                controller: scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [SizedBox(height: 240, child: Center(child: Text(assetsLabel)))],
-              ),
+            return _buildScrollableList(
+              enableRefresh: !isAdmin,
+              children: [SizedBox(height: 240, child: Center(child: Text(assetsLabel)))],
             );
           }
 
@@ -91,85 +87,81 @@ class HomeAssetsListSection extends ConsumerWidget {
             final hasMore = (visibleUnsynced.length + visibleAssets.length) < combinedCount;
             ensureScrollablePage(hasMore);
 
-            return RefreshIndicator(
-              onRefresh: onRefresh,
-              child: ListView(
-                controller: scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  ...visibleUnsynced.map(
-                    (device) => Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Dismissible(
-                        key: Key('device-${device.id}'),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          color: Colors.red,
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        onDismissed: (_) async {
-                          if (device.id != null) {
-                            await _confirmAndDeleteDevice(context, ref, device.id!);
-                          }
-                        },
-                        child: Card(
-                          color: failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
-                          child: ListTile(
-                            title: Text(device.name),
-                            subtitle: Text('${device.details}\n${l10n.pendingSync}'),
-                            isThreeLine: true,
-                            trailing: failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
-                            onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
-                          ),
+            return _buildScrollableList(
+              enableRefresh: !isAdmin,
+              children: [
+                ...visibleUnsynced.map(
+                  (device) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Dismissible(
+                      key: Key('device-${device.id}'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        color: Colors.red,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) async {
+                        if (device.id != null) {
+                          await _confirmAndDeleteDevice(context, ref, device.id!);
+                        }
+                      },
+                      child: Card(
+                        color: failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
+                        child: ListTile(
+                          title: Text(device.name),
+                          subtitle: Text('${device.details}\n${l10n.pendingSync}'),
+                          isThreeLine: true,
+                          trailing: failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
+                          onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
                         ),
                       ),
                     ),
                   ),
-                  ...visibleAssets.map((apiAsset) {
-                    final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
+                ),
+                ...visibleAssets.map((apiAsset) {
+                  final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Dismissible(
-                        key: Key('asset-${apiAsset.astId}'),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Dismissible(
+                      key: Key('asset-${apiAsset.astId}'),
 
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          color: Colors.red,
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        onDismissed: (_) async {
-                          await _confirmAndDeleteAsset(context, ref, apiAsset.astId);
-                        },
-                        child: Card(
-                          color: Colors.white,
-                          child: ListTile(
-                            title: Text(asset.title),
-                            subtitle: Text(asset.description.isNotEmpty ? asset.description : asset.astId),
-                            trailing: ElevatedButton(
-                              onPressed: isSyncing
-                                  ? null
-                                  : () {
-                                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
-                                    },
-                              child: Text(l10n.registerDevice),
-                            ),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        color: Colors.red,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) async {
+                        await _confirmAndDeleteAsset(context, ref, apiAsset.astId);
+                      },
+                      child: Card(
+                        color: Colors.white,
+                        child: ListTile(
+                          title: Text(asset.title),
+                          subtitle: Text(asset.description.isNotEmpty ? asset.description : asset.astId),
+                          trailing: ElevatedButton(
+                            onPressed: isSyncing
+                                ? null
+                                : () {
+                                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
+                                  },
+                            child: Text(l10n.registerDevice),
                           ),
                         ),
                       ),
-                    );
-                  }),
-                  if (hasMore)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(child: CircularProgressIndicator()),
                     ),
-                ],
-              ),
+                  );
+                }),
+                if (hasMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+              ],
             );
           }
 
@@ -182,48 +174,50 @@ class HomeAssetsListSection extends ConsumerWidget {
           ensureScrollablePage(hasMoreAssets);
 
           if (filteredAssets.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: onRefresh,
-              child: ListView(
-                controller: scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [SizedBox(height: 240, child: Center(child: Text(showAllTrueAssets ? noFullyCheckedAssetsFoundLabel : noPartiallyCheckedAssetsFoundLabel)))],
-              ),
+            return _buildScrollableList(
+              enableRefresh: !isAdmin,
+              children: [SizedBox(height: 240, child: Center(child: Text(showAllTrueAssets ? noFullyCheckedAssetsFoundLabel : noPartiallyCheckedAssetsFoundLabel)))],
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: onRefresh,
-            child: ListView(
-              controller: scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                ...visibleAssets.map((apiAsset) {
-                  final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
+          return _buildScrollableList(
+            enableRefresh: !isAdmin,
+            children: [
+              ...visibleAssets.map((apiAsset) {
+                final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
-                    child: AssetCardBuilder(
-                      asset: asset,
-                      onSync: isSyncing
-                          ? null
-                          : () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
-                            },
-                    ),
-                  );
-                }),
-                if (hasMoreAssets)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator()),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: AssetCardBuilder(
+                    asset: asset,
+                    onSync: isSyncing
+                        ? null
+                        : () {
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
+                          },
                   ),
-              ],
-            ),
+                );
+              }),
+              if (hasMoreAssets)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+            ],
           );
         },
       ),
     );
+  }
+
+  Widget _buildScrollableList({required bool enableRefresh, required List<Widget> children}) {
+    final listView = ListView(controller: scrollController, physics: const AlwaysScrollableScrollPhysics(), children: children);
+
+    if (!enableRefresh) {
+      return listView;
+    }
+
+    return RefreshIndicator(onRefresh: onRefresh, child: listView);
   }
 }
 
