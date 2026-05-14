@@ -104,6 +104,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(assetChecklistProvider);
     ref.invalidate(homeBootstrapProvider);
 
+    ref.read(assetRepositoryProvider).clearMyAssetsCache();
+
     // Keep refresh indicator active until assets and checklist statuses are ready.
     await ref.read(homeBootstrapProvider.future);
   }

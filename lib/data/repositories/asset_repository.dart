@@ -62,6 +62,11 @@ class AssetRepository {
     }
   }
 
+  void clearMyAssetsCache() {
+    _cachedAssets = null;
+    _assetsCacheTime = null;
+  }
+
   Future<List<VolunteerAsset>> fetchAdminAssets() async {
     final userKey = await _resolvedUserKey();
 
