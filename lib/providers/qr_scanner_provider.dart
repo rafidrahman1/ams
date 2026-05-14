@@ -22,6 +22,11 @@ class ScannerService {
   final Ref _ref;
   static const _channel = MethodChannel('com.catchbangladesh.ams/scanner');
 
+  // Debounce protection for scanner wake-up calls
+  var _lastWakeUpTime = 0;
+  static const _WAKE_UP_DEBOUNCE = Duration(milliseconds: 500);
+  bool _isScanActive = false;
+
   ScannerService(this._ref) {
     _init();
   }
@@ -30,21 +35,39 @@ class ScannerService {
     _channel.setMethodCallHandler((MethodCall call) async {
       if (call.method == "onScanReceived") {
         final String barcode = call.arguments;
+        _isScanActive = false; // Reset scan state when result received
         _ref.read(scannerResultProvider.notifier).update(barcode);
       }
     });
   }
 
   Future<void> wakeUpScanner() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // Prevent concurrent scan attempts
+    if (_isScanActive) {
+      return;
+    }
+
+    // Apply debounce delay
+    if (now - _lastWakeUpTime < _WAKE_UP_DEBOUNCE.inMilliseconds) {
+      return;
+    }
+
     try {
+      _lastWakeUpTime = now;
+      _isScanActive = true;
       await _channel.invokeMethod('startHardwareScan');
     } on PlatformException {
+      _isScanActive = false;
       // Scanner wake-up failed silently
     }
   }
 
   Future<void> stopScanner() async {
     try {
+      _isScanActive = false;
+      _lastWakeUpTime = 0; // Reset debounce timer
       await _channel.invokeMethod('stopHardwareScan');
     } on PlatformException {
       // Scanner stop failed silently

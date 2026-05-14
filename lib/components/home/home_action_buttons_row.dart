@@ -59,7 +59,7 @@ class _HomeActionButtonsRowState extends State<HomeActionButtonsRow> with Single
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         SquareActionButton(
-          size: 180,
+          size: 150,
           label: widget.primaryLabel,
           icon: widget.primaryIcon,
           onPressed: widget.isSyncing ? null : widget.onPrimaryPressed,
@@ -67,7 +67,7 @@ class _HomeActionButtonsRowState extends State<HomeActionButtonsRow> with Single
           foregroundColor: ThemeColor.backGroundColor,
         ),
         SquareActionButton(
-          size: 180,
+          size: 150,
           label: widget.secondaryLabel,
           iconWidget: RotationTransition(turns: _syncRotationController, child: const Icon(Icons.sync, size: 36)),
           onPressed: widget.isSyncing ? null : widget.onSecondaryPressed,

@@ -14,16 +14,17 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "com.catchbangladesh.ams/scanner"
 
-    // Actions that emit barcode data
-    private val scanActions = setOf(
-        "orgaiot.intent.action.scan", 
-        "com.kte.scan.result",
-        "com.android.scanner.service_settings"
-    )
-    private val scanDataKey = "data"
+    // Action that emits barcode data
+    private val scanActions = setOf("scan.rcv.message")
+    private val scanDataKey = "barcodeData"
 
     private var scannerReceiver: BroadcastReceiver? = null
     private var methodChannel: MethodChannel? = null
+
+    // Debounce protection for scanner trigger
+    private var lastScanTime: Long = 0
+    private val DEBOUNCE_DELAY = 500L // Milliseconds
+    private var isScanActive = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -35,10 +36,25 @@ class MainActivity : FlutterActivity() {
         methodChannel?.setMethodCallHandler { call: MethodCall, result: MethodChannel.Result ->
             when (call.method) {
                 "startHardwareScan" -> {
-                    sendBroadcast(Intent("com.java.scan.open"))
-                    result.success(true)
+                    val currentTime = System.currentTimeMillis()
+                    if (isScanActive) {
+                        // Scan already in progress, ignore
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
+                    if (currentTime - lastScanTime > DEBOUNCE_DELAY) {
+                        lastScanTime = currentTime
+                        isScanActive = true
+                        sendBroadcast(Intent("com.java.scan.open"))
+                        result.success(true)
+                    } else {
+                        // Debounce delay not met, ignore
+                        result.success(false)
+                    }
                 }
                 "stopHardwareScan" -> {
+                    isScanActive = false
+                    lastScanTime = 0 // Reset debounce timer
                     sendBroadcast(Intent("com.java.scan.close"))
                     result.success(true)
                 }
@@ -53,6 +69,7 @@ class MainActivity : FlutterActivity() {
                 if (action != null && action in scanActions) {
                     val barcode = intent.getStringExtra(scanDataKey)?.trim()
                     if (!barcode.isNullOrBlank()) {
+                        isScanActive = false // Reset scan state when data is received
                         methodChannel?.invokeMethod("onScanReceived", barcode)
                     }
                 }
