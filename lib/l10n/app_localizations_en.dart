@@ -60,7 +60,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkList => 'Check List';
 
   @override
-  String get qrNfcScannerTitle => 'QR Scanner';
+  String get qrScannerTitle => 'QR Scanner';
 
   @override
   String get qrCode => 'QR Code';

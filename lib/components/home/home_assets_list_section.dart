@@ -2,7 +2,7 @@ import 'package:asset_management_system/core/storage/local_database.dart';
 import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
-import 'package:asset_management_system/pages/qr_nfc_screen.dart';
+import 'package:asset_management_system/pages/qr_scanner_screen.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -208,7 +208,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                       onSync: isSyncing
                           ? null
                           : () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrNfcScreen(asset: asset)));
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
                             },
                     ),
                   );

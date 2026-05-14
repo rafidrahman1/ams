@@ -17,7 +17,7 @@
   "assetTitle3": "Asset 3",
   "assetDescription3": "Description of Asset 3",
   "checkList": "Check List",
-  "qrNfcScannerTitle": "QR Scanner",
+  "qrScannerTitle": "QR Scanner",
   "qrCode": "QR Code",
   "checklistForAsset": "Checklist for {assetTitle}",
   "@checklistForAsset": {

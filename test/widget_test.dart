@@ -11,7 +11,7 @@ import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/pages/asset_checklist_screen.dart';
 import 'package:asset_management_system/pages/home_screen.dart';
 import 'package:asset_management_system/pages/login_screen.dart';
-import 'package:asset_management_system/pages/qr_nfc_screen.dart';
+import 'package:asset_management_system/pages/qr_scanner_screen.dart';
 import 'package:asset_management_system/pages/splash_screen.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:asset_management_system/providers/auth_provider.dart';
@@ -315,7 +315,7 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('opening an asset checklist goes through QR/NFC first', (WidgetTester tester) async {
+  testWidgets('opening an asset checklist goes through QR scanner first', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -347,8 +347,7 @@ void main() {
     await tester.tap(find.text('Check List').first);
     await tester.pumpAndSettle();
 
-    expect(find.byType(QrNfcScreen), findsOneWidget);
-    expect(find.text('QR/NFC Scanner'), findsOneWidget);
+    expect(find.text('QR Scanner'), findsOneWidget);
 
     await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();
@@ -549,7 +548,7 @@ void main() {
     await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(QrNfcScreen), findsOneWidget);
+    expect(find.byType(QrScannerScreen), findsOneWidget);
     expect(find.textContaining('does not match'), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
   });

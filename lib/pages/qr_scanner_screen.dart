@@ -9,8 +9,8 @@ import '../core/utils/ast_id_parser.dart';
 import '../pages/asset_checklist_screen.dart';
 import '../providers/qr_scanner_provider.dart';
 
-class QrNfcScreen extends ConsumerWidget {
-  const QrNfcScreen({super.key, required this.asset});
+class QrScannerScreen extends ConsumerWidget {
+  const QrScannerScreen({super.key, required this.asset});
 
   final AssetCardData asset;
 
@@ -34,14 +34,13 @@ class QrNfcScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.qrNfcScannerTitle)),
+      appBar: AppBar(title: Text(l10n.qrScannerTitle)),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 16),
               SquareActionButton(
                 label: l10n.qrCode,
                 icon: Icons.qr_code,
@@ -49,7 +48,6 @@ class QrNfcScreen extends ConsumerWidget {
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),
-              const SizedBox(width: 16),
             ],
           ),
         ],

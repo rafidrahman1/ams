@@ -17,7 +17,7 @@
   "assetTitle3": "অ্যাসেট ৩",
   "assetDescription3": "অ্যাসেট ৩-এর বিবরণ",
   "checkList": "চেকলিস্ট",
-  "qrNfcScannerTitle": "QR স্ক্যানার",
+  "qrScannerTitle": "QR স্ক্যানার",
   "qrCode": "QR কোড",
   "checklistForAsset": "{assetTitle}-এর জন্য চেকলিস্ট",
   "@checklistForAsset": {

@@ -61,7 +61,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get checkList => 'চেকলিস্ট';
 
   @override
-  String get qrNfcScannerTitle => 'QR স্ক্যানার';
+  String get qrScannerTitle => 'QR স্ক্যানার';
 
   @override
   String get qrCode => 'QR কোড';

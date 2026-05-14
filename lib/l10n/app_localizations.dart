@@ -200,11 +200,11 @@ abstract class AppLocalizations {
   /// **'Check List'**
   String get checkList;
 
-  /// No description provided for @qrNfcScannerTitle.
+  /// No description provided for @qrScannerTitle.
   ///
   /// In en, this message translates to:
   /// **'QR Scanner'**
-  String get qrNfcScannerTitle;
+  String get qrScannerTitle;
 
   /// No description provided for @qrCode.
   ///
