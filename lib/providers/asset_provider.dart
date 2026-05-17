@@ -46,7 +46,12 @@ final assetTypesProvider = FutureProvider<List<IdNamePair>>((ref) {
 });
 
 final assetChecklistAllTrueProvider = FutureProvider.family<bool, String>((ref, astId) async {
-  final checklist = await ref.watch(assetChecklistProvider(astId).future);
+  // Use `read` here to await the other FutureProvider without creating an
+  // additional active subscription. Using `watch(... .future)` inside a
+  // FutureProvider can create overlapping subscriptions that lead to
+  // pausedActiveSubscriptionCount assertion errors when providers are
+  // invalidated/refreshed from the UI. Reading the future avoids that.
+  final checklist = await ref.read(assetChecklistProvider(astId).future);
   if (checklist.items.isEmpty) {
     return false;
   }
@@ -55,13 +60,18 @@ final assetChecklistAllTrueProvider = FutureProvider.family<bool, String>((ref, 
 });
 
 final homeBootstrapProvider = FutureProvider<void>((ref) async {
-  final assets = await ref.watch(myAssetsProvider.future);
+  // Await assets without subscribing; we only need to wait for the future
+  // to complete here. Using `read` avoids creating extra subscriptions.
+  final assets = await ref.read(myAssetsProvider.future);
 
-  await Future.wait(assets.map((asset) => ref.watch(assetChecklistAllTrueProvider(asset.astId).future)));
+  await Future.wait(assets.map((asset) => ref.read(assetChecklistAllTrueProvider(asset.astId).future)));
 });
 
 final adminHomeBootstrapProvider = FutureProvider<void>((ref) async {
-  await Future.wait([ref.watch(adminAssetsProvider.future), ref.watch(unsyncedRegisteredDevicesProvider.future)]);
+  // Read both futures instead of watching them to avoid nested active
+  // subscriptions that can cause Riverpod pause-count assertion failures
+  // when the UI invalidates or refreshes providers.
+  await Future.wait([ref.read(adminAssetsProvider.future), ref.read(unsyncedRegisteredDevicesProvider.future)]);
 });
 
 final unsyncedRegisteredDevicesProvider = FutureProvider<List<RegisteredDeviceData>>((ref) {
