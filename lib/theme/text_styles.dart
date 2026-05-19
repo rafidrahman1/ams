@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/colors.dart';
+import 'colors.dart';
 
 class ThemeTextStyles {
   static TextStyle normalTitle = const TextStyle(color: Colors.black);

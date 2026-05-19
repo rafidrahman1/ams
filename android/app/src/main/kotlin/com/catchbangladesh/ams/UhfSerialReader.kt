@@ -3,7 +3,6 @@ package com.catchbangladesh.ams
 import android.os.Handler
 import android.os.Looper
 import com.gg.reader.api.protocol.gx.EnumG
-import com.gg.reader.api.protocol.gx.LogBaseEpcInfo
 import com.gg.reader.api.protocol.gx.LogBaseEpcOver
 import com.gg.reader.api.protocol.gx.Message
 import com.gg.reader.api.protocol.gx.MsgAppGetBaseVersion
@@ -24,12 +23,22 @@ class UhfSerialReader(
     private val running = AtomicBoolean(false)
     private val buffer = ByteArrayOutputStream()
     @Volatile private var versionAck = false
+    @Volatile private var lastEmittedEpc = ""
+    @Volatile private var lastEmittedAtMs = 0L
 
     fun isOpen(): Boolean = running.get()
 
     fun start(): Boolean {
-        if (running.get()) return true
-        
+        if (running.get()) {
+            stop()
+            Thread.sleep(200)
+        }
+
+        lastEmittedEpc = ""
+        lastEmittedAtMs = 0L
+
+        println("UhfSerialReader: start (epc parser v5)")
+
         // Power on the UHF module
         try {
             println("UhfSerialReader: Powering on RFID module (extended sequence)...")
@@ -107,30 +116,26 @@ class UhfSerialReader(
     }
 
     private fun openReader(): Boolean {
-        val ports = arrayOf("/dev/ttyS3", "/dev/ttyS1", "/dev/ttyS0", "/dev/ttyS2", "/dev/ttyS4")
-        val baudRates = intArrayOf(115200, 460800, 57600, 9600, 38400, 19200)
-        
-        for (port in ports) {
-            for (baud in baudRates) {
-                try {
-                    println("UhfSerialReader: Trying $port @ $baud")
-                    val result = SerialPortJNI.openPort(port, baud, 8, 1, 'N')
-                    if (result == 1) {
-                        // Sometimes the first message fails after power on, try twice
-                        for (retry in 1..2) {
-                            val versionReq = MsgAppGetBaseVersion()
-                            sendMessage(versionReq)
-                            if (waitForBaseVersion(timeoutMs = 1000)) {
-                                println("UhfSerialReader: Success on $port @ $baud")
-                                return true
-                            }
-                            Thread.sleep(100)
+        // Same port/baud sequence as com.pda.uhfdemo.init.AppInit
+        val baudRates = intArrayOf(115200, 460800)
+        for (baud in baudRates) {
+            try {
+                SerialPortJNI.closePort()
+                println("UhfSerialReader: Trying /dev/ttyS3 @ $baud")
+                val result = SerialPortJNI.openPort("/dev/ttyS3", baud, 8, 1, 'N')
+                if (result == 1) {
+                    for (retry in 1..2) {
+                        sendMessage(MsgAppGetBaseVersion())
+                        if (waitForBaseVersion(timeoutMs = 1500)) {
+                            println("UhfSerialReader: Connected on /dev/ttyS3 @ $baud")
+                            return true
                         }
-                        SerialPortJNI.closePort()
+                        Thread.sleep(100)
                     }
-                } catch (t: Throwable) {
-                    // ignore and try next
+                    SerialPortJNI.closePort()
                 }
+            } catch (t: Throwable) {
+                println("UhfSerialReader: Open failed @ $baud: ${t.message}")
             }
         }
         return false
@@ -153,21 +158,21 @@ class UhfSerialReader(
     }
 
     private fun sendInventoryStart(): Boolean {
-        val msg = Message().apply {
+        val inventory = Message().apply {
             msgType = MsgType().apply {
                 mt_8_11 = EnumG.MSG_TYPE_BIT_BASE
-                msgId = 16
+                msgId = EnumG.BaseMid_InventoryEpc.toByte()
             }
             cData = byteArrayOf(0, 0, 0, 1, 1)
             dataLen = cData.size
         }
-        return sendMessage(msg)
+        return sendMessage(inventory)
     }
 
     private fun sendMessage(message: Message): Boolean {
         return try {
             val bytes = message.toBytes(false)
-            println("UhfSerialReader: sendMessage: ${bytes.joinToString(",") { "%02X".format(it) }}")
+            println("UhfSerialReader: sendMessage: ${bytes.joinToString(",") { byteHex(it) }}")
             SerialPortJNI.writePort(bytes)
             true
         } catch (t: Throwable) {
@@ -226,30 +231,129 @@ class UhfSerialReader(
 
     private fun handleFrame(frame: ByteArray) {
         val message = Message(frame)
-        when {
-            message.msgType?.mt_8_11 == EnumG.MSG_TYPE_BIT_APP && message.msgType?.msgId == EnumG.AppMid_GetBaseVersion.toByte() -> {
-                val version = MsgAppGetBaseVersion()
-                version.cData = message.cData
-                version.ackUnpack()
+        val msgType = message.msgType ?: return
+
+        // Sync ack for MsgAppGetBaseVersion uses mt_12 == "0" (see GClient.processMessage).
+        if (msgType.mt_12 == "0" && (msgType.msgId.toInt() and 0xFF) == EnumG.AppMid_GetBaseVersion) {
+            val version = MsgAppGetBaseVersion()
+            version.cData = message.cData
+            version.ackUnpack()
+            if (version.rtCode.toInt() == 0) {
                 versionAck = true
+                println("UhfSerialReader: Base version: ${version.baseVersions}")
             }
-            message.msgType?.mt_8_11 == EnumG.MSG_TYPE_BIT_BASE && message.msgType?.msgId == EnumG.BaseLogMid_Epc.toByte() -> {
-                val log = LogBaseEpcInfo()
-                log.cData = message.cData
-                log.ackUnpack()
-                val epc = log.epc?.trim().orEmpty()
-                println("UhfSerialReader: Parsed EPC: $epc")
-                if (epc.isNotBlank()) {
-                    mainHandler.post { onTag(epc) }
-                }
+            return
+        }
+
+        // Sync ack for inventory start (msgId 16).
+        if (msgType.mt_12 == "0" && (msgType.msgId.toInt() and 0xFF) == EnumG.BaseMid_InventoryEpc) {
+            println("UhfSerialReader: Inventory ack (rt=${message.cData?.firstOrNull()})")
+            return
+        }
+
+        val msgId = msgType.msgId.toInt() and 0xFF
+
+        val epc = parseEpc(message.cData) ?: parseEpcFromFrame(frame)
+        if (epc != null) {
+            println("UhfSerialReader: Parsed EPC: $epc")
+            emitTag(epc)
+        }
+
+        if (msgId == EnumG.BaseLogMid_EpcOver) {
+            val over = LogBaseEpcOver()
+            over.cData = message.cData
+            over.ackUnpack()
+            onStatus(over.rtMsg ?: "Inventory complete")
+            return
+        }
+    }
+
+    private fun emitTag(epc: String) {
+        if (!isValidEpcHex(epc)) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (epc == lastEmittedEpc && now - lastEmittedAtMs < 400) {
+            return
+        }
+        lastEmittedEpc = epc
+        lastEmittedAtMs = now
+        mainHandler.post { onTag(epc) }
+    }
+
+    private fun parseEpc(cData: ByteArray?): String? {
+        if (cData == null || cData.isEmpty()) {
+            return null
+        }
+
+        epcFromGxLengthByte(cData)?.let { return it }
+        return epcFromEmbedded90(cData)
+    }
+
+    private fun parseEpcFromFrame(frame: ByteArray): String? {
+        return epcFromEmbedded90(frame)
+    }
+
+    /**
+     * GX PDA: cData[0] is EPC byte length N; EPC hex is cData[1..N].
+     * e.g. 0C 90 00 ... 81 -> 900000000000088800000081
+     */
+    private fun epcFromGxLengthByte(cData: ByteArray): String? {
+        if (cData.size < 13) {
+            return null
+        }
+        val n = cData[0].toInt() and 0xFF
+        if (n !in 8..62 || 1 + n > cData.size) {
+            return null
+        }
+        val hex = bytesToHex(cData, 1, n)
+        return if (isValidEpcHex(hex)) hex else null
+    }
+
+    /** Find 12-byte EPC (24 hex chars) starting with 0x90 inside a buffer. */
+    private fun epcFromEmbedded90(data: ByteArray): String? {
+        if (data.size < 12) {
+            return null
+        }
+        for (start in 0..data.size - 12) {
+            if (data[start] != 0x90.toByte()) {
+                continue
             }
-            message.msgType?.mt_8_11 == EnumG.MSG_TYPE_BIT_BASE && message.msgType?.msgId == EnumG.BaseLogMid_EpcOver.toByte() -> {
-                val over = LogBaseEpcOver()
-                over.cData = message.cData
-                over.ackUnpack()
-                onStatus(over.rtMsg ?: "Inventory complete")
+            val hex = bytesToHex(data, start, 12)
+            if (isValidEpcHex(hex)) {
+                return hex
             }
         }
+        return null
+    }
+
+    private fun bytesToHex(data: ByteArray, offset: Int, length: Int): String {
+        val sb = StringBuilder(length * 2)
+        for (i in offset until offset + length) {
+            val v = data[i].toInt() and 0xFF
+            sb.append(HEX_DIGITS[v ushr 4])
+            sb.append(HEX_DIGITS[v and 0x0F])
+        }
+        return sb.toString()
+    }
+
+    private fun byteHex(b: Byte): String {
+        val v = b.toInt() and 0xFF
+        return "${HEX_DIGITS[v ushr 4]}${HEX_DIGITS[v and 0x0F]}"
+    }
+
+    private fun isValidEpcHex(hex: String): Boolean {
+        if (hex.length != 24 || !hex.startsWith("90")) {
+            return false
+        }
+        if (hex.contains("FFFFF", ignoreCase = true)) {
+            return false
+        }
+        return hex.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }
+    }
+
+    private companion object {
+        private const val HEX_DIGITS = "0123456789ABCDEF"
     }
 }
 

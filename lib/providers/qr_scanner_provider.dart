@@ -1,10 +1,10 @@
+import 'package:asset_management_system/core/uhf_service.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:asset_management_system/pages/uhf_scanner_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Scanner result state manager
 class ScannerResultNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -14,7 +14,6 @@ class ScannerResultNotifier extends Notifier<String?> {
 
 final scannerResultProvider = NotifierProvider<ScannerResultNotifier, String?>(ScannerResultNotifier.new);
 
-// Scanner service that bridges Flutter and native
 final scannerServiceProvider = Provider((ref) {
   return ScannerService(ref);
 });
@@ -23,9 +22,8 @@ class ScannerService {
   final Ref _ref;
   static const _channel = MethodChannel('com.catchbangladesh.ams/scanner');
 
-  // Debounce protection for scanner wake-up calls
   var _lastWakeUpTime = 0;
-  static const _WAKE_UP_DEBOUNCE = Duration(milliseconds: 500);
+  static const _wakeUpDebounce = Duration(milliseconds: 500);
   bool _isScanActive = false;
 
   ScannerService(this._ref) {
@@ -34,9 +32,12 @@ class ScannerService {
 
   void _init() {
     _channel.setMethodCallHandler((MethodCall call) async {
-      if (call.method == "onScanReceived") {
-        final String barcode = call.arguments;
-        _isScanActive = false; // Reset scan state when result received
+      if (call.method == 'onScanReceived') {
+        final barcode = call.arguments?.toString().trim();
+        if (barcode == null || barcode.isEmpty) {
+          return;
+        }
+        _isScanActive = false;
         _ref.read(scannerResultProvider.notifier).update(barcode);
       }
     });
@@ -45,13 +46,11 @@ class ScannerService {
   Future<void> wakeUpScanner() async {
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    // Prevent concurrent scan attempts
     if (_isScanActive) {
       return;
     }
 
-    // Apply debounce delay
-    if (now - _lastWakeUpTime < _WAKE_UP_DEBOUNCE.inMilliseconds) {
+    if (now - _lastWakeUpTime < _wakeUpDebounce.inMilliseconds) {
       return;
     }
 
@@ -61,14 +60,13 @@ class ScannerService {
       await _channel.invokeMethod('startHardwareScan');
     } on PlatformException {
       _isScanActive = false;
-      // Scanner wake-up failed silently
     }
   }
 
   Future<void> stopScanner() async {
     try {
       _isScanActive = false;
-      _lastWakeUpTime = 0; // Reset debounce timer
+      _lastWakeUpTime = 0;
       await _channel.invokeMethod('stopHardwareScan');
     } on PlatformException {
       // Scanner stop failed silently
@@ -76,22 +74,29 @@ class ScannerService {
   }
 }
 
-// QR scanner dialog launcher
 final qrScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
   return (context) async {
     ref.read(scannerServiceProvider);
     ref.read(scannerResultProvider.notifier).update(null);
-    return showDialog<String>(context: context, barrierDismissible: true, builder: (context) => const _HardwareScannerDialog());
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => _HardwareScanDialog(
+        title: l10n.hardwareScannerActive,
+        instructions: l10n.hardwareScannerInstructions,
+        icon: Icons.qr_code_scanner,
+      ),
+    );
   };
 });
 
-// RFID scanner: UHF reader on supported PDAs, otherwise hardware trigger scan.
 final rfidScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
   return (context) async {
     ref.read(scannerServiceProvider);
     try {
-      final available = await const MethodChannel('com.catchbangladesh.ams/scanner').invokeMethod<bool>('isUhfAvailable');
-      if (available == true && context.mounted) {
+      final available = await UhfService.instance().isAvailable();
+      if (available && context.mounted) {
         final tag = await Navigator.of(context).push<String?>(MaterialPageRoute(builder: (_) => const UhfScannerScreen()));
         if (tag != null) {
           return tag;
@@ -105,18 +110,31 @@ final rfidScannerLauncherProvider = Provider<Future<String?> Function(BuildConte
     if (!context.mounted) {
       return null;
     }
-    return showDialog<String>(context: context, barrierDismissible: true, builder: (context) => const _HardwareRfidScannerDialog());
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => _HardwareScanDialog(
+        title: l10n.hardwareRfidScannerActive,
+        instructions: l10n.hardwareRfidScannerInstructions,
+        icon: Icons.contactless,
+      ),
+    );
   };
 });
 
-class _HardwareScannerDialog extends ConsumerStatefulWidget {
-  const _HardwareScannerDialog({super.key});
+class _HardwareScanDialog extends ConsumerStatefulWidget {
+  const _HardwareScanDialog({required this.title, required this.instructions, required this.icon});
+
+  final String title;
+  final String instructions;
+  final IconData icon;
 
   @override
-  ConsumerState<_HardwareScannerDialog> createState() => _HardwareScannerDialogState();
+  ConsumerState<_HardwareScanDialog> createState() => _HardwareScanDialogState();
 }
 
-class _HardwareScannerDialogState extends ConsumerState<_HardwareScannerDialog> {
+class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
   late ScannerService _scannerService;
 
   @override
@@ -144,62 +162,13 @@ class _HardwareScannerDialogState extends ConsumerState<_HardwareScannerDialog> 
     });
 
     return AlertDialog(
-      title: Text(l10n.hardwareScannerActive),
+      title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.qr_code_scanner, size: 64, color: Colors.blue),
+          Icon(widget.icon, size: 64, color: Colors.blue),
           const SizedBox(height: 16),
-          Text(l10n.hardwareScannerInstructions),
-        ],
-      ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel))],
-    );
-  }
-}
-
-class _HardwareRfidScannerDialog extends ConsumerStatefulWidget {
-  const _HardwareRfidScannerDialog();
-
-  @override
-  ConsumerState<_HardwareRfidScannerDialog> createState() => _HardwareRfidScannerDialogState();
-}
-
-class _HardwareRfidScannerDialogState extends ConsumerState<_HardwareRfidScannerDialog> {
-  late ScannerService _scannerService;
-
-  @override
-  void initState() {
-    super.initState();
-    _scannerService = ref.read(scannerServiceProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scannerService.wakeUpScanner();
-    });
-  }
-
-  @override
-  void dispose() {
-    _scannerService.stopScanner();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    ref.listen<String?>(scannerResultProvider, (previous, next) {
-      if (next != null) {
-        Navigator.of(context).pop(next);
-      }
-    });
-
-    return AlertDialog(
-      title: Text(l10n.hardwareRfidScannerActive),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.contactless, size: 64, color: Colors.blue),
-          const SizedBox(height: 16),
-          Text(l10n.hardwareRfidScannerInstructions),
+          Text(widget.instructions),
         ],
       ),
       actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel))],

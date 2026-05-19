@@ -14,13 +14,19 @@ class RegisterDeviceScreen extends ConsumerWidget {
 
   final AssetCardData? asset;
 
-  Future<void> _scanAndRegister({required BuildContext context, required Future<String?> Function(BuildContext context) scanLauncher, required String mismatchMessage}) async {
+  Future<void> _scanAndRegister({
+    required BuildContext context,
+    required Future<String?> Function(BuildContext context) scanLauncher,
+    required String mismatchMessage,
+    required String? Function(String?) normalizeScan,
+    bool scannedFromRfid = false,
+  }) async {
     final scannedValue = await scanLauncher(context);
     if (!context.mounted || scannedValue == null) {
       return;
     }
 
-    final normalizedScannedAstId = normalizeAstId(scannedValue);
+    final normalizedScannedAstId = normalizeScan(scannedValue);
     if (normalizedScannedAstId == null) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidScanData)));
@@ -37,7 +43,9 @@ class RegisterDeviceScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.deviceRegisteredFor(asset!.title))));
       Navigator.of(context).pop(normalizedScannedAstId);
     } else {
-      final created = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
+      final created = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId, scannedFromRfid: scannedFromRfid)),
+      );
       if (!context.mounted) return;
       if (created == true) {
         // Asset was created (saved locally). Go back to Home so syncing happens there.
@@ -72,7 +80,12 @@ class RegisterDeviceScreen extends ConsumerWidget {
                   label: l10n.qrCode,
                   icon: Icons.qr_code,
                   size: 132,
-                  onPressed: () => _scanAndRegister(context: context, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
+                  onPressed: () => _scanAndRegister(
+                    context: context,
+                    scanLauncher: ref.read(qrScannerLauncherProvider),
+                    mismatchMessage: l10n.qrScanMismatch,
+                    normalizeScan: normalizeAstId,
+                  ),
                   backgroundColor: ThemeColor.primary,
                   foregroundColor: ThemeColor.backGroundColor,
                 ),
@@ -80,7 +93,13 @@ class RegisterDeviceScreen extends ConsumerWidget {
                   label: l10n.rfid,
                   icon: Icons.contactless,
                   size: 132,
-                  onPressed: () => _scanAndRegister(context: context, scanLauncher: ref.read(rfidScannerLauncherProvider), mismatchMessage: l10n.rfidScanMismatch),
+                  onPressed: () => _scanAndRegister(
+                    context: context,
+                    scanLauncher: ref.read(rfidScannerLauncherProvider),
+                    mismatchMessage: l10n.rfidScanMismatch,
+                    normalizeScan: normalizeRfidEpcAsAstId,
+                    scannedFromRfid: true,
+                  ),
                   backgroundColor: ThemeColor.primary,
                   foregroundColor: ThemeColor.backGroundColor,
                 ),

@@ -24,8 +24,8 @@ class LoginResponse {
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
       code: json['code'] ?? 0,
-      access: json['access_token'] ?? '',
-      refresh: json['refresh_token'] ?? '',
+      access: json['access_token'] ?? json['access'] ?? '',
+      refresh: json['refresh_token'] ?? json['refresh'] ?? '',
       tokenType: json['token_type'] ?? '',
       expiry: json['expiry'] as int?,
       userObject: json['user_object'] == null ? null : UserObject.fromJson(json['user_object'] as Map<String, dynamic>),
@@ -33,6 +33,15 @@ class LoginResponse {
       isVendor: json['is_vendor'] ?? false,
       permissions: (json['permissions'] as List<dynamic>? ?? []).map((item) => item.toString()).toList(),
     );
+  }
+
+  factory LoginResponse.fromAuthBody(Map<String, dynamic> body) {
+    final nested = body['data'];
+    if (nested is Map<String, dynamic>) {
+      return LoginResponse.fromJson(nested);
+    }
+
+    return LoginResponse.fromJson(body);
   }
 }
 

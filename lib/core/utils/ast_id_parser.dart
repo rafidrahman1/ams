@@ -21,3 +21,19 @@ String? normalizeAstId(String? value) {
 
   return trimmed;
 }
+
+/// Uses the RFID tag EPC as the asset ID (registration), without QR JSON parsing.
+String? normalizeRfidEpcAsAstId(String? value) {
+  if (value == null) return null;
+
+  final withoutWhitespace = value.replaceAll(RegExp(r'\s+'), '');
+  if (withoutWhitespace.isEmpty) return null;
+
+  // Strip signed-byte artifacts (e.g. ffffff90 → 90) from native hex strings.
+  final hex = withoutWhitespace
+      .toUpperCase()
+      .replaceAll(RegExp(r'FFFFFF([0-9A-F]{2})'), r'$1');
+  if (hex.isEmpty) return null;
+
+  return hex;
+}

@@ -22,9 +22,29 @@ String offlineAwareErrorMessage(String noInternetMessage, Object error, {String?
   return fallback ?? error.toString();
 }
 
+String? _exceptionDetail(Object error) {
+  final message = error.toString().trim();
+  const prefix = 'Exception: ';
+  if (message.startsWith(prefix)) {
+    final detail = message.substring(prefix.length).trim();
+    if (detail.isNotEmpty && detail != 'Login failed') {
+      return detail;
+    }
+  }
+
+  return null;
+}
+
 String authFailureMessage(String noInternetMessage, String invalidCredentialsMessage, Object? error) {
   if (error != null && isNoInternetError(error)) {
     return noInternetMessage;
+  }
+
+  if (error != null) {
+    final detail = _exceptionDetail(error);
+    if (detail != null) {
+      return detail;
+    }
   }
 
   return invalidCredentialsMessage;

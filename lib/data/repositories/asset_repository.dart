@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:asset_management_system/core/storage/asset_cache_store.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
+import 'package:asset_management_system/core/utils/ast_id_parser.dart';
 
 import '../models/asset_checklist_item.dart';
 import '../models/location_models.dart';
@@ -517,7 +518,7 @@ class AssetRepository {
       );
     }
 
-    final normalizedAstId = _normalizeAstId(device.astId);
+    final normalizedAstId = normalizeAstId(device.astId);
     if (normalizedAstId == null) {
       throw Exception('Asset ID is missing for this device');
     }
@@ -810,27 +811,6 @@ class AssetRepository {
     return <Map<String, dynamic>>[
       {'id': 1, 'name': trimmed, 'description': ''},
     ];
-  }
-
-  String? _normalizeAstId(String? value) {
-    if (value == null) return null;
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-
-    try {
-      final decoded = jsonDecode(trimmed);
-      if (decoded is Map<String, dynamic>) {
-        final fromAstId = decoded['ast_ID'] ?? decoded['ast_id'] ?? decoded['astId'];
-        final astId = fromAstId?.toString().trim();
-        if (astId != null && astId.isNotEmpty) {
-          return astId;
-        }
-      }
-    } catch (_) {
-      // Keep plain IDs as-is.
-    }
-
-    return trimmed;
   }
 
   String? _normalizeApiDate(String? value) {

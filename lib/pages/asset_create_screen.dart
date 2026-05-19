@@ -19,8 +19,9 @@ import '../providers/asset_provider.dart';
 
 class AssetCreateScreen extends ConsumerStatefulWidget {
   final String? scannedId;
+  final bool scannedFromRfid;
 
-  const AssetCreateScreen({super.key, this.scannedId});
+  const AssetCreateScreen({super.key, this.scannedId, this.scannedFromRfid = false});
 
   @override
   ConsumerState<AssetCreateScreen> createState() => _AssetCreateScreenState();
@@ -43,8 +44,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   bool _isSubmitting = false;
   String? _selectedImagePath;
   String? _selectedImageName;
-  String? _selectedAttachmentPath;
-  String? _selectedAttachmentName;
   static const List<String> _statusOptions = ['ACTIVE', 'UNDER MAINTENANCE', 'APPROVAL PENDING', 'INACTIVE'];
 
   DateTime? _purchaseDate;
@@ -59,7 +58,9 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   @override
   void initState() {
     super.initState();
-    _astIdController.text = normalizeAstId(widget.scannedId) ?? (widget.scannedId ?? '');
+    _astIdController.text = widget.scannedFromRfid
+        ? (normalizeRfidEpcAsAstId(widget.scannedId) ?? '')
+        : (normalizeAstId(widget.scannedId) ?? (widget.scannedId ?? ''));
     _addItem();
   }
 
@@ -115,7 +116,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     final name = _nameController.text.trim();
-    final astId = normalizeAstId(_astIdController.text);
+    final astId = widget.scannedFromRfid ? normalizeRfidEpcAsAstId(_astIdController.text) : normalizeAstId(_astIdController.text);
     final address = _addressLineController.text.trim();
     final details = _assetDetailsController.text.trim();
 
@@ -170,7 +171,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
             manufactureDate: _formatDateForApi(_manufactureDate),
             warrantyEnd: _formatDateForApi(_warrantyEndDate),
             specification: specifications.isNotEmpty ? jsonEncode(specifications) : null,
-            assetAttachment: _selectedAttachmentPath,
           );
 
       if (!mounted) return;
@@ -190,20 +190,15 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     }
   }
 
-  Future<void> _pickFile({required bool isImage}) async {
-    final result = await FilePicker.pickFiles(type: isImage ? FileType.image : FileType.any, withData: true);
+  Future<void> _pickImageFile() async {
+    final result = await FilePicker.pickFiles(type: FileType.image, withData: true);
     if (result != null && result.files.isNotEmpty) {
       final picked = result.files.first;
-      final cachedPath = await _resolveCachedUploadPath(picked, prefix: isImage ? 'image' : 'asset_attachment');
+      final cachedPath = await _resolveCachedUploadPath(picked, prefix: 'image');
       if (!mounted) return;
       setState(() {
-        if (isImage) {
-          _selectedImagePath = cachedPath;
-          _selectedImageName = picked.name;
-        } else {
-          _selectedAttachmentPath = cachedPath;
-          _selectedAttachmentName = picked.name;
-        }
+        _selectedImagePath = cachedPath;
+        _selectedImageName = picked.name;
       });
     }
   }
@@ -434,7 +429,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                     takePhotoLabel: l10n.takePhoto,
                     removeLabel: l10n.remove,
                     noneSelectedLabel: l10n.noImageChosen,
-                    onChoosePressed: () => _pickFile(isImage: true),
+                    onChoosePressed: _pickImageFile,
                     onTakePhotoPressed: _captureImageFromCamera,
                     onRemovePressed: () => setState(() {
                       _selectedImagePath = null;
@@ -443,24 +438,6 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
                   ),
                 ),
                 Gap.y4,
-                // AssetCreateFieldSection(
-                //   label: l10n.assetAttachmentLabel,
-                //   child: AssetCreateFilePickerField(
-                //     isImage: false,
-                //     isSubmitting: _isSubmitting,
-                //     selectedName: _selectedAttachmentName,
-                //     chooseLabel: l10n.chooseAttachment,
-                //     takePhotoLabel: l10n.takePhoto,
-                //     removeLabel: l10n.remove,
-                //     noneSelectedLabel: l10n.noAttachmentChosen,
-                //     onChoosePressed: () => _pickFile(isImage: false),
-                //     onRemovePressed: () => setState(() {
-                //       _selectedAttachmentPath = null;
-                //       _selectedAttachmentName = null;
-                //     }),
-                //   ),
-                // ),
-                // Gap.y4,
                 AssetCreateFieldSection(
                   label: l10n.assetDetailsLabel,
                   child: AssetCreateInputField(controller: _assetDetailsController, hintText: l10n.assetDetailsHint, maxLines: 3),
