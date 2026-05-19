@@ -57,7 +57,10 @@ class ScannerService {
     try {
       _lastWakeUpTime = now;
       _isScanActive = true;
-      await _channel.invokeMethod('startHardwareScan');
+      final started = await _channel.invokeMethod<bool>('startHardwareScan');
+      if (started != true) {
+        _isScanActive = false;
+      }
     } on PlatformException {
       _isScanActive = false;
     }
@@ -142,6 +145,11 @@ class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
     super.initState();
     _scannerService = ref.read(scannerServiceProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pending = ref.read(scannerResultProvider);
+      if (pending != null && mounted) {
+        Navigator.of(context).pop(pending);
+        return;
+      }
       _scannerService.wakeUpScanner();
     });
   }

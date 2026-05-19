@@ -14,9 +14,20 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "com.catchbangladesh.ams/scanner"
 
-    // Action that emits barcode data
-    private val scanActions = setOf("scan.rcv.message")
-    private val scanDataKey = "barcodeData"
+    // Hardware scanners use different broadcast actions / extra keys per OEM.
+    private val scanActions = setOf(
+        "scan.rcv.message",
+        "orgaiot.intent.action.scan",
+        "com.kte.scan.result",
+        "com.android.scanner.service_settings",
+    )
+    private val scanDataKeys = listOf(
+        "barcodeData",
+        "data",
+        "barcode",
+        "SCAN_RESULT",
+        "scannerdata",
+    )
 
     private var scannerReceiver: BroadcastReceiver? = null
     private var methodChannel: MethodChannel? = null
@@ -83,7 +94,7 @@ class MainActivity : FlutterActivity() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val action = intent?.action
                 if (action != null && action in scanActions) {
-                    val barcode = intent.getStringExtra(scanDataKey)?.trim()
+                    val barcode = extractBarcode(intent)
                     if (!barcode.isNullOrBlank()) {
                         isScanActive = false // Reset scan state when data is received
                         methodChannel?.invokeMethod("onScanReceived", barcode)
@@ -101,6 +112,17 @@ class MainActivity : FlutterActivity() {
         } else {
             registerReceiver(scannerReceiver, intentFilter)
         }
+    }
+
+    private fun extractBarcode(intent: Intent?): String? {
+        if (intent == null) return null
+        for (key in scanDataKeys) {
+            val value = intent.getStringExtra(key)?.trim()
+            if (!value.isNullOrBlank()) {
+                return value
+            }
+        }
+        return null
     }
 
     override fun onDestroy() {
