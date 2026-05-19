@@ -63,7 +63,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qrScannerTitle => 'QR Scanner';
 
   @override
+  String get scanOptionsTitle => 'Scan asset';
+
+  @override
   String get qrCode => 'QR Code';
+
+  @override
+  String get rfid => 'RFID';
+
+  @override
+  String get rfidScannerTitle => 'RFID Scanner';
+
+  @override
+  String get holdRfidTagClose => 'Hold the RFID tag close to the device';
+
+  @override
+  String get rfidScanMismatch => 'RFID tag does not match the asset label';
 
   @override
   String checklistForAsset(Object assetTitle) {
@@ -463,4 +478,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get hardwareScannerInstructions =>
       'Please use the hardware scanner to scan the QR code.';
+
+  @override
+  String get hardwareRfidScannerActive => 'RFID Scanner Active';
+
+  @override
+  String get hardwareRfidScannerInstructions =>
+      'Please use the hardware scanner to read the RFID tag.';
 }

@@ -66,17 +66,24 @@ class RegisterDeviceScreen extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                const SizedBox(width: 16),
                 SquareActionButton(
                   label: l10n.qrCode,
                   icon: Icons.qr_code,
+                  size: 132,
                   onPressed: () => _scanAndRegister(context: context, scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
                   backgroundColor: ThemeColor.primary,
                   foregroundColor: ThemeColor.backGroundColor,
                 ),
-                const SizedBox(width: 16),
+                SquareActionButton(
+                  label: l10n.rfid,
+                  icon: Icons.contactless,
+                  size: 132,
+                  onPressed: () => _scanAndRegister(context: context, scanLauncher: ref.read(rfidScannerLauncherProvider), mismatchMessage: l10n.rfidScanMismatch),
+                  backgroundColor: ThemeColor.primary,
+                  foregroundColor: ThemeColor.backGroundColor,
+                ),
               ],
             ),
           ],

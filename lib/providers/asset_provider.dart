@@ -59,12 +59,37 @@ final assetChecklistAllTrueProvider = FutureProvider.family<bool, String>((ref, 
   return checklist.items.every((item) => item.response);
 });
 
-final homeBootstrapProvider = FutureProvider<void>((ref) async {
-  // Await assets without subscribing; we only need to wait for the future
-  // to complete here. Using `read` avoids creating extra subscriptions.
-  final assets = await ref.read(myAssetsProvider.future);
+/// Caps parallel checklist fetches so home load does not flood the network/UI thread.
+const _checklistPrefetchConcurrency = 4;
 
-  await Future.wait(assets.map((asset) => ref.read(assetChecklistAllTrueProvider(asset.astId).future)));
+Future<Map<String, bool>> _loadAllTrueStatesForAssets(Ref ref, List<VolunteerAsset> assets) async {
+  final states = <String, bool>{};
+  if (assets.isEmpty) {
+    return states;
+  }
+
+  for (var start = 0; start < assets.length; start += _checklistPrefetchConcurrency) {
+    final end = (start + _checklistPrefetchConcurrency).clamp(0, assets.length);
+    final batch = assets.sublist(start, end);
+    final batchResults = await Future.wait(
+      batch.map((asset) async {
+        final isAllTrue = await ref.read(assetChecklistAllTrueProvider(asset.astId).future);
+        return MapEntry(asset.astId, isAllTrue);
+      }),
+    );
+    states.addEntries(batchResults);
+  }
+
+  return states;
+}
+
+final assetAllTrueStatesProvider = FutureProvider<Map<String, bool>>((ref) async {
+  final assets = await ref.watch(myAssetsProvider.future);
+  return _loadAllTrueStatesForAssets(ref, assets);
+});
+
+final homeBootstrapProvider = FutureProvider<void>((ref) async {
+  await ref.watch(assetAllTrueStatesProvider.future);
 });
 
 final adminHomeBootstrapProvider = FutureProvider<void>((ref) async {
@@ -94,15 +119,20 @@ final showAllTrueAssetsProvider = NotifierProvider<ShowAllTrueAssets, bool>(Show
 final filteredAssetsProvider = Provider<AsyncValue<List<VolunteerAsset>>>((ref) {
   final assetsAsync = ref.watch(myAssetsProvider);
   final showAllTrue = ref.watch(showAllTrueAssetsProvider);
+  final allTrueStatesAsync = ref.watch(assetAllTrueStatesProvider);
 
-  return assetsAsync.whenData((assets) {
-    final filtered = <VolunteerAsset>[];
-    for (final asset in assets) {
-      final isAllTrue = ref.watch(assetChecklistAllTrueProvider(asset.astId)).maybeWhen(data: (d) => d, orElse: () => false);
-      if (showAllTrue == isAllTrue) {
-        filtered.add(asset);
-      }
-    }
-    return filtered;
-  });
+  return assetsAsync.when(
+    loading: () => const AsyncValue.loading(),
+    error: AsyncValue.error,
+    data: (assets) {
+      // While checklist states load, treat unknown assets as not fully checked so the
+      // list can render immediately without N provider subscriptions in a loop.
+      final allTrueByAstId = allTrueStatesAsync.value ?? const <String, bool>{};
+      final filtered = assets.where((asset) {
+        final isAllTrue = allTrueByAstId[asset.astId] ?? false;
+        return showAllTrue == isAllTrue;
+      }).toList(growable: false);
+      return AsyncValue.data(filtered);
+    },
+  );
 });

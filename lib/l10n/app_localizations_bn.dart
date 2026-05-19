@@ -64,7 +64,22 @@ class AppLocalizationsBn extends AppLocalizations {
   String get qrScannerTitle => 'QR স্ক্যানার';
 
   @override
+  String get scanOptionsTitle => 'অ্যাসেট স্ক্যান';
+
+  @override
   String get qrCode => 'QR কোড';
+
+  @override
+  String get rfid => 'RFID';
+
+  @override
+  String get rfidScannerTitle => 'RFID স্ক্যানার';
+
+  @override
+  String get holdRfidTagClose => 'ডিভাইসের কাছে RFID ট্যাগ ধরে রাখুন';
+
+  @override
+  String get rfidScanMismatch => 'RFID ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না';
 
   @override
   String checklistForAsset(Object assetTitle) {
@@ -466,4 +481,11 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get hardwareScannerInstructions =>
       'কিউআর (QR) কোডটি স্ক্যান করতে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।';
+
+  @override
+  String get hardwareRfidScannerActive => 'RFID স্ক্যানার সক্রিয়';
+
+  @override
+  String get hardwareRfidScannerInstructions =>
+      'RFID ট্যাগ পড়তে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।';
 }

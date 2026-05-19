@@ -70,6 +70,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
     ref.invalidate(blocksProvider);
     ref.invalidate(assetChecklistProvider);
     ref.invalidate(assetChecklistAllTrueProvider);
+    ref.invalidate(assetAllTrueStatesProvider);
     ref.invalidate(homeBootstrapProvider);
     ref.invalidate(adminHomeBootstrapProvider);
   }

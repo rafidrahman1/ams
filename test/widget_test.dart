@@ -360,7 +360,7 @@ void main() {
     await tester.tap(find.text('Check List').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('QR Scanner'), findsOneWidget);
+    expect(find.text('Scan asset'), findsOneWidget);
 
     await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();

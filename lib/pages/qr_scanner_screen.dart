@@ -34,17 +34,26 @@ class QrScannerScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.qrScannerTitle)),
+      appBar: AppBar(title: Text(l10n.scanOptionsTitle)),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               SquareActionButton(
                 label: l10n.qrCode,
                 icon: Icons.qr_code,
+                size: 132,
                 onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
+                backgroundColor: ThemeColor.primary,
+                foregroundColor: ThemeColor.backGroundColor,
+              ),
+              SquareActionButton(
+                label: l10n.rfid,
+                icon: Icons.contactless,
+                size: 132,
+                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(rfidScannerLauncherProvider), mismatchMessage: l10n.rfidScanMismatch),
                 backgroundColor: ThemeColor.primary,
                 foregroundColor: ThemeColor.backGroundColor,
               ),

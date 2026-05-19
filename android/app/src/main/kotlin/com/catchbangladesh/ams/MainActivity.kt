@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
 
     private var scannerReceiver: BroadcastReceiver? = null
     private var methodChannel: MethodChannel? = null
+    private var uhfReader: UhfSerialReader? = null
 
     // Debounce protection for scanner trigger
     private var lastScanTime: Long = 0
@@ -31,6 +32,10 @@ class MainActivity : FlutterActivity() {
 
         // 1. Initialize the persistent MethodChannel
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        uhfReader = UhfSerialReader(
+            onTag = { tag -> methodChannel?.invokeMethod("onUhfTag", tag) },
+            onStatus = { _ -> },
+        )
 
         // 2. Set up the MethodCallHandler
         methodChannel?.setMethodCallHandler { call: MethodCall, result: MethodChannel.Result ->
@@ -57,6 +62,17 @@ class MainActivity : FlutterActivity() {
                     lastScanTime = 0 // Reset debounce timer
                     sendBroadcast(Intent("com.java.scan.close"))
                     result.success(true)
+                }
+                "isUhfAvailable" -> {
+                    result.success(true)
+                }
+                "startUhfInventory" -> {
+                    val success = uhfReader?.start() == true
+                    result.success(success)
+                }
+                "stopUhfInventory" -> {
+                    val success = uhfReader?.stop() == true
+                    result.success(success)
                 }
                 else -> result.notImplemented()
             }
@@ -88,6 +104,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        uhfReader?.stop()
+        uhfReader = null
         scannerReceiver?.let { unregisterReceiver(it) }
         scannerReceiver = null
         methodChannel = null

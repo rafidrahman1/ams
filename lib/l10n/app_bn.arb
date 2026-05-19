@@ -18,7 +18,12 @@
   "assetDescription3": "অ্যাসেট ৩-এর বিবরণ",
   "checkList": "চেকলিস্ট",
   "qrScannerTitle": "QR স্ক্যানার",
+  "scanOptionsTitle": "অ্যাসেট স্ক্যান",
   "qrCode": "QR কোড",
+  "rfid": "RFID",
+  "rfidScannerTitle": "RFID স্ক্যানার",
+  "holdRfidTagClose": "ডিভাইসের কাছে RFID ট্যাগ ধরে রাখুন",
+  "rfidScanMismatch": "RFID ট্যাগ অ্যাসেট লেবেলের সাথে মেলে না",
   "checklistForAsset": "{assetTitle}-এর জন্য চেকলিস্ট",
   "@checklistForAsset": {
     "placeholders": {
@@ -205,5 +210,7 @@
   "unknownSyncError": "সিঙ্ক করার সময় অজানা ত্রুটি ঘটেছে",
   "noPendingDevices": "সিঙ্ক করার জন্য কোনো অপেক্ষমাণ ডিভাইস নেই",
   "hardwareScannerActive": "হার্ডওয়্যার স্ক্যানার সক্রিয়",
-  "hardwareScannerInstructions": "কিউআর (QR) কোডটি স্ক্যান করতে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।"
+  "hardwareScannerInstructions": "কিউআর (QR) কোডটি স্ক্যান করতে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।",
+  "hardwareRfidScannerActive": "RFID স্ক্যানার সক্রিয়",
+  "hardwareRfidScannerInstructions": "RFID ট্যাগ পড়তে অনুগ্রহ করে হার্ডওয়্যার স্ক্যানার ব্যবহার করুন।"
 }
