@@ -108,6 +108,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithEmail => 'Volunteer\nLogin';
 
   @override
+  String get loginWithQr => 'Volunteer\nQR Login';
+
+  @override
+  String get invalidVolunteerQr => 'Invalid volunteer QR code';
+
+  @override
+  String get invalidVolunteerCredentials => 'Invalid volunteer ID or QR code';
+
+  @override
   String get email => 'Email';
 
   @override

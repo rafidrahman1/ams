@@ -290,6 +290,24 @@ abstract class AppLocalizations {
   /// **'Volunteer\nLogin'**
   String get loginWithEmail;
 
+  /// No description provided for @loginWithQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Volunteer\nQR Login'**
+  String get loginWithQr;
+
+  /// No description provided for @invalidVolunteerQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid volunteer QR code'**
+  String get invalidVolunteerQr;
+
+  /// No description provided for @invalidVolunteerCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid volunteer ID or QR code'**
+  String get invalidVolunteerCredentials;
+
   /// No description provided for @email.
   ///
   /// In en, this message translates to:

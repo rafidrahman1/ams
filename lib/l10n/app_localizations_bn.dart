@@ -109,6 +109,15 @@ class AppLocalizationsBn extends AppLocalizations {
   String get loginWithEmail => 'ভলান্টিয়ার\nলগইন';
 
   @override
+  String get loginWithQr => 'ভলান্টিয়ার\nQR লগইন';
+
+  @override
+  String get invalidVolunteerQr => 'অবৈধ ভলান্টিয়ার QR কোড';
+
+  @override
+  String get invalidVolunteerCredentials => 'ভলান্টিয়ার আইডি বা QR কোড ভুল';
+
+  @override
   String get email => 'ইমেইল';
 
   @override

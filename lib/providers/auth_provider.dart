@@ -115,6 +115,26 @@ class AuthNotifier extends Notifier<AuthStatus> {
     }
   }
 
+  Future<void> qrLogin(String volunteerId) async {
+    final cleanedVolunteerId = volunteerId.trim();
+
+    if (cleanedVolunteerId.isEmpty) {
+      state = AuthStatus.unauthenticated;
+      return;
+    }
+
+    try {
+      _lastError = null;
+      await repo.qrLogin(cleanedVolunteerId);
+      state = AuthStatus.authenticatedVolunteer;
+      _invalidateSessionScopedProviders();
+      _startAutoLogoutCheck();
+    } catch (error) {
+      _lastError = error;
+      state = AuthStatus.unauthenticated;
+    }
+  }
+
   Future<void> adminLogin(String email, String password) async {
     final cleanedEmail = email.trim();
     final cleanedPassword = password.trim();
