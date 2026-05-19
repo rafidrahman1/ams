@@ -18,6 +18,30 @@ class AuthService {
     return _login(Endpoints.adminLogin, email, password);
   }
 
+  Future<LoginResponse> volunteerQrLogin(String volunteerId) async {
+    final cleanedVolunteerId = volunteerId.trim();
+
+    if (cleanedVolunteerId.isEmpty) {
+      throw Exception("Volunteer ID is required");
+    }
+
+    final res = await client.post(Endpoints.volunteerQrLogin, body: {"volunteer_id": cleanedVolunteerId});
+
+    final data = jsonDecode(res.body);
+
+    if (res.statusCode == 200 && data is Map<String, dynamic>) {
+      final loginResponse = LoginResponse.fromJson(data);
+      final hasValidTokens = loginResponse.access.isNotEmpty && loginResponse.refresh.isNotEmpty;
+      final hasSuccessCode = loginResponse.code == 200;
+
+      if (hasSuccessCode && hasValidTokens) {
+        return loginResponse;
+      }
+    }
+
+    throw Exception("Login failed");
+  }
+
   Future<LoginResponse> _login(String endpoint, String email, String password) async {
     final cleanedEmail = email.trim();
     final cleanedPassword = password.trim();

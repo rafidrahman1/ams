@@ -23,6 +23,12 @@ class AuthRepository {
     return _persistLogin(res, email, role: 'admin');
   }
 
+  Future<LoginResponse> qrLogin(String volunteerId) async {
+    final res = await service.volunteerQrLogin(volunteerId);
+
+    return _persistLogin(res, volunteerId, role: 'volunteer');
+  }
+
   Future<LoginResponse> _persistLogin(LoginResponse res, String email, {required String role}) async {
     if (res.access.isEmpty || res.refresh.isEmpty) {
       throw Exception('Invalid login response');
