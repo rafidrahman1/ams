@@ -157,7 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           }
 
           final errorMsg = syncFailureMessage(error);
-          final astId = _extractAstIdFromError(errorMsg) ?? normalizeAstId(device.astId) ?? device.astId.trim();
+          final astId = _extractAstIdFromError(errorMsg) ?? normalizeAstId(device.astId) ?? device.astId?.trim() ?? '';
 
           if (astId.isNotEmpty && !failedAstIds.contains(astId)) {
             failedAstIds.add(astId);
