@@ -35,6 +35,39 @@ String? _exceptionDetail(Object error) {
   return null;
 }
 
+/// Strips nested [Exception] wrappers and sync-layer prefixes so API messages are visible.
+String syncFailureMessage(Object error) {
+  const exceptionPrefix = 'Exception: ';
+  var message = error.toString().trim();
+
+  while (message.startsWith(exceptionPrefix)) {
+    message = message.substring(exceptionPrefix.length).trim();
+  }
+
+  const wrappers = <String>[
+    'Sync failed during upload (createAsset) after retry-without-block: ',
+    'Sync failed during upload (createAsset): ',
+    'Sync failed during verification (response mismatch). data=',
+    'Sync failed: ',
+  ];
+
+  var stripped = true;
+  while (stripped) {
+    stripped = false;
+    for (final wrapper in wrappers) {
+      if (message.startsWith(wrapper)) {
+        message = message.substring(wrapper.length).trim();
+        stripped = true;
+        while (message.startsWith(exceptionPrefix)) {
+          message = message.substring(exceptionPrefix.length).trim();
+        }
+      }
+    }
+  }
+
+  return message;
+}
+
 String authFailureMessage(String noInternetMessage, String invalidCredentialsMessage, Object? error) {
   if (error != null && isNoInternetError(error)) {
     return noInternetMessage;

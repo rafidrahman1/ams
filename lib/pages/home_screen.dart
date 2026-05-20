@@ -1,5 +1,6 @@
 import 'package:asset_management_system/components/language_toggle.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
+import 'package:asset_management_system/core/utils/ast_id_parser.dart';
 import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -140,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       int syncedCount = 0;
       final failedAstIds = <String>[];
       final failedDeviceIdsList = <int>[];
+      final failedDetails = <String>[];
 
       for (final device in unaycdDevices) {
         try {
@@ -154,13 +156,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             failedDeviceIdsList.add(device.id!);
           }
 
-          // Extract AST ID from error message
-          final errorMsg = error.toString();
-          final astId = _extractAstIdFromError(errorMsg);
+          final errorMsg = syncFailureMessage(error);
+          final astId = _extractAstIdFromError(errorMsg) ?? normalizeAstId(device.astId) ?? device.astId.trim();
 
-          if (astId != null && !failedAstIds.contains(astId)) {
+          if (astId.isNotEmpty && !failedAstIds.contains(astId)) {
             failedAstIds.add(astId);
           }
+
+          failedDetails.add(astId.isNotEmpty ? '$astId: $errorMsg' : errorMsg);
         }
       }
 
@@ -176,7 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (!context.mounted) return;
 
-      final failedCount = failedAstIds.length;
+      final failedCount = failedDeviceIdsList.length;
       String message;
 
       if (failedCount == 0) {
@@ -189,7 +192,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         message = l10n.deviceSyncPartial(syncedCount, unaycdDevices.length, astIdList);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 4)));
+      if (failedDetails.isNotEmpty) {
+        message = '$message\n${failedDetails.join('\n')}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: Duration(seconds: failedCount > 0 ? 8 : 4),
+        ),
+      );
     } catch (error) {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
