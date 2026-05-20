@@ -144,13 +144,15 @@ class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
   void initState() {
     super.initState();
     _scannerService = ref.read(scannerServiceProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final pending = ref.read(scannerResultProvider);
       if (pending != null && mounted) {
         Navigator.of(context).pop(pending);
         return;
       }
-      _scannerService.wakeUpScanner();
+      await _scannerService.stopScanner();
+      if (!mounted) return;
+      await _scannerService.wakeUpScanner();
     });
   }
 
