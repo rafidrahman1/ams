@@ -70,7 +70,7 @@ class HomeAssetsListSection extends ConsumerWidget {
 
           if (assets.isEmpty && unsyncedDevices.isEmpty) {
             return _buildScrollableList(
-              enableRefresh: !isAdmin,
+              enableRefresh: true,
               children: [SizedBox(height: 240, child: Center(child: Text(assetsLabel)))],
             );
           }
@@ -88,7 +88,7 @@ class HomeAssetsListSection extends ConsumerWidget {
             ensureScrollablePage(hasMore);
 
             return _buildScrollableList(
-              enableRefresh: !isAdmin,
+              enableRefresh: true,
               children: [
                 ...visibleUnsynced.map(
                   (device) => Padding(

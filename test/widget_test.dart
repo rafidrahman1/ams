@@ -496,7 +496,7 @@ void main() {
     expect(fetchCount, greaterThanOrEqualTo(2));
   });
 
-  testWidgets('admin home pull down refresh does not reload assets', (WidgetTester tester) async {
+  testWidgets('admin home pull down refresh reloads assets', (WidgetTester tester) async {
     var fetchCount = 0;
 
     await tester.pumpWidget(
@@ -520,7 +520,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    expect(fetchCount, 1);
+    expect(fetchCount, greaterThanOrEqualTo(2));
   });
 
   testWidgets('admin home device card opens stored db details', (WidgetTester tester) async {
