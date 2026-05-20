@@ -12,8 +12,6 @@ import '../../providers/qr_scanner_provider.dart';
 
 typedef ScanLauncher = Future<String?> Function(BuildContext context);
 
-enum _ScanOption { qr, rfid }
-
 class HomeScreenActions {
   const HomeScreenActions._();
 
@@ -22,12 +20,13 @@ class HomeScreenActions {
   }
 
   static Future<void> showScanOptions({required BuildContext context, required WidgetRef ref}) async {
-    final selected = await _pickScanOption(context: context, ref: ref);
-    if (!context.mounted || selected == null) {
-      return;
-    }
-
-    await _openChecklistFromScan(context: context, ref: ref, scanLauncher: selected.scanLauncher, mismatchMessage: selected.mismatchMessage);
+    final l10n = AppLocalizations.of(context)!;
+    await _openChecklistFromScan(
+      context: context,
+      ref: ref,
+      scanLauncher: ref.read(qrScannerLauncherProvider),
+      mismatchMessage: l10n.qrScanMismatch,
+    );
   }
 
   static Future<void> openAssetChecklist({required BuildContext context, required WidgetRef ref, required String scannedValue, required String mismatchMessage}) async {
@@ -77,34 +76,5 @@ class HomeScreenActions {
     }
 
     await openAssetChecklist(context: context, ref: ref, scannedValue: scannedValue, mismatchMessage: mismatchMessage);
-  }
-
-  static Future<({ScanLauncher scanLauncher, String mismatchMessage})?> _pickScanOption({required BuildContext context, required WidgetRef ref}) async {
-    final l10n = AppLocalizations.of(context)!;
-    final choice = await showDialog<_ScanOption>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(l10n.scanOptionsTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(leading: const Icon(Icons.qr_code), title: Text(l10n.qrCode), onTap: () => Navigator.of(dialogContext).pop(_ScanOption.qr)),
-              ListTile(leading: const Icon(Icons.contactless), title: Text(l10n.rfid), onTap: () => Navigator.of(dialogContext).pop(_ScanOption.rfid)),
-            ],
-          ),
-          actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(l10n.cancel))],
-        );
-      },
-    );
-
-    if (choice == null) {
-      return null;
-    }
-
-    return switch (choice) {
-      _ScanOption.qr => (scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
-      _ScanOption.rfid => (scanLauncher: ref.read(rfidScannerLauncherProvider), mismatchMessage: l10n.rfidScanMismatch),
-    };
   }
 }

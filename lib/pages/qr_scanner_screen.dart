@@ -18,8 +18,8 @@ class QrScannerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
-    Future<void> openChecklistAfterScan({required Future<String?> Function(BuildContext context) scanLauncher, required String mismatchMessage}) async {
-      final scannedValue = await scanLauncher(context);
+    Future<void> openChecklistAfterScan() async {
+      final scannedValue = await ref.read(qrScannerLauncherProvider)(context);
       final scannedAstId = normalizeAstId(scannedValue);
       final expectedAstId = normalizeAstId(asset.astId);
 
@@ -30,34 +30,21 @@ class QrScannerScreen extends ConsumerWidget {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mismatchMessage)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.qrScanMismatch)));
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.scanOptionsTitle)),
+      appBar: AppBar(title: Text(l10n.qrScannerTitle)),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              SquareActionButton(
-                label: l10n.qrCode,
-                icon: Icons.qr_code,
-                size: 132,
-                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(qrScannerLauncherProvider), mismatchMessage: l10n.qrScanMismatch),
-                backgroundColor: ThemeColor.primary,
-                foregroundColor: ThemeColor.backGroundColor,
-              ),
-              SquareActionButton(
-                label: l10n.rfid,
-                icon: Icons.contactless,
-                size: 132,
-                onPressed: () => openChecklistAfterScan(scanLauncher: ref.read(rfidScannerLauncherProvider), mismatchMessage: l10n.rfidScanMismatch),
-                backgroundColor: ThemeColor.primary,
-                foregroundColor: ThemeColor.backGroundColor,
-              ),
-            ],
+          SquareActionButton(
+            label: l10n.qrCode,
+            icon: Icons.qr_code,
+            size: 132,
+            onPressed: openChecklistAfterScan,
+            backgroundColor: ThemeColor.primary,
+            foregroundColor: ThemeColor.backGroundColor,
           ),
         ],
       ),

@@ -1,6 +1,4 @@
-import 'package:asset_management_system/core/uhf_service.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
-import 'package:asset_management_system/pages/uhf_scanner_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,8 +38,6 @@ class ScannerService {
           }
           _isScanActive = false;
           _ref.read(scannerResultProvider.notifier).update(barcode);
-        case 'onUhfTag':
-          UhfService.instance().handleNativeTag(call.arguments?.toString());
       }
     });
   }
@@ -83,7 +79,6 @@ class ScannerService {
 final qrScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
   return (context) async {
     ref.read(scannerServiceProvider);
-    await UhfService.instance().stopInventory();
     await ref.read(scannerServiceProvider).stopScanner();
     ref.read(scannerResultProvider.notifier).update(null);
     final l10n = AppLocalizations.of(context)!;
@@ -94,40 +89,6 @@ final qrScannerLauncherProvider = Provider<Future<String?> Function(BuildContext
         title: l10n.hardwareScannerActive,
         instructions: l10n.hardwareScannerInstructions,
         icon: Icons.qr_code_scanner,
-      ),
-    );
-  };
-});
-
-final rfidScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
-  return (context) async {
-    ref.read(scannerServiceProvider);
-    try {
-      final available = await UhfService.instance().isAvailable();
-      if (available && context.mounted) {
-        final tag = await Navigator.of(context).push<String?>(MaterialPageRoute(builder: (_) => const UhfScannerScreen()));
-        await UhfService.instance().stopInventory();
-        if (tag != null) {
-          return tag;
-        }
-      }
-    } catch (_) {
-      // Fall through to hardware scanner dialog.
-    }
-
-    await ref.read(scannerServiceProvider).stopScanner();
-    ref.read(scannerResultProvider.notifier).update(null);
-    if (!context.mounted) {
-      return null;
-    }
-    final l10n = AppLocalizations.of(context)!;
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => _HardwareScanDialog(
-        title: l10n.hardwareRfidScannerActive,
-        instructions: l10n.hardwareRfidScannerInstructions,
-        icon: Icons.contactless,
       ),
     );
   };

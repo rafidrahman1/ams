@@ -19,9 +19,8 @@ import '../providers/asset_provider.dart';
 
 class AssetCreateScreen extends ConsumerStatefulWidget {
   final String? scannedId;
-  final bool scannedFromRfid;
 
-  const AssetCreateScreen({super.key, this.scannedId, this.scannedFromRfid = false});
+  const AssetCreateScreen({super.key, this.scannedId});
 
   @override
   ConsumerState<AssetCreateScreen> createState() => _AssetCreateScreenState();
@@ -58,9 +57,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
   @override
   void initState() {
     super.initState();
-    _astIdController.text = widget.scannedFromRfid
-        ? (normalizeRfidEpcAsAstId(widget.scannedId) ?? '')
-        : (normalizeAstId(widget.scannedId) ?? (widget.scannedId ?? ''));
+    _astIdController.text = normalizeAstId(widget.scannedId) ?? (widget.scannedId ?? '');
     _addItem();
   }
 
@@ -116,7 +113,7 @@ class _AssetCreateScreenState extends ConsumerState<AssetCreateScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     final name = _nameController.text.trim();
-    final astId = widget.scannedFromRfid ? normalizeRfidEpcAsAstId(_astIdController.text) : normalizeAstId(_astIdController.text);
+    final astId = normalizeAstId(_astIdController.text);
     final address = _addressLineController.text.trim();
     final details = _assetDetailsController.text.trim();
 

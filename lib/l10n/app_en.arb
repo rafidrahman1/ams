@@ -20,10 +20,6 @@
   "qrScannerTitle": "QR Scanner",
   "scanOptionsTitle": "Scan asset",
   "qrCode": "QR Code",
-  "rfid": "RFID",
-  "rfidScannerTitle": "RFID Scanner",
-  "holdRfidTagClose": "Hold the RFID tag close to the device",
-  "rfidScanMismatch": "RFID tag does not match the asset label",
   "checklistForAsset": "Checklist for {assetTitle}",
   "@checklistForAsset": {
     "placeholders": {
@@ -210,7 +206,5 @@
   "unknownSyncError": "Unknown error occurred during sync",
   "noPendingDevices": "No pending devices to sync",
   "hardwareScannerActive": "Hardware Scanner Active",
-  "hardwareScannerInstructions": "Please use the hardware scanner to scan the QR code.",
-  "hardwareRfidScannerActive": "RFID Scanner Active",
-  "hardwareRfidScannerInstructions": "Please use the hardware scanner to read the RFID tag."
+  "hardwareScannerInstructions": "Please use the hardware scanner to scan the QR code."
 }

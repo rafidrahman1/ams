@@ -19,7 +19,6 @@ class RegisterDeviceScreen extends ConsumerWidget {
     required Future<String?> Function(BuildContext context) scanLauncher,
     required String mismatchMessage,
     required String? Function(String?) normalizeScan,
-    bool scannedFromRfid = false,
   }) async {
     final scannedValue = await scanLauncher(context);
     if (!context.mounted || scannedValue == null) {
@@ -44,11 +43,10 @@ class RegisterDeviceScreen extends ConsumerWidget {
       Navigator.of(context).pop(normalizedScannedAstId);
     } else {
       final created = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId, scannedFromRfid: scannedFromRfid)),
+        MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)),
       );
       if (!context.mounted) return;
       if (created == true) {
-        // Asset was created (saved locally). Go back to Home so syncing happens there.
         Navigator.of(context).pop();
       }
     }
@@ -73,37 +71,18 @@ class RegisterDeviceScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                SquareActionButton(
-                  label: l10n.qrCode,
-                  icon: Icons.qr_code,
-                  size: 132,
-                  onPressed: () => _scanAndRegister(
-                    context: context,
-                    scanLauncher: ref.read(qrScannerLauncherProvider),
-                    mismatchMessage: l10n.qrScanMismatch,
-                    normalizeScan: normalizeAstId,
-                  ),
-                  backgroundColor: ThemeColor.primary,
-                  foregroundColor: ThemeColor.backGroundColor,
-                ),
-                SquareActionButton(
-                  label: l10n.rfid,
-                  icon: Icons.contactless,
-                  size: 132,
-                  onPressed: () => _scanAndRegister(
-                    context: context,
-                    scanLauncher: ref.read(rfidScannerLauncherProvider),
-                    mismatchMessage: l10n.rfidScanMismatch,
-                    normalizeScan: normalizeRfidEpcAsAstId,
-                    scannedFromRfid: true,
-                  ),
-                  backgroundColor: ThemeColor.primary,
-                  foregroundColor: ThemeColor.backGroundColor,
-                ),
-              ],
+            SquareActionButton(
+              label: l10n.qrCode,
+              icon: Icons.qr_code,
+              size: 132,
+              onPressed: () => _scanAndRegister(
+                context: context,
+                scanLauncher: ref.read(qrScannerLauncherProvider),
+                mismatchMessage: l10n.qrScanMismatch,
+                normalizeScan: normalizeAstId,
+              ),
+              backgroundColor: ThemeColor.primary,
+              foregroundColor: ThemeColor.backGroundColor,
             ),
           ],
         ),

@@ -360,7 +360,7 @@ void main() {
     await tester.tap(find.text('Check List').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Scan asset'), findsOneWidget);
+    expect(find.text('QR Scanner'), findsOneWidget);
 
     await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();
@@ -409,9 +409,6 @@ void main() {
     await tester.tap(find.text('Scan'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('QR Code'));
-    await tester.pumpAndSettle();
-
     expect(find.byType(AssetChecklistScreen), findsOneWidget);
     expect(find.text('Checklist for Asset 2'), findsOneWidget);
     expect(find.text('Battery Condition'), findsOneWidget);
@@ -431,9 +428,6 @@ void main() {
 
     await tester.pumpAndSettle();
     await tester.tap(find.text('Scan'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('QR Code'));
     await tester.pump();
 
     expect(find.byType(HomeScreen), findsOneWidget);
