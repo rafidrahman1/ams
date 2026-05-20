@@ -32,13 +32,16 @@ class ScannerService {
 
   void _init() {
     _channel.setMethodCallHandler((MethodCall call) async {
-      if (call.method == 'onScanReceived') {
-        final barcode = call.arguments?.toString().trim();
-        if (barcode == null || barcode.isEmpty) {
-          return;
-        }
-        _isScanActive = false;
-        _ref.read(scannerResultProvider.notifier).update(barcode);
+      switch (call.method) {
+        case 'onScanReceived':
+          final barcode = call.arguments?.toString().trim();
+          if (barcode == null || barcode.isEmpty) {
+            return;
+          }
+          _isScanActive = false;
+          _ref.read(scannerResultProvider.notifier).update(barcode);
+        case 'onUhfTag':
+          UhfService.instance().handleNativeTag(call.arguments?.toString());
       }
     });
   }
@@ -80,6 +83,8 @@ class ScannerService {
 final qrScannerLauncherProvider = Provider<Future<String?> Function(BuildContext context)>((ref) {
   return (context) async {
     ref.read(scannerServiceProvider);
+    await UhfService.instance().stopInventory();
+    await ref.read(scannerServiceProvider).stopScanner();
     ref.read(scannerResultProvider.notifier).update(null);
     final l10n = AppLocalizations.of(context)!;
     return showDialog<String>(
@@ -101,6 +106,7 @@ final rfidScannerLauncherProvider = Provider<Future<String?> Function(BuildConte
       final available = await UhfService.instance().isAvailable();
       if (available && context.mounted) {
         final tag = await Navigator.of(context).push<String?>(MaterialPageRoute(builder: (_) => const UhfScannerScreen()));
+        await UhfService.instance().stopInventory();
         if (tag != null) {
           return tag;
         }
@@ -109,6 +115,7 @@ final rfidScannerLauncherProvider = Provider<Future<String?> Function(BuildConte
       // Fall through to hardware scanner dialog.
     }
 
+    await ref.read(scannerServiceProvider).stopScanner();
     ref.read(scannerResultProvider.notifier).update(null);
     if (!context.mounted) {
       return null;
@@ -145,11 +152,6 @@ class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
     super.initState();
     _scannerService = ref.read(scannerServiceProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final pending = ref.read(scannerResultProvider);
-      if (pending != null && mounted) {
-        Navigator.of(context).pop(pending);
-        return;
-      }
       await _scannerService.stopScanner();
       if (!mounted) return;
       await _scannerService.wakeUpScanner();
@@ -158,6 +160,7 @@ class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
 
   @override
   void dispose() {
+    ref.read(scannerResultProvider.notifier).update(null);
     _scannerService.stopScanner();
     super.dispose();
   }
@@ -166,8 +169,10 @@ class _HardwareScanDialogState extends ConsumerState<_HardwareScanDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     ref.listen<String?>(scannerResultProvider, (previous, next) {
-      if (next != null) {
-        Navigator.of(context).pop(next);
+      if (next != null && mounted) {
+        final scanned = next;
+        ref.read(scannerResultProvider.notifier).update(null);
+        Navigator.of(context).pop(scanned);
       }
     });
 

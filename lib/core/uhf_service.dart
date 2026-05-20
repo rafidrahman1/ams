@@ -9,18 +9,14 @@ class UhfService {
 
   final StreamController<String> _tagController = StreamController<String>.broadcast();
 
-  UhfService._() {
-    _channel.setMethodCallHandler(_handleMethodCall);
-  }
+  UhfService._();
 
   factory UhfService.instance() => _instance;
 
-  Future<void> _handleMethodCall(MethodCall call) async {
-    if (call.method == 'onUhfTag') {
-      final tag = call.arguments as String?;
-      if (tag != null && tag.isNotEmpty) {
-        _tagController.add(tag);
-      }
+  /// Dispatched from [ScannerService] — do not register a second channel handler here.
+  void handleNativeTag(String? tag) {
+    if (tag != null && tag.isNotEmpty) {
+      _tagController.add(tag);
     }
   }
 
