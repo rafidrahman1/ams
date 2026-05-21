@@ -220,6 +220,12 @@ class LocalDatabase {
     if (trimmedAstId.isEmpty) return 0;
 
     final db = await _getDatabase();
+    // Keep one unsynced payload per asset so Save always overwrites the latest draft.
+    await db.delete(
+      _submissionsTable,
+      where: 'user_key = ? AND ast_id = ? AND synced_at IS NULL',
+      whereArgs: [userKey, trimmedAstId],
+    );
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.insert(_submissionsTable, {
       'user_key': userKey,
@@ -282,9 +288,8 @@ class LocalDatabase {
     final rows = await db.query(
       _submissionsTable,
       columns: const ['payload_json'],
-      // Use latest saved submission (synced or not) so the UI shows
-      // the most recent local state until the next server refresh.
-      where: 'user_key = ? AND ast_id = ?',
+      // Overlay server data only while a submission is still pending sync.
+      where: 'user_key = ? AND ast_id = ? AND synced_at IS NULL',
       whereArgs: [userKey, astId],
       orderBy: 'id DESC',
       limit: 1,
@@ -301,6 +306,20 @@ class LocalDatabase {
     final now = DateTime.now().millisecondsSinceEpoch;
     final placeholders = List.filled(ids.length, '?').join(', ');
     await db.update(_submissionsTable, {'synced_at': now}, where: 'id IN ($placeholders)', whereArgs: ids);
+  }
+
+  Future<void> markPendingChecklistSubmissionsSyncedForAsset(String userKey, String astId) async {
+    final trimmedAstId = astId.trim();
+    if (trimmedAstId.isEmpty) return;
+
+    final db = await _getDatabase();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.update(
+      _submissionsTable,
+      {'synced_at': now},
+      where: 'user_key = ? AND ast_id = ? AND synced_at IS NULL',
+      whereArgs: [userKey, trimmedAstId],
+    );
   }
 
   Future<void> clearUserData(String userKey) async {

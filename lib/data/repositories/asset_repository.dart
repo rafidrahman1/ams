@@ -16,8 +16,11 @@ class AssetRepository {
   final LocalDatabase db;
   final AssetCacheStore cache;
 
-  // In-memory cache for assets with timestamp to prevent rapid re-fetches
+  // In-memory cache for assets with timestamp to prevent rapid re-fetches.
+  // Scoped to [ _cachedAssetsUserKey ] so a new volunteer session never sees
+  // the previous user's list before the next fetch completes.
   List<VolunteerAsset>? _cachedAssets;
+  String? _cachedAssetsUserKey;
   DateTime? _assetsCacheTime;
   static const Duration _assetsCacheDuration = Duration(minutes: 5);
 
@@ -33,9 +36,13 @@ class AssetRepository {
   Future<List<VolunteerAsset>> fetchMyAssets() async {
     final userKey = await _resolvedUserKey();
 
-    // Check if we have a fresh in-memory cache
+    // Check if we have a fresh in-memory cache for this session user.
     final now = DateTime.now();
-    if (_cachedAssets != null && _assetsCacheTime != null && now.difference(_assetsCacheTime!).inSeconds < _assetsCacheDuration.inSeconds) {
+    if (_cachedAssets != null &&
+        _assetsCacheTime != null &&
+        _cachedAssetsUserKey == userKey &&
+        userKey != null &&
+        now.difference(_assetsCacheTime!).inSeconds < _assetsCacheDuration.inSeconds) {
       return _cachedAssets!;
     }
 
@@ -46,6 +53,7 @@ class AssetRepository {
       }
       // Update in-memory cache
       _cachedAssets = assets;
+      _cachedAssetsUserKey = userKey;
       _assetsCacheTime = DateTime.now();
       return assets;
     } catch (_) {
@@ -54,6 +62,7 @@ class AssetRepository {
         if (cachedAssets.isNotEmpty) {
           // Update in-memory cache with local database data
           _cachedAssets = cachedAssets;
+          _cachedAssetsUserKey = userKey;
           _assetsCacheTime = DateTime.now();
           return cachedAssets;
         }
@@ -65,6 +74,7 @@ class AssetRepository {
 
   void clearMyAssetsCache() {
     _cachedAssets = null;
+    _cachedAssetsUserKey = null;
     _assetsCacheTime = null;
   }
 
@@ -113,12 +123,15 @@ class AssetRepository {
 
       final status = (payload['status'] ?? checklist.status).toString();
       final remark = (payload['remark'] ?? checklist.remark).toString();
+      final parameter = (payload['parameter'] ?? checklist.parameter).toString();
+      final image = (payload['image'] ?? checklist.image).toString();
+      final imagePath = (payload['image_path'] ?? '').toString();
 
       final items = payload['items'] as List<dynamic>? ?? const <dynamic>[];
 
       final latestStates = <int, bool>{};
       for (final it in items.whereType<Map<String, dynamic>>()) {
-        final featureId = _asInt(it['feature_id'] ?? it['featureId']);
+        final featureId = _asInt(it['feature_id'] ?? it['featureId'] ?? it['id']);
         if (featureId != 0) {
           latestStates[featureId] = _asBool(it['response']);
         }
@@ -134,10 +147,67 @@ class AssetRepository {
                 )
                 .toList(growable: false);
 
-      return AssetChecklist(items: updatedItems, status: status, remark: remark);
+      return AssetChecklist(
+        items: updatedItems,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: imagePath.isNotEmpty ? imagePath : image,
+      );
     } catch (_) {
       return checklist;
     }
+  }
+
+  Future<void> _cacheChecklistResponses(String userKey, String astId, List<({int featureId, bool response})> items) async {
+    if (items.isEmpty) return;
+
+    final responseByFeatureId = {
+      for (final item in items)
+        if (item.featureId != 0) item.featureId: item.response,
+    };
+    if (responseByFeatureId.isEmpty) return;
+
+    final cached = await db.loadChecklist(userKey, astId);
+    final List<AssetChecklistItem> updatedItems;
+    if (cached.isNotEmpty) {
+      updatedItems = cached
+          .map(
+            (item) => responseByFeatureId.containsKey(item.featureId)
+                ? AssetChecklistItem(featureId: item.featureId, title: item.title, response: responseByFeatureId[item.featureId]!)
+                : item,
+          )
+          .toList(growable: false);
+    } else {
+      updatedItems = responseByFeatureId.entries
+          .map((entry) => AssetChecklistItem(featureId: entry.key, title: '', response: entry.value))
+          .toList(growable: false);
+    }
+
+    await db.saveChecklist(userKey, astId, updatedItems);
+  }
+
+  Map<String, dynamic> _buildChecklistSubmissionPayload({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    String? imagePath,
+    required List<({int featureId, bool response})> items,
+  }) {
+    return {
+      'ast_ID': astId,
+      'status': status,
+      'remark': remark,
+      'parameter': parameter,
+      'image': image,
+      'image_path': imagePath ?? '',
+      'items': items
+          .where((i) => i.featureId != 0)
+          .map((i) => {'feature_id': i.featureId, 'response': i.response})
+          .toList(growable: false),
+    };
   }
 
   Future<List<IdNamePair>> fetchCampLocations() async {
@@ -259,16 +329,20 @@ class AssetRepository {
     final userKey = await _resolvedUserKey();
     if (userKey == null) return 0;
 
-    final payloadJson = jsonEncode({
-      'ast_ID': astId,
-      'status': status,
-      'remark': remark,
-      'parameter': parameter,
-      'image': image,
-      'image_path': imagePath ?? '',
-      'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(growable: false),
-    });
-    return db.enqueueChecklistSubmission(userKey, astId, payloadJson);
+    final payloadJson = jsonEncode(
+      _buildChecklistSubmissionPayload(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: image,
+        imagePath: imagePath,
+        items: items,
+      ),
+    );
+    final queueId = await db.enqueueChecklistSubmission(userKey, astId, payloadJson);
+    await _cacheChecklistResponses(userKey, astId, items);
+    return queueId;
   }
 
   Future<void> submitChecklist({
@@ -285,42 +359,54 @@ class AssetRepository {
       throw Exception('Missing session');
     }
 
-    final payload = {
-      'ast_ID': astId,
-      'status': status,
-      'remark': remark,
-      'parameter': parameter,
-      'image': image,
-      'image_path': imagePath ?? '',
-      'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
-    };
+    final syncItems = items.where((i) => i.featureId != 0).toList(growable: false);
+    if (syncItems.isEmpty) {
+      throw Exception('Checklist items are missing feature ids');
+    }
+
+    final payload = _buildChecklistSubmissionPayload(
+      astId: astId,
+      status: status,
+      remark: remark,
+      parameter: parameter,
+      image: image,
+      imagePath: imagePath,
+      items: items,
+    );
+
+    // Always persist locally first so Save works offline and Sync has data.
+    final queued = await queueChecklistSubmission(
+      astId: astId,
+      status: status,
+      remark: remark,
+      parameter: parameter,
+      image: image,
+      imagePath: imagePath,
+      items: items,
+    );
+    if (queued == 0) {
+      throw Exception('Failed to store checklist locally');
+    }
 
     final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
 
     try {
-      final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, parameter: parameter, image: imagePayload, items: items);
+      final responseBody = await service.submitChecklist(
+        astId: astId,
+        status: status,
+        remark: remark,
+        parameter: parameter,
+        image: imagePayload,
+        items: syncItems,
+      );
 
       if (!_isSyncVerified(submission: payload, response: responseBody)) {
         throw Exception('Sync verification failed');
       }
 
-      // Keep the local cache aligned with what the user just submitted.
-      final updatedChecklist = items.map((i) => AssetChecklistItem(featureId: i.featureId, title: '', response: i.response)).toList(growable: false);
-      // We don't have titles here; preserve cached titles by merging with last cached checklist if possible.
-      final cached = await db.loadChecklist(userKey, astId);
-      if (cached.isNotEmpty) {
-        final titleMap = {for (final c in cached) c.featureId: c.title};
-        await db.saveChecklist(
-          userKey,
-          astId,
-          updatedChecklist.map((i) => AssetChecklistItem(featureId: i.featureId, title: titleMap[i.featureId] ?? '', response: i.response)).toList(growable: false),
-        );
-      } else {
-        await db.saveChecklist(userKey, astId, updatedChecklist);
-      }
+      await db.markPendingChecklistSubmissionsSyncedForAsset(userKey, astId);
     } catch (_) {
-      // Offline / failure: queue for later sync instead of failing the UI.
-      await queueChecklistSubmission(astId: astId, status: status, remark: remark, parameter: parameter, image: image, imagePath: imagePath, items: items);
+      // Payload is already queued; Home -> Sync will retry later.
     }
   }
 
@@ -337,7 +423,6 @@ class AssetRepository {
 
     var syncedCount = 0;
     var failedCount = 0;
-    final removableQueueIds = <int>[];
 
     // For each asset, only submit the latest queued payload.
     final latestByAsset = <String, ChecklistSubmissionQueueItem>{};
@@ -364,16 +449,23 @@ class AssetRepository {
         final itemsRaw = payload['items'] as List<dynamic>? ?? const <dynamic>[];
         final items = <({int featureId, bool response})>[];
         for (final it in itemsRaw.whereType<Map<String, dynamic>>()) {
-          final featureId = _asInt(it['feature_id'] ?? it['featureId']);
+          final featureId = _asInt(it['feature_id'] ?? it['featureId'] ?? it['id']);
           if (featureId == 0) continue;
           items.add((featureId: featureId, response: _asBool(it['response'])));
+        }
+
+        if (items.isEmpty) {
+          failedCount += 1;
+          await db.recordChecklistSubmissionSyncFailure(queueItem.queueId, 'Checklist items are missing feature ids');
+          continue;
         }
 
         final imagePayload = await _resolveChecklistImageForUpload(image: image, imagePath: imagePath);
         final responseBody = await service.submitChecklist(astId: astId, status: status, remark: remark, parameter: parameter, image: imagePayload, items: items);
         if (_isSyncVerified(submission: payload, response: responseBody)) {
           syncedCount += 1;
-          removableQueueIds.add(queueItem.queueId);
+          await db.markPendingChecklistSubmissionsSyncedForAsset(userKey, astId);
+          await _cacheChecklistResponses(userKey, astId, items);
         } else {
           failedCount += 1;
           await db.recordChecklistSubmissionSyncFailure(queueItem.queueId, 'Sync verification failed');
@@ -384,37 +476,50 @@ class AssetRepository {
       }
     }
 
-    if (removableQueueIds.isNotEmpty) {
-      await db.markQueuedChecklistSubmissionsSynced(removableQueueIds);
-    }
-
     return ToggleSyncResult(totalPending: pending.length, synced: syncedCount, failed: failedCount);
   }
 
   bool _isSyncVerified({required Map<String, dynamic> submission, required Map<String, dynamic> response}) {
+    final code = response['code'];
+    if (code != 200 && code != '200') {
+      return false;
+    }
+
     final data = response['data'];
-    if (data is! Map<String, dynamic>) return false;
+    if (data is! Map<String, dynamic>) {
+      return true;
+    }
 
     // Check status
-    final submittedStatus = submission['status']?.toString();
-    final receivedStatus = data['asset_status']?.toString();
+    final submittedStatus = submission['status']?.toString().trim();
+    final receivedStatus = (data['asset_status'] ?? data['status'])?.toString().trim();
     if (submittedStatus != receivedStatus) return false;
 
     // Check remark - API uses 'remakk' based on user sample
-    final submittedRemark = submission['remark']?.toString();
-    final receivedRemark = (data['remakk'] ?? data['remark'])?.toString();
+    final submittedRemark = submission['remark']?.toString().trim();
+    final receivedRemark = (data['remakk'] ?? data['remark'])?.toString().trim();
     if (submittedRemark != receivedRemark) return false;
 
-    // Check items
+    // Check items — submit responses may use `features` or `items`.
     final submittedItems = submission['items'] as List<dynamic>? ?? [];
-    final receivedFeatures = data['features'] as List<dynamic>? ?? [];
+    final receivedFeatures = data['features'] as List<dynamic>? ?? data['items'] as List<dynamic>? ?? [];
 
-    if (submittedItems.length != receivedFeatures.length) return false;
+    if (submittedItems.isEmpty) {
+      return receivedFeatures.isEmpty;
+    }
 
-    final submittedMap = {for (final item in submittedItems.whereType<Map<String, dynamic>>()) _asInt(item['feature_id']): _asBool(item['response'])};
+    if (receivedFeatures.isEmpty) {
+      // Server acknowledged without echoing checklist rows; treat HTTP 200 as success.
+      return true;
+    }
+
+    final submittedMap = {
+      for (final item in submittedItems.whereType<Map<String, dynamic>>())
+        _asInt(item['feature_id'] ?? item['featureId']): _asBool(item['response']),
+    };
 
     for (final feature in receivedFeatures.whereType<Map<String, dynamic>>()) {
-      final fid = _asInt(feature['feature_id']);
+      final fid = _asInt(feature['feature_id'] ?? feature['featureId']);
       final res = _asBool(feature['response']);
       if (submittedMap[fid] != res) return false;
     }

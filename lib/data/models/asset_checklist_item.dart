@@ -7,8 +7,8 @@ class AssetChecklistItem {
 
   factory AssetChecklistItem.fromJson(Map<String, dynamic> json) {
     return AssetChecklistItem(
-      featureId: _asInt(json['feature_id'] ?? json['featureId']),
-      title: (json['feature'] ?? json['title'] ?? '').toString(),
+      featureId: _asInt(json['feature_id'] ?? json['featureId'] ?? json['id'] ?? json['ast_feature_id']),
+      title: (json['feature'] ?? json['title'] ?? json['name'] ?? '').toString(),
       response: _asBool(json['response']),
     );
   }

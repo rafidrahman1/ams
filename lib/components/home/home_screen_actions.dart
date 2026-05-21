@@ -29,6 +29,25 @@ class HomeScreenActions {
     );
   }
 
+  /// Opens the QR/hardware scanner and navigates to the checklist when the scan matches [asset].
+  static Future<void> scanAndOpenAssetChecklist({required BuildContext context, required WidgetRef ref, required AssetCardData asset}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final scannedValue = await ref.read(qrScannerLauncherProvider)(context);
+    final scannedAstId = normalizeAstId(scannedValue);
+    final expectedAstId = normalizeAstId(asset.astId);
+
+    if (!context.mounted || scannedAstId == null) {
+      return;
+    }
+
+    if (scannedAstId == expectedAstId) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssetChecklistScreen(asset: asset)));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.qrScanMismatch)));
+  }
+
   static Future<void> openAssetChecklist({required BuildContext context, required WidgetRef ref, required String scannedValue, required String mismatchMessage}) async {
     final scannedAstId = normalizeAstId(scannedValue);
     if (scannedAstId == null) {

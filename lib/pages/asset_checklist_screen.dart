@@ -63,11 +63,8 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
         submitItems.add((featureId: items[index].featureId, response: completed[index]));
       }
 
-      // Always queue the submission so Home -> Sync can submit later.
-      // This keeps behavior predictable for users who save while offline.
-      await ref
-          .read(assetRepositoryProvider)
-          .queueChecklistSubmission(
+      // Submit when online; repository queues automatically when offline.
+      await ref.read(assetRepositoryProvider).submitChecklist(
             astId: widget.asset.astId,
             status: _status,
             remark: _remarksController.text.trim(),
@@ -78,6 +75,8 @@ class _AssetChecklistScreenState extends ConsumerState<AssetChecklistScreen> {
           );
 
       ref.invalidate(assetChecklistProvider(widget.asset.astId));
+      ref.invalidate(assetChecklistAllTrueProvider(widget.asset.astId));
+      ref.invalidate(assetAllTrueStatesProvider);
 
       if (!mounted) return;
       navigator.pop(completed);

@@ -141,6 +141,7 @@ class _MemoryLocalDatabase extends LocalDatabase {
 
   @override
   Future<int> enqueueChecklistSubmission(String userKey, String astId, String payloadJson) async {
+    _submissions.removeWhere((s) => s['user_key'] == userKey && s['ast_id'] == astId && s['synced_at'] == null);
     _submissions.add({
       'id': _nextQueueId++,
       'user_key': userKey,
@@ -152,6 +153,15 @@ class _MemoryLocalDatabase extends LocalDatabase {
       'next_retry_at': null,
     });
     return 1;
+  }
+
+  @override
+  Future<void> markPendingChecklistSubmissionsSyncedForAsset(String userKey, String astId) async {
+    for (final s in _submissions) {
+      if (s['user_key'] == userKey && s['ast_id'] == astId && s['synced_at'] == null) {
+        s['synced_at'] = 1;
+      }
+    }
   }
 
   @override
@@ -202,7 +212,7 @@ class _MemoryLocalDatabase extends LocalDatabase {
   @override
   Future<String?> loadLatestChecklistSubmissionPayload(String userKey, String astId) async {
     for (final s in _submissions.reversed) {
-      if (s['user_key'] == userKey && s['ast_id'] == astId) {
+      if (s['user_key'] == userKey && s['ast_id'] == astId && s['synced_at'] == null) {
         return s['payload_json'] as String;
       }
     }
@@ -259,10 +269,42 @@ class _SingleChecklistThenOfflineService extends AssetService {
   }
 }
 
+class _ItemsResponseAssetService extends AssetService {
+  _ItemsResponseAssetService() : super(ApiClient(TokenStorage()));
+
+  final List<String> submittedAstIds = <String>[];
+
+  @override
+  Future<List<VolunteerAsset>> fetchMyAssets() async => const <VolunteerAsset>[];
+
+  @override
+  Future<AssetChecklist> fetchChecklistByAssetId(String astId) async => const AssetChecklist(items: <AssetChecklistItem>[]);
+
+  @override
+  Future<Map<String, dynamic>> submitChecklist({
+    required String astId,
+    required String status,
+    required String remark,
+    required String parameter,
+    required String image,
+    required List<({int featureId, bool response})> items,
+  }) async {
+    submittedAstIds.add(astId);
+    return {
+      'code': 200,
+      'data': {
+        'status': status,
+        'remark': remark,
+        'items': items.map((i) => {'feature_id': i.featureId, 'response': i.response}).toList(),
+      },
+    };
+  }
+}
+
 class _RecordingAssetService extends AssetService {
   _RecordingAssetService() : super(ApiClient(TokenStorage()));
 
-  final bool failSubmit = false;
+  bool failSubmit = false;
   final List<String> submittedAstIds = <String>[];
 
   @override
@@ -328,7 +370,7 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('opening an asset checklist goes through QR scanner first', (WidgetTester tester) async {
+  testWidgets('opening an asset checklist launches QR scan immediately', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -358,11 +400,6 @@ void main() {
     expect(find.text('Check List'), findsNWidgets(3));
 
     await tester.tap(find.text('Check List').first);
-    await tester.pumpAndSettle();
-
-    expect(find.text('QR Scanner'), findsOneWidget);
-
-    await tester.tap(find.text('QR Code'));
     await tester.pumpAndSettle();
 
     expect(find.text('Checklist for Asset 1'), findsOneWidget);
@@ -579,10 +616,6 @@ void main() {
     await tester.tap(find.text('Check List').first);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('QR Code'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(QrScannerScreen), findsOneWidget);
     expect(find.textContaining('does not match'), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
   });
@@ -658,6 +691,66 @@ void main() {
     expect(firstChecklist.items.first.response, isTrue);
     expect(secondChecklist.items, hasLength(1));
     expect(secondChecklist.items.first.response, isTrue);
+  });
+
+  test('sync verification accepts checklist rows returned as items', () async {
+    final service = _ItemsResponseAssetService();
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    const astId = 'AST-000001';
+
+    await db.enqueueChecklistSubmission(
+      userKey,
+      astId,
+      '{"ast_ID":"AST-000001","status":"ACTIVE","remark":"ok","items":[{"feature_id":7,"response":true}]}',
+    );
+
+    final repository = AssetRepository(service, () async => userKey, db);
+    final result = await repository.syncQueuedResponses();
+
+    expect(result.synced, 1);
+    expect(result.failed, 0);
+    expect(service.submittedAstIds, [astId]);
+  });
+
+  test('submitChecklist always stores a pending payload before syncing', () async {
+    final service = _RecordingAssetService();
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    final repository = AssetRepository(service, () async => userKey, db);
+
+    await repository.submitChecklist(
+      astId: 'AST-000001',
+      status: 'ACTIVE',
+      remark: 'note',
+      parameter: 'param',
+      image: '',
+      items: const [(featureId: 3, response: true)],
+    );
+
+    final pending = await db.loadPendingChecklistSubmissions(userKey);
+    expect(service.submittedAstIds, ['AST-000001']);
+    expect(pending, isEmpty);
+  });
+
+  test('submitChecklist leaves a pending payload when sync fails', () async {
+    final service = _RecordingAssetService()..failSubmit = true;
+    final db = _MemoryLocalDatabase();
+    const userKey = 'user@example.com';
+    final repository = AssetRepository(service, () async => userKey, db);
+
+    await repository.submitChecklist(
+      astId: 'AST-000001',
+      status: 'ACTIVE',
+      remark: '',
+      parameter: '',
+      image: '',
+      items: const [(featureId: 3, response: true)],
+    );
+
+    final pending = await db.loadPendingChecklistSubmissions(userKey);
+    expect(pending, hasLength(1));
+    expect(pending.first.astId, 'AST-000001');
   });
 
   test('sync submits the latest queued payload per asset', () async {

@@ -4,7 +4,7 @@ import 'package:asset_management_system/core/storage/local_database.dart';
 import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/data/models/volunteer_asset.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
-import 'package:asset_management_system/pages/qr_scanner_screen.dart';
+import 'package:asset_management_system/components/home/home_screen_actions.dart';
 import 'package:asset_management_system/providers/asset_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,7 +82,6 @@ class _HomeAssetsListSectionState extends ConsumerState<HomeAssetsListSection> {
               .where((device) => device.id == null || !_dismissedDeviceIds.contains(device.id))
               .toList(growable: false);
           final visibleAssets = assets.where((asset) => !_dismissedAstIds.contains(asset.astId)).toList(growable: false);
-
           if (visibleAssets.isEmpty && unsyncedDevices.isEmpty) {
             return _buildScrollableList(
               enableRefresh: true,
@@ -218,9 +217,7 @@ class _HomeAssetsListSectionState extends ConsumerState<HomeAssetsListSection> {
                     asset: asset,
                     onSync: widget.isSyncing
                         ? null
-                        : () {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
-                          },
+                        : () => HomeScreenActions.scanAndOpenAssetChecklist(context: context, ref: ref, asset: asset),
                   ),
                 );
               }),

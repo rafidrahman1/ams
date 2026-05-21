@@ -63,6 +63,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
     // These providers are effectively session-scoped, but some are keyed only by
     // `astId` (not by user). If the user changes, we must invalidate them to
     // prevent showing stale data from the previous session.
+    ref.read(assetRepositoryProvider).clearMyAssetsCache();
     ref.invalidate(myAssetsProvider);
     ref.invalidate(adminAssetsProvider);
     ref.invalidate(campLocationsProvider);
