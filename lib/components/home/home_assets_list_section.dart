@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:asset_management_system/core/storage/local_database.dart';
 import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/data/models/volunteer_asset.dart';
@@ -11,7 +13,7 @@ import '../../components/asset_card_builder.dart';
 import '../../components/asset_list_skeleton.dart';
 import '../../pages/register_device_screen.dart';
 
-class HomeAssetsListSection extends ConsumerWidget {
+class HomeAssetsListSection extends ConsumerStatefulWidget {
   const HomeAssetsListSection({
     super.key,
     required this.assetsLabel,
@@ -50,45 +52,58 @@ class HomeAssetsListSection extends ConsumerWidget {
   final Set<int> failedDeviceIds;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeAssetsListSection> createState() => _HomeAssetsListSectionState();
+}
+
+class _HomeAssetsListSectionState extends ConsumerState<HomeAssetsListSection> {
+  final Set<int> _dismissedDeviceIds = {};
+  final Set<String> _dismissedAstIds = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final l10n = AppLocalizations.of(context)!;
 
-    if (forceLoading) {
+    if (widget.forceLoading) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: AssetListSkeleton(itemCount: skeletonItemCount),
+        child: AssetListSkeleton(itemCount: widget.skeletonItemCount),
       );
     }
 
     return Padding(
       padding: const EdgeInsets.all(12),
-      child: assetsAsync.when(
-        loading: () => AssetListSkeleton(itemCount: skeletonItemCount),
+      child: widget.assetsAsync.when(
+        loading: () => AssetListSkeleton(itemCount: widget.skeletonItemCount),
         error: (error, _) => Center(child: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))),
         data: (assets) {
-          final unsyncedDevices = unsyncedDevicesAsync.maybeWhen(data: (d) => d, orElse: () => <RegisteredDeviceData>[]);
+          final unsyncedDevices = widget.unsyncedDevicesAsync
+              .maybeWhen(data: (d) => d, orElse: () => <RegisteredDeviceData>[])
+              .where((device) => device.id == null || !_dismissedDeviceIds.contains(device.id))
+              .toList(growable: false);
+          final visibleAssets = assets.where((asset) => !_dismissedAstIds.contains(asset.astId)).toList(growable: false);
 
-          if (assets.isEmpty && unsyncedDevices.isEmpty) {
+          if (visibleAssets.isEmpty && unsyncedDevices.isEmpty) {
             return _buildScrollableList(
-              enableRefresh: !isAdmin,
-              children: [SizedBox(height: 240, child: Center(child: Text(assetsLabel)))],
+              enableRefresh: true,
+              children: [SizedBox(height: 240, child: Center(child: Text(widget.assetsLabel)))],
             );
           }
 
-          if (isAdmin) {
-            final combinedCount = assets.length + unsyncedDevices.length;
-            onFilteredCountChanged(combinedCount);
-            final visibleUnsyncedCount = unsyncedDevices.length.clamp(0, visibleAssetCount);
-            final visibleAssetsCount = (visibleAssetCount - visibleUnsyncedCount).clamp(0, assets.length);
+          if (widget.isAdmin) {
+            final combinedCount = visibleAssets.length + unsyncedDevices.length;
+            widget.onFilteredCountChanged(combinedCount);
+            final visibleUnsyncedCount = unsyncedDevices.length.clamp(0, widget.visibleAssetCount);
+            final visibleAssetsCount = (widget.visibleAssetCount - visibleUnsyncedCount).clamp(0, visibleAssets.length);
 
             final visibleUnsynced = unsyncedDevices.take(visibleUnsyncedCount).toList();
-            final visibleAssets = assets.take(visibleAssetsCount).toList();
+            final pagedAssets = visibleAssets.take(visibleAssetsCount).toList();
 
-            final hasMore = (visibleUnsynced.length + visibleAssets.length) < combinedCount;
-            ensureScrollablePage(hasMore);
+            final hasMore = (visibleUnsynced.length + pagedAssets.length) < combinedCount;
+            widget.ensureScrollablePage(hasMore);
 
             return _buildScrollableList(
-              enableRefresh: !isAdmin,
+              enableRefresh: true,
               children: [
                 ...visibleUnsynced.map(
                   (device) => Padding(
@@ -102,25 +117,30 @@ class HomeAssetsListSection extends ConsumerWidget {
                         color: Colors.red,
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      onDismissed: (_) async {
-                        if (device.id != null) {
-                          await _confirmAndDeleteDevice(context, ref, device.id!);
-                        }
+                      confirmDismiss: (direction) {
+                        if (device.id == null) return Future.value(false);
+                        return _confirmDeleteDevice(context);
+                      },
+                      onDismissed: (_) {
+                        final deviceId = device.id;
+                        if (deviceId == null) return;
+                        setState(() => _dismissedDeviceIds.add(deviceId));
+                        unawaited(_deleteRegisteredDevice(context, ref, deviceId));
                       },
                       child: Card(
-                        color: failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
+                        color: widget.failedDeviceIds.contains(device.id) ? Colors.red.shade50 : Colors.orange.shade50,
                         child: ListTile(
                           title: Text(device.name),
                           subtitle: Text('${device.details}\n${l10n.pendingSync}'),
                           isThreeLine: true,
-                          trailing: failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
+                          trailing: widget.failedDeviceIds.contains(device.id) ? const Icon(Icons.error, color: Colors.red) : const Icon(Icons.sync_problem, color: Colors.orange),
                           onTap: device.id == null ? null : () => _showRegisteredDeviceDetails(context, device.id!),
                         ),
                       ),
                     ),
                   ),
                 ),
-                ...visibleAssets.map((apiAsset) {
+                ...pagedAssets.map((apiAsset) {
                   final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
 
                   return Padding(
@@ -135,8 +155,11 @@ class HomeAssetsListSection extends ConsumerWidget {
                         color: Colors.red,
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      onDismissed: (_) async {
-                        await _confirmAndDeleteAsset(context, ref, apiAsset.astId);
+                      confirmDismiss: (_) => _confirmDeleteAsset(context),
+                      onDismissed: (_) {
+                        final astId = apiAsset.astId;
+                        setState(() => _dismissedAstIds.add(astId));
+                        unawaited(_deleteAsset(context, ref, astId));
                       },
                       child: Card(
                         color: Colors.white,
@@ -144,7 +167,7 @@ class HomeAssetsListSection extends ConsumerWidget {
                           title: Text(asset.title),
                           subtitle: Text(asset.description.isNotEmpty ? asset.description : asset.astId),
                           trailing: ElevatedButton(
-                            onPressed: isSyncing
+                            onPressed: widget.isSyncing
                                 ? null
                                 : () {
                                     Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterDeviceScreen(asset: asset)));
@@ -165,32 +188,35 @@ class HomeAssetsListSection extends ConsumerWidget {
             );
           }
 
-          final filteredAssets = assets;
+          widget.onFilteredCountChanged(visibleAssets.length);
 
-          onFilteredCountChanged(filteredAssets.length);
+          final pagedVolunteerAssets = visibleAssets.take(widget.visibleAssetCount).toList(growable: false);
+          final hasMoreAssets = pagedVolunteerAssets.length < visibleAssets.length;
+          widget.ensureScrollablePage(hasMoreAssets);
 
-          final visibleAssets = filteredAssets.take(visibleAssetCount).toList(growable: false);
-          final hasMoreAssets = visibleAssets.length < filteredAssets.length;
-          ensureScrollablePage(hasMoreAssets);
-
-          if (filteredAssets.isEmpty) {
+          if (visibleAssets.isEmpty) {
             return _buildScrollableList(
-              enableRefresh: !isAdmin,
-              children: [SizedBox(height: 240, child: Center(child: Text(showAllTrueAssets ? noFullyCheckedAssetsFoundLabel : noPartiallyCheckedAssetsFoundLabel)))],
+              enableRefresh: !widget.isAdmin,
+              children: [
+                SizedBox(
+                  height: 240,
+                  child: Center(child: Text(widget.showAllTrueAssets ? widget.noFullyCheckedAssetsFoundLabel : widget.noPartiallyCheckedAssetsFoundLabel)),
+                ),
+              ],
             );
           }
 
           return _buildScrollableList(
-            enableRefresh: !isAdmin,
+            enableRefresh: !widget.isAdmin,
             children: [
-              ...visibleAssets.map((apiAsset) {
+              ...pagedVolunteerAssets.map((apiAsset) {
                 final asset = AssetCardData(title: apiAsset.name, description: apiAsset.details, astId: apiAsset.astId);
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 3),
                   child: AssetCardBuilder(
                     asset: asset,
-                    onSync: isSyncing
+                    onSync: widget.isSyncing
                         ? null
                         : () {
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScannerScreen(asset: asset)));
@@ -211,18 +237,16 @@ class HomeAssetsListSection extends ConsumerWidget {
   }
 
   Widget _buildScrollableList({required bool enableRefresh, required List<Widget> children}) {
-    final listView = ListView(controller: scrollController, physics: const AlwaysScrollableScrollPhysics(), children: children);
+    final listView = ListView(controller: widget.scrollController, physics: const AlwaysScrollableScrollPhysics(), children: children);
 
     if (!enableRefresh) {
       return listView;
     }
 
-    return RefreshIndicator(onRefresh: onRefresh, child: listView);
+    return RefreshIndicator(onRefresh: widget.onRefresh, child: listView);
   }
-}
 
-extension on HomeAssetsListSection {
-  Future<void> _confirmAndDeleteDevice(BuildContext context, WidgetRef ref, int deviceId) async {
+  Future<bool> _confirmDeleteDevice(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -239,22 +263,10 @@ extension on HomeAssetsListSection {
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await ref.read(assetRepositoryProvider).deleteRegisteredDevice(deviceId);
-      } catch (error) {
-        if (context.mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
-        }
-        return;
-      }
-
-      ref.invalidate(unsyncedRegisteredDevicesProvider);
-    }
+    return confirmed == true;
   }
 
-  Future<void> _confirmAndDeleteAsset(BuildContext context, WidgetRef ref, String astId) async {
+  Future<bool> _confirmDeleteAsset(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -271,18 +283,30 @@ extension on HomeAssetsListSection {
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await ref.read(assetRepositoryProvider).deleteAsset(astId);
-      } catch (error) {
-        if (context.mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
-        }
-        return;
-      }
+    return confirmed == true;
+  }
 
+  Future<void> _deleteRegisteredDevice(BuildContext context, WidgetRef ref, int deviceId) async {
+    try {
+      await ref.read(assetRepositoryProvider).deleteRegisteredDevice(deviceId);
+      ref.invalidate(unsyncedRegisteredDevicesProvider);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _dismissedDeviceIds.remove(deviceId));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
+    }
+  }
+
+  Future<void> _deleteAsset(BuildContext context, WidgetRef ref, String astId) async {
+    try {
+      await ref.read(assetRepositoryProvider).deleteAsset(astId);
       ref.invalidate(adminAssetsProvider);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _dismissedAstIds.remove(astId));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(offlineAwareErrorMessage(l10n.noInternetConnection, error))));
     }
   }
 

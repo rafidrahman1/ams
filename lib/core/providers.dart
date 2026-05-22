@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/network/api_client.dart';
+import 'network/api_client.dart';
 import 'storage/asset_cache_store.dart';
 import 'storage/local_database.dart';
 import 'storage/token_storage.dart';

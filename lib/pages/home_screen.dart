@@ -1,5 +1,6 @@
 import 'package:asset_management_system/components/language_toggle.dart';
 import 'package:asset_management_system/core/storage/local_database.dart';
+import 'package:asset_management_system/core/utils/ast_id_parser.dart';
 import 'package:asset_management_system/core/utils/network_error_utils.dart';
 import 'package:asset_management_system/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -9,12 +10,9 @@ import '../components/home/home_action_buttons_row.dart';
 import '../components/home/home_assets_filter_card.dart';
 import '../components/home/home_assets_list_section.dart';
 import '../components/home/home_screen_actions.dart';
-import '../core/utils/ast_id_parser.dart';
-import '../pages/asset_create_screen.dart';
 import '../providers/asset_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
-import '../providers/qr_scanner_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.isAdmin = false});
@@ -102,6 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.invalidate(myAssetsProvider);
     ref.invalidate(assetChecklistProvider);
+    ref.invalidate(assetAllTrueStatesProvider);
     ref.invalidate(homeBootstrapProvider);
 
     ref.read(assetRepositoryProvider).clearMyAssetsCache();
@@ -142,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       int syncedCount = 0;
       final failedAstIds = <String>[];
       final failedDeviceIdsList = <int>[];
+      final failedDetails = <String>[];
 
       for (final device in unaycdDevices) {
         try {
@@ -156,13 +156,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             failedDeviceIdsList.add(device.id!);
           }
 
-          // Extract AST ID from error message
-          final errorMsg = error.toString();
-          final astId = _extractAstIdFromError(errorMsg);
+          final errorMsg = syncFailureMessage(error);
+          final astId = _extractAstIdFromError(errorMsg) ?? normalizeAstId(device.astId) ?? device.astId?.trim() ?? '';
 
-          if (astId != null && !failedAstIds.contains(astId)) {
+          if (astId.isNotEmpty && !failedAstIds.contains(astId)) {
             failedAstIds.add(astId);
           }
+
+          failedDetails.add(astId.isNotEmpty ? '$astId: $errorMsg' : errorMsg);
         }
       }
 
@@ -178,7 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (!context.mounted) return;
 
-      final failedCount = failedAstIds.length;
+      final failedCount = failedDeviceIdsList.length;
       String message;
 
       if (failedCount == 0) {
@@ -191,7 +192,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         message = l10n.deviceSyncPartial(syncedCount, unaycdDevices.length, astIdList);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 4)));
+      if (failedDetails.isNotEmpty) {
+        message = '$message\n${failedDetails.join('\n')}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: Duration(seconds: failedCount > 0 ? 8 : 4),
+        ),
+      );
     } catch (error) {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -215,6 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final result = await ref.read(assetRepositoryProvider).syncQueuedResponses();
       ref.invalidate(assetChecklistProvider);
+      ref.invalidate(assetAllTrueStatesProvider);
       ref.invalidate(homeBootstrapProvider);
       await ref.read(homeBootstrapProvider.future);
 
@@ -263,7 +274,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final assetsAsync = widget.isAdmin ? ref.watch(adminAssetsProvider) : ref.watch(filteredAssetsProvider);
     final unsyncedDevicesAsync = widget.isAdmin ? ref.watch(unsyncedRegisteredDevicesProvider) : const AsyncValue.data(<RegisteredDeviceData>[]);
     final bootstrapAsync = widget.isAdmin ? ref.watch(adminHomeBootstrapProvider) : ref.watch(homeBootstrapProvider);
-    final isBusy = _isSyncing || bootstrapAsync.isLoading;
+    final isBusy = _isSyncing || (widget.isAdmin ? bootstrapAsync.isLoading : assetsAsync.isLoading);
     final showAllTrueAssets = ref.watch(showAllTrueAssetsProvider);
 
     return Scaffold(
@@ -287,26 +298,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               secondaryLabel: l10n.sync,
               isSyncing: isBusy,
               onPrimaryPressed: widget.isAdmin
-                  ? () async {
-                      // For admin: directly open the hardware scanner and start the register flow
-                      final scanLauncher = ref.read(qrScannerLauncherProvider);
-                      final scannedValue = await scanLauncher(context);
-                      if (!mounted || scannedValue == null) return;
-
-                      final normalizedScannedAstId = normalizeAstId(scannedValue);
-                      if (normalizedScannedAstId == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invalidScanData)));
-                        return;
-                      }
-
-                      // Open asset creation screen with the scanned ID
-                      await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => AssetCreateScreen(scannedId: normalizedScannedAstId)));
-
-                      if (mounted) {
-                        // Refresh unsynced devices list in case a device was registered
-                        ref.invalidate(unsyncedRegisteredDevicesProvider);
-                      }
-                    }
+                  ? () => HomeScreenActions.openRegisterDevice(context: context)
                   : () => HomeScreenActions.showScanOptions(context: context, ref: ref),
               onSecondaryPressed: widget.isAdmin ? () => _syncRegisteredDevices(context) : () => _syncChecklistToggles(context),
             ),
@@ -337,7 +329,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               noPartiallyCheckedAssetsFoundLabel: l10n.noPartiallyCheckedAssetsFound,
               assetsAsync: assetsAsync,
               unsyncedDevicesAsync: unsyncedDevicesAsync,
-              forceLoading: bootstrapAsync.isLoading,
+              forceLoading: widget.isAdmin ? bootstrapAsync.isLoading : assetsAsync.isLoading,
               isAdmin: widget.isAdmin,
               showAllTrueAssets: showAllTrueAssets,
               visibleAssetCount: _visibleAssetCount,

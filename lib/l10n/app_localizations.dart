@@ -206,11 +206,41 @@ abstract class AppLocalizations {
   /// **'QR Scanner'**
   String get qrScannerTitle;
 
+  /// No description provided for @scanOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan asset'**
+  String get scanOptionsTitle;
+
   /// No description provided for @qrCode.
   ///
   /// In en, this message translates to:
   /// **'QR Code'**
   String get qrCode;
+
+  /// No description provided for @rfid.
+  ///
+  /// In en, this message translates to:
+  /// **'RFID'**
+  String get rfid;
+
+  /// No description provided for @rfidScannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'RFID Scanner'**
+  String get rfidScannerTitle;
+
+  /// No description provided for @holdRfidTagClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the RFID tag close to the device'**
+  String get holdRfidTagClose;
+
+  /// No description provided for @rfidScanMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'RFID tag does not match the asset label'**
+  String get rfidScanMismatch;
 
   /// No description provided for @checklistForAsset.
   ///
@@ -289,6 +319,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Volunteer\nLogin'**
   String get loginWithEmail;
+
+  /// No description provided for @loginWithQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Volunteer\nQR Login'**
+  String get loginWithQr;
+
+  /// No description provided for @invalidVolunteerQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid volunteer QR code'**
+  String get invalidVolunteerQr;
+
+  /// No description provided for @invalidVolunteerCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid volunteer ID or QR code'**
+  String get invalidVolunteerCredentials;
 
   /// No description provided for @email.
   ///
@@ -901,6 +949,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please use the hardware scanner to scan the QR code.'**
   String get hardwareScannerInstructions;
+
+  /// No description provided for @hardwareRfidScannerActive.
+  ///
+  /// In en, this message translates to:
+  /// **'RFID Scanner Active'**
+  String get hardwareRfidScannerActive;
+
+  /// No description provided for @hardwareRfidScannerInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Please use the hardware scanner to read the RFID tag.'**
+  String get hardwareRfidScannerInstructions;
 }
 
 class _AppLocalizationsDelegate

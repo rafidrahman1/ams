@@ -1,6 +1,7 @@
 class Endpoints {
   static const login = "/api/authentication/token";
   static const adminLogin = "/api/authentication/admin/token";
+  static const volunteerQrLogin = "/api/authentication/qr/login/volunteer";
   static const refresh = "/api/authentication/token/refresh";
   static const myAsset = "/api/volunteer/my-asset";
   static const adminAsset = "/api/admin/assets";

@@ -14,12 +14,24 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "com.catchbangladesh.ams/scanner"
 
-    // Action that emits barcode data
-    private val scanActions = setOf("scan.rcv.message")
-    private val scanDataKey = "barcodeData"
+    // Hardware scanners use different broadcast actions / extra keys per OEM.
+    private val scanActions = setOf(
+        "scan.rcv.message",
+        "orgaiot.intent.action.scan",
+        "com.kte.scan.result",
+        "com.android.scanner.service_settings",
+    )
+    private val scanDataKeys = listOf(
+        "barcodeData",
+        "data",
+        "barcode",
+        "SCAN_RESULT",
+        "scannerdata",
+    )
 
     private var scannerReceiver: BroadcastReceiver? = null
     private var methodChannel: MethodChannel? = null
+    private var uhfReader: UhfSerialReader? = null
 
     // Debounce protection for scanner trigger
     private var lastScanTime: Long = 0
@@ -31,6 +43,10 @@ class MainActivity : FlutterActivity() {
 
         // 1. Initialize the persistent MethodChannel
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        uhfReader = UhfSerialReader(
+            onTag = { tag -> methodChannel?.invokeMethod("onUhfTag", tag) },
+            onStatus = { _ -> },
+        )
 
         // 2. Set up the MethodCallHandler
         methodChannel?.setMethodCallHandler { call: MethodCall, result: MethodChannel.Result ->
@@ -58,6 +74,17 @@ class MainActivity : FlutterActivity() {
                     sendBroadcast(Intent("com.java.scan.close"))
                     result.success(true)
                 }
+                "isUhfAvailable" -> {
+                    result.success(true)
+                }
+                "startUhfInventory" -> {
+                    val success = uhfReader?.start() == true
+                    result.success(success)
+                }
+                "stopUhfInventory" -> {
+                    val success = uhfReader?.stop() == true
+                    result.success(success)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -67,7 +94,7 @@ class MainActivity : FlutterActivity() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val action = intent?.action
                 if (action != null && action in scanActions) {
-                    val barcode = intent.getStringExtra(scanDataKey)?.trim()
+                    val barcode = extractBarcode(intent)
                     if (!barcode.isNullOrBlank()) {
                         isScanActive = false // Reset scan state when data is received
                         methodChannel?.invokeMethod("onScanReceived", barcode)
@@ -87,7 +114,20 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun extractBarcode(intent: Intent?): String? {
+        if (intent == null) return null
+        for (key in scanDataKeys) {
+            val value = intent.getStringExtra(key)?.trim()
+            if (!value.isNullOrBlank()) {
+                return value
+            }
+        }
+        return null
+    }
+
     override fun onDestroy() {
+        uhfReader?.stop()
+        uhfReader = null
         scannerReceiver?.let { unregisterReceiver(it) }
         scannerReceiver = null
         methodChannel = null

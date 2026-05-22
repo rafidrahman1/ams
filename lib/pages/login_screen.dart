@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/app_text_field.dart';
 import '../components/square_action_button.dart';
 import '../core/utils/network_error_utils.dart';
+import '../core/utils/volunteer_id_parser.dart';
 import '../providers/auth_provider.dart';
+import '../providers/qr_scanner_provider.dart';
 import 'admin_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -79,6 +81,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  Future<void> _loginWithQr(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final scannedValue = await ref.read(qrScannerLauncherProvider)(context);
+
+    if (!mounted || scannedValue == null) {
+      return;
+    }
+
+    final volunteerId = normalizeVolunteerId(scannedValue);
+    if (volunteerId == null) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.invalidVolunteerQr)));
+      return;
+    }
+
+    setState(() {
+      _isLoggingIn = true;
+    });
+
+    await ref.read(authProvider.notifier).qrLogin(volunteerId);
+
+    if (!mounted) {
+      return;
+    }
+
+    final authState = ref.read(authProvider);
+    final authError = ref.read(authProvider.notifier).lastError;
+
+    setState(() {
+      _isLoggingIn = false;
+    });
+
+    if (authState == AuthStatus.unauthenticated) {
+      messenger.showSnackBar(SnackBar(content: Text(authFailureMessage(l10n.noInternetConnection, l10n.invalidVolunteerCredentials, authError))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -131,11 +170,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Gap.x4,
                         Expanded(
                           child: SquareActionButton(
-                            label: isLoading || isSubmitting ? l10n.loading : l10n.adminLogin,
-                            icon: Icons.mail_outline,
-                            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AdminScreen()));
-                            },
+                            label: isLoading || isSubmitting ? l10n.loading : l10n.loginWithQr,
+                            icon: Icons.contactless,
+                            onPressed: isLoading || isSubmitting ? null : () => _loginWithQr(context),
+                            backgroundColor: ThemeColor.primary,
+                            foregroundColor: ThemeColor.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Gap.y4,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SquareActionButton(
+                            label: l10n.adminLogin,
+                            icon: Icons.admin_panel_settings_outlined,
+                            onPressed: isLoading || isSubmitting
+                                ? null
+                                : () {
+                                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AdminScreen()));
+                                  },
                             backgroundColor: ThemeColor.secondary,
                             foregroundColor: ThemeColor.primary,
                           ),

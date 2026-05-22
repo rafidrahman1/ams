@@ -70,6 +70,7 @@ class AuthNotifier extends Notifier<AuthStatus> {
     ref.invalidate(blocksProvider);
     ref.invalidate(assetChecklistProvider);
     ref.invalidate(assetChecklistAllTrueProvider);
+    ref.invalidate(assetAllTrueStatesProvider);
     ref.invalidate(homeBootstrapProvider);
     ref.invalidate(adminHomeBootstrapProvider);
   }
@@ -106,6 +107,26 @@ class AuthNotifier extends Notifier<AuthStatus> {
     try {
       _lastError = null;
       await repo.login(cleanedEmail, cleanedPassword);
+      state = AuthStatus.authenticatedVolunteer;
+      _invalidateSessionScopedProviders();
+      _startAutoLogoutCheck();
+    } catch (error) {
+      _lastError = error;
+      state = AuthStatus.unauthenticated;
+    }
+  }
+
+  Future<void> qrLogin(String volunteerId) async {
+    final cleanedVolunteerId = volunteerId.trim();
+
+    if (cleanedVolunteerId.isEmpty) {
+      state = AuthStatus.unauthenticated;
+      return;
+    }
+
+    try {
+      _lastError = null;
+      await repo.qrLogin(cleanedVolunteerId);
       state = AuthStatus.authenticatedVolunteer;
       _invalidateSessionScopedProviders();
       _startAutoLogoutCheck();
