@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Device Admin Receiver for asset management system.
+ * Device Admin Receiver for asset monitoring system.
  * This class handles device administration policies and callbacks.
  */
 class AssetManagementDeviceAdminReceiver : DeviceAdminReceiver() {

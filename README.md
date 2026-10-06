@@ -1,4 +1,4 @@
-# Asset Management System (AMS)
+# Asset Monitoring System (AMS)
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)
@@ -9,7 +9,7 @@ A Flutter-based mobile app for tracking physical assets, verifying them on-site,
 
 ## What This Project Does
 
-The Asset Management System helps field teams and operations staff manage assets from one app:
+The Asset Monitoring System helps field teams and operations staff manage assets from one app:
 
 - Scan an asset using **QR** code.
 - Open the asset profile with relevant details and current status.

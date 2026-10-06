@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
-  "appTitle": "Asset Management System",
-  "splashTitle": "Assets Management System",
+  "appTitle": "Asset Monitoring System",
+  "splashTitle": "Assets Monitoring System",
   "homeTitle": "Home",
   "logout": "Logout",
   "logoutConfirmationTitle": "Logout Confirmation",

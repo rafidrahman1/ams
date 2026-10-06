@@ -101,13 +101,13 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Asset Management System'**
+  /// **'Asset Monitoring System'**
   String get appTitle;
 
   /// No description provided for @splashTitle.
   ///
   /// In en, this message translates to:
-  /// **'Assets Management System'**
+  /// **'Assets Monitoring System'**
   String get splashTitle;
 
   /// No description provided for @homeTitle.
